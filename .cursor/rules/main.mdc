@@ -1,0 +1,235 @@
+---
+alwaysApply: true
+---
+
+# Корпоративный Мессенджер - Правила проекта
+
+## Контекст проекта
+
+Это дипломный проект корпоративного мессенджера с функциями управления задачами, рабочими пространствами и администрирования.
+
+### Технологический стек
+- **Backend**: Go (Golang)
+- **База данных**: PostgreSQL
+- **Архитектура**: Микросервисная (SOA)
+- **Инфраструктура**: Docker + Docker Compose
+- **Протоколы**: REST API (HTTP/JSON) + WebSocket для чатов
+
+### Основные компоненты системы
+1. **API Gateway** - единая точка входа для всех клиентов
+2. **Микросервисы бизнес-логики**:
+   - Api-gateway - прокси к остальным микросервисам 
+   - Auth Service - аутентификация и JWT токены
+   - User Service - управление профилями и статусами
+   - Workspace Service - управление рабочими пространствами и ролями
+   - Chat & Message Service - WebSocket чаты и сообщения (ключевой компонент)
+   - Task Service - управление задачами
+   - Complaint Service - обработка жалоб
+3. **Data Access Layer** - слой доступа к данным
+4. **PostgreSQL DB** - реляционная база данных
+
+## Диаграммы проекта
+
+### 1. Схема базы данных ([`server/diagrs/Laba5.ddl`](server/diagrs/Laba5.ddl))
+**SQL DDL схема PostgreSQL** с основными таблицами:
+
+**Основные сущности**:
+- `users` - пользователи системы (id, login, password, status, surname, name, patronymic)
+- `messages` - сообщения в чатах (id, chatsid, usersid, text, date, status)
+- `chats` - чаты (id, name, type, workspacesid)
+- `workspaces` - рабочие пространства (id, creator, tariffsid, name)
+- `tasks` - задачи (id, creator, workspacesid, title, description, date, status)
+- `administrators` - администраторы (id, login, password)
+- `complaints` - жалобы пользователей (id, text, date, deviceDescription, author)
+- `tariffs` - тарифные планы (id, name, description)
+
+**Связующие таблицы**:
+- `userInWorkspace` - связь пользователей с РП (usersid, workspacesid, role, date)
+- `userInChat` - участники чата (id, role, date, chatsid, usersid)
+- `taskInChat` - привязка задач к чатам (id, chatsid, tasksid)
+- `taskChanges` - история изменений задач (id, description, tasksid)
+- `userInTask` - назначение пользователей на задачи (id, tasksid, usersid)
+
+**Ключевые связи**:
+- Workspace создается администратором, имеет тариф
+- Чаты и задачи привязаны к рабочим пространствам
+- Пользователи могут участвовать в нескольких РП с разными ролями
+- Задачи могут быть прикреплены к чатам
+
+### 2. Диаграмма компонентов ([`server/diagrs/component`](server/diagrs/component))
+**PlantUML диаграмма** показывает структуру системы:
+- Актеры: Пользователь, Администратор
+- Frontend: Мессенджер (Веб/Десктоп Клиент), Панель Администратора
+- Backend: API Gateway → Микросервисы → DAL → PostgreSQL
+- Взаимодействие: HTTPS/WebSocket между клиентами и Gateway
+
+### 3. Use Case диаграммы
+
+#### [`server/diagrs/usecase_admin`](server/diagrs/usecase_admin) - Панель администратора
+**PlantUML диаграмма** функций администратора:
+- Вход/выход из системы
+- Создание рабочего пространства (include: назначить руководителя, указать тариф)
+- Просмотр и изменение конфигурации РП
+- Просмотр жалоб пользователей
+- Просмотр состояния приложения и изменение настроек
+
+#### [`server/diagrs/usecase_messendger`](server/diagrs/usecase_messendger) - Корпоративный мессенджер
+**PlantUML диаграмма** функций пользователей:
+
+**Базовые функции пользователя**:
+- Вход/выход из системы
+- Выбор рабочего пространства и выход из РП
+- Общение в чате (include: выбор чата; extend: просмотр/создание сообщений)
+- Управление чатами (создать, изменить настройки, удалить, изменить участников)
+- Контроль выполнения задач (include: создать задачу, изменить статус; extend: назначить пользователя)
+- Отправка претензий (extend: создать, посмотреть отправленные)
+
+**Дополнительные функции руководителя РП**:
+- Управление рабочим пространством (extend: добавить/редактировать пользователей, изменить параметры, сменить руководителя, прикрепить пользователя к РП)
+
+### 4. Техническое решение ([`server/plans/technical_solution.md`](server/plans/technical_solution.md))
+Подробный документ с описанием:
+- Выбор технологий и их обоснование
+- Детальная архитектура микросервисов
+- Структура Docker Compose
+- План разработки (roadmap)
+
+### 5. REST API Документация ([`server/plans/api/`](server/plans/api/))
+**Полная спецификация всех REST API эндпоинтов** (~58 эндпоинтов):
+
+Документация разбита по микросервисам:
+- **API Gateway** ([`server/plans/api/gateway.md`](server/plans/api/gateway.md)) - маршрутизация, health check (1)
+- **Auth Service** ([`server/plans/api/auth_service.md`](server/plans/api/auth_service.md)) - регистрация, логин, JWT (6)
+- **User Service** ([`server/plans/api/user_service.md`](server/plans/api/user_service.md)) - профили, статусы, поиск (6)
+- **Workspace Service** ([`server/plans/api/workspace_service.md`](server/plans/api/workspace_service.md)) - РП, участники, тарифы (12)
+- **Chat Service** ([`server/plans/api/chat_service.md`](server/plans/api/chat_service.md)) - чаты, сообщения, WebSocket (15)
+- **Task Service** ([`server/plans/api/task_service.md`](server/plans/api/task_service.md)) - задачи, исполнители, история (13)
+- **Complaint Service** ([`server/plans/api/complaint_service.md`](server/plans/api/complaint_service.md)) - жалобы пользователей (5)
+
+Каждый эндпоинт включает:
+- HTTP метод и путь
+- Описание функционала
+- Примеры JSON запросов/ответов
+- Коды ответов и обработка ошибок
+- Валидацию данных и примечания
+
+### 6. API Checklist ([`server/plans/api_checklist.md`](server/plans/api_checklist.md))
+**Краткий чеклист для отслеживания прогресса разработки**:
+- Список всех эндпоинтов с чекбоксами
+- Статистика реализации
+- Приоритеты разработки по фазам
+- Технические требования
+
+## Правила разработки
+
+### Поддержка документации в актуальном состоянии
+
+**КРИТИЧЕСКИ ВАЖНО**: Все файлы планов в директории `server/plans/` должны поддерживаться в актуальном состоянии.
+
+**Обязательные действия при изменениях**:
+1. **При изменении API эндпоинтов** - обновить соответствующий файл в `server/plans/api/`:
+   - Добавление/удаление эндпоинта → обновить `server/plans/api/{service_name}.md`
+   - Изменение структуры запроса/ответа → обновить примеры JSON в документации
+   - Изменение кодов ответов → обновить раздел обработки ошибок
+   - Обновить [`server/plans/api_checklist.md`](server/plans/api_checklist.md) при реализации новых эндпоинтов
+
+2. **При изменении архитектуры** - обновить [`server/plans/technical_solution.md`](server/plans/technical_solution.md):
+   - Изменение технологий или библиотек
+   - Изменение структуры микросервисов
+   - Изменение Docker Compose конфигурации
+   - Изменение плана разработки (roadmap)
+
+3. **При изменении структуры API** - обновить [`server/plans/API_STRUCTURE.md`](server/plans/API_STRUCTURE.md):
+   - Изменение навигации по документации
+   - Добавление новых разделов или сервисов
+
+4. **При реализации эндпоинтов** - обновить [`server/plans/api_checklist.md`](server/plans/api_checklist.md):
+   - Отметить реализованные эндпоинты
+   - Обновить статистику прогресса
+   - Обновить приоритеты разработки
+
+**Проверка актуальности**: Перед коммитом изменений в код убедиться, что соответствующая документация обновлена.
+
+### Backend разработка (Go)
+1. Использовать **Go (Golang)** для всех backend сервисов
+2. Структура проекта:
+   - `/services/auth`, `/services/user`, `/services/workspace`, `/services/chat`, `/services/task`, `/services/complaint`
+   - `/gateway` для API Gateway
+3. Библиотеки:
+   - `Gin` или `Echo` для REST API
+   - `gorilla/websocket` или `nhooyr.io/websocket` для WebSocket
+   - `pgx` или `GORM` для работы с PostgreSQL
+4. Обязательная обработка ошибок, логирование
+5. JWT токены (Access/Refresh) для аутентификации
+6. Использование goroutines для конкурентности
+
+### База данных
+1. Следовать схеме из [`server/diagrs/Laba5.ddl`](server/diagrs/Laba5.ddl)
+2. Использовать миграции (например, `golang-migrate`)
+3. Поддержка ACID транзакций
+4. Индексы согласно DDL схеме
+
+### Docker и инфраструктура
+1. Каждый сервис - отдельный Docker контейнер
+2. Единый `docker-compose.yml` для оркестрации (обычно в `server/src/docker-compose.yml`)
+3. PostgreSQL в отдельном контейнере
+4. Volumes для персистентности данных БД
+5. Сервисы должны иметь зависимости (depends_on)
+
+### API и протоколы
+1. REST API для CRUD операций
+2. WebSocket для реального времени (чаты)
+3. JSON для сериализации данных
+4. Единая точка входа через API Gateway
+5. Валидация запросов на уровне Gateway
+
+### Безопасность
+1. Хеширование паролей (bcrypt)
+2. JWT токены для авторизации
+3. Проверка прав доступа на уровне сервисов
+4. Роли пользователей в рабочих пространствах
+
+### Архитектурные принципы
+1. Изоляция компонентов - каждый сервис независим
+2. Масштабируемость - горизонтальное масштабирование сервисов
+3. Микросервисная архитектура
+4. Разделение ответственности между сервисами
+5. Асинхронная обработка где необходимо
+
+## Обращение к документации
+
+При работе с проектом обращайся к:
+
+### Диаграммы (server/diagrs/)
+- **База данных**: [`server/diagrs/Laba5.ddl`](server/diagrs/Laba5.ddl) - SQL DDL схема PostgreSQL
+- **Архитектура**: [`server/diagrs/component`](server/diagrs/component) - компонентная диаграмма (PlantUML)
+- **Use Cases админа**: [`server/diagrs/usecase_admin`](server/diagrs/usecase_admin) - функции панели администратора
+- **Use Cases мессенджера**: [`server/diagrs/usecase_messendger`](server/diagrs/usecase_messendger) - функции пользователей
+
+### Документация (server/plans/)
+**ВАЖНО**: Все файлы планов должны поддерживаться в актуальном состоянии. При любых изменениях в коде, архитектуре или API необходимо обновлять соответствующую документацию.
+
+**Основные документы планирования**:
+- **Техническое решение**: [`server/plans/technical_solution.md`](server/plans/technical_solution.md) - архитектура и стек
+- **Структура API**: [`server/plans/API_STRUCTURE.md`](server/plans/API_STRUCTURE.md) - навигация по документации API
+- **API Чеклист**: [`server/plans/api_checklist.md`](server/plans/api_checklist.md) - отслеживание прогресса разработки
+
+**REST API Документация** (полная спецификация всех эндпоинтов):
+- **Главная страница API**: [`server/plans/api/README.md`](server/plans/api/README.md) - обзор всех 58 эндпоинтов
+- **API Gateway**: [`server/plans/api/gateway.md`](server/plans/api/gateway.md) - маршрутизация, health check (1 эндпоинт)
+- **Auth Service**: [`server/plans/api/auth_service.md`](server/plans/api/auth_service.md) - регистрация, логин, JWT (6 эндпоинтов)
+- **User Service**: [`server/plans/api/user_service.md`](server/plans/api/user_service.md) - профили, статусы, поиск (6 эндпоинтов)
+- **Workspace Service**: [`server/plans/api/workspace_service.md`](server/plans/api/workspace_service.md) - РП, участники, тарифы (12 эндпоинтов)
+- **Chat Service**: [`server/plans/api/chat_service.md`](server/plans/api/chat_service.md) - чаты, сообщения, WebSocket (15 эндпоинтов)
+- **Task Service**: [`server/plans/api/task_service.md`](server/plans/api/task_service.md) - задачи, исполнители, история (13 эндпоинтов)
+- **Complaint Service**: [`server/plans/api/complaint_service.md`](server/plans/api/complaint_service.md) - жалобы пользователей (5 эндпоинтов)
+
+## Приоритеты разработки
+1. Проектирование БД и миграции
+2. Auth Service (регистрация, логин)
+3. API Gateway (маршрутизация)
+4. User & Workspace Services
+5. Chat Service (WebSocket, ключевой компонент)
+6. Task Service
+7. Complaint Service
+8. Интеграция и тестирование

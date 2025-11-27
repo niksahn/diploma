@@ -1,0 +1,87 @@
+@startuml
+skinparam componentStyle uml2
+skinparam backgroundColor white
+
+title Диаграмма компонентов - Корпоративный Мессенджер
+
+actor "Пользователь" as UserActor
+actor "Администратор" as AdminActor
+
+package "Клиентская часть (Frontend)" {
+    component "Мессенджер\n(Веб/Десктоп Клиент)" as ClientApp
+    component "Панель Администратора\n(Web Admin Panel)" as AdminApp
+}
+
+package "Серверная часть (Backend)" {
+    component "API Gateway" as APIGateway
+    
+    package "Слой Бизнес-логики (Services)" {
+        component "Сервис Аутентификации\n(Auth Service)" as AuthService
+        component "Сервис Пользователей\n(User Service)" as UserService
+        component "Сервис Рабочих пространств\n(Workspace Service)" as WorkspaceService
+        component "Сервис Чатов и Сообщений\n(Chat & Message Service)" as ChatService
+        component "Сервис Задач\n(Task Service)" as TaskService
+        component "Сервис Жалоб\n(Complaint Service)" as ComplaintService
+
+    }
+    
+    component "Data Access Layer\n(DAL)" as DAL
+}
+
+database "База Данных\n(PostgreSQL)" as DB
+
+' Связи актеров с интерфейсами
+UserActor ..> ClientApp : Использует
+AdminActor ..> AdminApp : Использует
+
+' Связи интерфейсов с API
+ClientApp --> APIGateway : HTTPS / WebSocket
+AdminApp --> APIGateway : HTTPS
+
+' Маршрутизация запросов от Gateway к сервисам
+APIGateway --> AuthService : Вход/Регистрация
+APIGateway --> UserService : Профиль, Статус
+APIGateway --> WorkspaceService : Управление РП
+APIGateway --> ChatService : Общение
+APIGateway --> TaskService : Управление задачами
+APIGateway --> ComplaintService : Жалобы
+
+
+' Взаимосвязи между компонентами (на основе ваших таблиц связей)
+
+WorkspaceService ..> UserService : Роли в РП\n(Таблица 8)
+
+ChatService ..> WorkspaceService : Привязка к РП\n(Таблица 2, 7)
+ChatService ..> UserService : Участники чата
+
+TaskService ..> WorkspaceService : Привязка к РП\n(Таблица 6)
+TaskService ..> UserService : Назначение на задачи\n(Таблица 10, 13)
+TaskService ..> ChatService : Прикрепление к чату\n(Таблица 11)
+
+ComplaintService ..> UserService : Автор жалобы\n(Таблица 9)
+
+' Доступ к данным
+AuthService ..> DAL
+UserService ..> DAL
+WorkspaceService ..> DAL
+ChatService ..> DAL
+TaskService ..> DAL
+ComplaintService ..> DAL
+
+
+DAL ..> DB : SQL Queries
+
+note right of TaskService
+  Управляет сущностями:
+  - Задача
+  - Изменение задачи
+  - Назначение на задачу
+end note
+
+note right of ChatService
+  Управляет сущностями:
+  - Чат
+  - Сообщение
+end note
+
+@enduml
