@@ -11,9 +11,9 @@
 | Статус | Количество |
 |--------|-----------|
 | **Всего эндпоинтов** | 58 |
-| **Реализовано** | 0 |
+| **Реализовано** | 7 |
 | **В разработке** | 0 |
-| **Осталось** | 58 |
+| **Осталось** | 51 |
 
 ---
 
@@ -27,19 +27,24 @@
 
 ---
 
-## 2. Auth Service (`:8081`) - 6 эндпоинтов
+## 2. Auth Service (`:8081`) - 7 эндпоинтов
 
 **Документация**: [auth_service.md](./api/auth_service.md)
 
+**Статус**: ✅ Готово
+
 ### Регистрация и вход
-- [ ] `POST /api/v1/auth/register` - Регистрация пользователя
-- [ ] `POST /api/v1/auth/login` - Вход пользователя
-- [ ] `POST /api/v1/auth/refresh` - Обновление токена
-- [ ] `POST /api/v1/auth/logout` - Выход из системы
+- [x] `POST /api/v1/auth/register` - Регистрация пользователя
+- [x] `POST /api/v1/auth/login` - Вход пользователя
+- [x] `POST /api/v1/auth/refresh` - Обновление токена
+- [x] `POST /api/v1/auth/logout` - Выход из системы
 
 ### Администраторы
-- [ ] `POST /api/v1/auth/admin/login` - Вход администратора
-- [ ] `POST /api/v1/auth/admin/register` - Регистрация администратора
+- [x] `POST /api/v1/auth/admin/login` - Вход администратора
+- [x] `POST /api/v1/auth/admin/register` - Регистрация администратора
+
+### Валидация (Internal)
+- [x] `POST /api/v1/auth/validate` - Валидация JWT токена
 
 ---
 

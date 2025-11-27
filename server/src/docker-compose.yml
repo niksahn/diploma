@@ -13,6 +13,34 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile
+    container_name: messenger_auth_service
+    ports:
+      - "8081:8081"
+    environment:
+      PORT: 8081
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: messenger_db
+      DB_USER: user
+      DB_PASSWORD: password
+      JWT_SECRET: your_jwt_secret_key_here_minimum_32_characters_long_for_production
+      JWT_ACCESS_EXPIRATION: 3600
+      JWT_REFRESH_EXPIRATION: 604800
+      BCRYPT_COST: 12
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
 
 volumes:
   postgres_data:

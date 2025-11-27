@@ -242,10 +242,12 @@ func isUniqueViolation(err error) bool {
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || 
-		(len(s) > len(substr) && (s[:len(substr)] == substr || 
-		s[len(s)-len(substr):] == substr || 
-		containsMiddle(s, substr))))
+	return len(s) >= len(substr) && 
+		(len(substr) == 0 || 
+			(len(s) > len(substr) && 
+				(s[:len(substr)] == substr || 
+					s[len(s)-len(substr):] == substr || 
+					containsMiddle(s, substr))))
 }
 
 func containsMiddle(s, substr string) bool {
