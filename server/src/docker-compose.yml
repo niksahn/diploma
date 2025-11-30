@@ -14,7 +14,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user"]
+      test: [ "CMD-SHELL", "pg_isready -U user" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -56,6 +56,51 @@ services:
       DB_NAME: messenger_db
       DB_USER: user
       DB_PASSWORD: password
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+
+  workspace-service:
+    build:
+      context: ./services/workspace
+      dockerfile: Dockerfile
+    container_name: messenger_workspace_service
+    ports:
+      - "8083:8083"
+    environment:
+      PORT: 8083
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: messenger_db
+      DB_USER: user
+      DB_PASSWORD: password
+      AUTH_SERVICE_URL: http://auth-service:8081
+      USER_SERVICE_URL: http://user-service:8082
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+
+  chat-service:
+    build:
+      context: ./services/chat
+      dockerfile: Dockerfile
+    container_name: messenger_chat_service
+    ports:
+      - "8084:8084"
+    environment:
+      PORT: 8084
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: messenger_db
+      DB_USER: user
+      DB_PASSWORD: password
+      AUTH_SERVICE_URL: http://auth-service:8081
+      USER_SERVICE_URL: http://user-service:8082
+      WORKSPACE_SERVICE_URL: http://workspace-service:8083
+      WEBSOCKET_ENABLED: "true"
+      WEBSOCKET_PING_INTERVAL: "30"
     depends_on:
       postgres:
         condition: service_healthy

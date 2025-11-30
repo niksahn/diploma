@@ -37,8 +37,8 @@ server/plans/
 | 🚪 Gateway | [gateway.md](./api/gateway.md) | Маршрутизация, валидация JWT, CORS | ⬜ |
 | 🔐 Auth | [auth_service.md](./api/auth_service.md) | Регистрация, логин, JWT токены | ✅ |
 | 👤 User | [user_service.md](./api/user_service.md) | Профили, статусы, поиск | ✅ |
-| 🏢 Workspace | [workspace_service.md](./api/workspace_service.md) | Рабочие пространства, участники | ⬜ |
-| 💬 Chat | [chat_service.md](./api/chat_service.md) | Чаты, сообщения, WebSocket | ⬜ |
+| 🏢 Workspace | [workspace_service.md](./api/workspace_service.md) | Рабочие пространства, участники | ✅ |
+| 💬 Chat | [chat_service.md](./api/chat_service.md) | Чаты, сообщения, WebSocket | ✅ |
 | ✅ Task | [task_service.md](./api/task_service.md) | Задачи, исполнители, история | ⬜ |
 | 📝 Complaint | [complaint_service.md](./api/complaint_service.md) | Жалобы пользователей | ⬜ |
 
@@ -73,7 +73,7 @@ server/plans/
 4. ✅ **Workspace Service** - CRUD РП и управление участниками
 
 ### Фаза 3: Коммуникация (Ключевая)
-5. ✅ **Chat Service** - REST API для чатов
+5. ✅ **Chat Service** - REST API для чатов (15 эндпоинтов)
 6. ✅ **Chat Service** - WebSocket для real-time общения
 
 ### Фаза 4: Задачи
@@ -115,7 +115,7 @@ server/plans/
 ---
 
 **Версия**: 1.0  
-**Последнее обновление**: 2024-12-19
+**Последнее обновление**: 2024-12-20
 
 
 

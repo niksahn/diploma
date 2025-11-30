@@ -1,0 +1,714 @@
+basePath: /api/v1
+definitions:
+  models.AddMemberRequest:
+    properties:
+      role:
+        maximum: 2
+        minimum: 1
+        type: integer
+      user_id:
+        type: integer
+    required:
+    - role
+    - user_id
+    type: object
+  models.ChangeLeaderRequest:
+    properties:
+      new_leader_id:
+        type: integer
+    required:
+    - new_leader_id
+    type: object
+  models.CreateTariffRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    required:
+    - description
+    - name
+    type: object
+  models.CreateWorkspaceRequest:
+    properties:
+      leader_id:
+        type: integer
+      name:
+        maxLength: 100
+        minLength: 3
+        type: string
+      tariff_id:
+        type: integer
+    required:
+    - leader_id
+    - name
+    - tariff_id
+    type: object
+  models.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  models.LeaderChangedResponse:
+    properties:
+      new_leader_id:
+        type: integer
+      old_leader_id:
+        type: integer
+      updated_at:
+        type: string
+      workspace_id:
+        type: integer
+    type: object
+  models.MemberAddedResponse:
+    properties:
+      date:
+        type: string
+      role:
+        type: integer
+      user_id:
+        type: integer
+      workspace_id:
+        type: integer
+    type: object
+  models.MemberResponse:
+    properties:
+      joined_at:
+        type: string
+      login:
+        type: string
+      name:
+        type: string
+      patronymic:
+        type: string
+      role:
+        type: integer
+      status:
+        type: integer
+      surname:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  models.MemberRoleUpdatedResponse:
+    properties:
+      role:
+        type: integer
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+      workspace_id:
+        type: integer
+    type: object
+  models.MembersResponse:
+    properties:
+      members:
+        items:
+          $ref: '#/definitions/models.MemberResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  models.TariffInfo:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  models.TariffResponse:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  models.TariffsResponse:
+    properties:
+      tariffs:
+        items:
+          $ref: '#/definitions/models.TariffResponse'
+        type: array
+    type: object
+  models.UpdateMemberRoleRequest:
+    properties:
+      role:
+        maximum: 2
+        minimum: 1
+        type: integer
+    required:
+    - role
+    type: object
+  models.UpdateTariffRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    required:
+    - description
+    - name
+    type: object
+  models.UpdateWorkspaceRequest:
+    properties:
+      name:
+        maxLength: 100
+        minLength: 3
+        type: string
+      tariff_id:
+        type: integer
+    required:
+    - name
+    - tariff_id
+    type: object
+  models.UserWorkspaceResponse:
+    properties:
+      id:
+        type: integer
+      joined_at:
+        type: string
+      name:
+        type: string
+      role:
+        type: integer
+    type: object
+  models.UserWorkspacesResponse:
+    properties:
+      total:
+        type: integer
+      workspaces:
+        items:
+          $ref: '#/definitions/models.UserWorkspaceResponse'
+        type: array
+    type: object
+  models.WorkspaceDetailsResponse:
+    properties:
+      chats_count:
+        type: integer
+      created_at:
+        type: string
+      creator:
+        type: integer
+      id:
+        type: integer
+      members_count:
+        type: integer
+      name:
+        type: string
+      tariff:
+        $ref: '#/definitions/models.TariffInfo'
+      tasks_count:
+        type: integer
+    type: object
+  models.WorkspaceResponse:
+    properties:
+      created_at:
+        type: string
+      creator:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      tariffs_id:
+        type: integer
+    type: object
+host: localhost:8083
+info:
+  contact:
+    email: support@messenger.local
+    name: API Support
+  description: Микросервис управления рабочими пространствами для корпоративного мессенджера
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Workspace Service API
+  version: 1.0.0
+paths:
+  /workspaces:
+    get:
+      description: Возвращает список рабочих пространств текущего пользователя
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserWorkspacesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить список РП пользователя
+      tags:
+      - workspaces
+    post:
+      consumes:
+      - application/json
+      description: Создает новое рабочее пространство (только администратор)
+      parameters:
+      - description: Данные РП
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateWorkspaceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.WorkspaceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Создать рабочее пространство
+      tags:
+      - workspaces
+  /workspaces/{id}:
+    delete:
+      description: Удаляет рабочее пространство (только администратор)
+      parameters:
+      - description: ID рабочего пространства
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Удалить РП
+      tags:
+      - workspaces
+    get:
+      description: Возвращает детальную информацию о рабочем пространстве
+      parameters:
+      - description: ID рабочего пространства
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WorkspaceDetailsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить информацию о РП
+      tags:
+      - workspaces
+    put:
+      consumes:
+      - application/json
+      description: Обновляет параметры рабочего пространства (только руководитель)
+      parameters:
+      - description: ID рабочего пространства
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новые данные РП
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateWorkspaceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WorkspaceResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить РП
+      tags:
+      - workspaces
+  /workspaces/{id}/leader:
+    put:
+      consumes:
+      - application/json
+      description: Передает роль руководителя другому участнику (только текущий руководитель)
+      parameters:
+      - description: ID рабочего пространства
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новый руководитель
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ChangeLeaderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.LeaderChangedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Сменить руководителя РП
+      tags:
+      - workspaces
+  /workspaces/{id}/members:
+    get:
+      description: Возвращает список всех участников рабочего пространства
+      parameters:
+      - description: ID рабочего пространства
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MembersResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить список участников РП
+      tags:
+      - workspace-members
+    post:
+      consumes:
+      - application/json
+      description: Добавляет пользователя в рабочее пространство (только руководитель)
+      parameters:
+      - description: ID рабочего пространства
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные участника
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.AddMemberRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.MemberAddedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Добавить участника в РП
+      tags:
+      - workspace-members
+  /workspaces/{id}/members/{user_id}:
+    delete:
+      description: Удаляет пользователя из рабочего пространства (только руководитель)
+      parameters:
+      - description: ID рабочего пространства
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID пользователя
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Удалить участника из РП
+      tags:
+      - workspace-members
+    put:
+      consumes:
+      - application/json
+      description: Изменяет роль пользователя в рабочем пространстве (только руководитель)
+      parameters:
+      - description: ID рабочего пространства
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID пользователя
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - description: Новая роль
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateMemberRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MemberRoleUpdatedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Изменить роль участника
+      tags:
+      - workspace-members
+  /workspaces/tariffs:
+    get:
+      description: Возвращает список всех доступных тарифных планов (публичный эндпоинт)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TariffsResponse'
+      summary: Получить список тарифов
+      tags:
+      - tariffs
+    post:
+      consumes:
+      - application/json
+      description: Создает новый тарифный план (только администратор)
+      parameters:
+      - description: Данные тарифа
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateTariffRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.TariffResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Создать тариф
+      tags:
+      - tariffs
+  /workspaces/tariffs/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Обновляет тарифный план (только администратор)
+      parameters:
+      - description: ID тарифа
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новые данные тарифа
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateTariffRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TariffResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить тариф
+      tags:
+      - tariffs
+securityDefinitions:
+  BearerAuth:
+    description: 'JWT токен в формате: Bearer {token}. Gateway проверяет токен и добавляет
+      X-User-ID и X-User-Role в заголовки'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

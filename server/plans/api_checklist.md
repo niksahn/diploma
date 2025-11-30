@@ -11,9 +11,9 @@
 | Статус | Количество |
 |--------|-----------|
 | **Всего эндпоинтов** | 58 |
-| **Реализовано** | 14 |
+| **Реализовано** | 29 |
 | **В разработке** | 0 |
-| **Осталось** | 44 |
+| **Осталось** | 29 |
 
 ---
 
@@ -73,24 +73,26 @@
 
 **Документация**: [workspace_service.md](./api/workspace_service.md)
 
+**Статус**: ✅ Готово
+
 ### Рабочие пространства
-- [ ] `POST /api/v1/workspaces` - Создать РП (админ)
-- [ ] `GET /api/v1/workspaces` - Список РП пользователя
-- [ ] `GET /api/v1/workspaces/:id` - Информация о РП
-- [ ] `PUT /api/v1/workspaces/:id` - Обновить РП
-- [ ] `DELETE /api/v1/workspaces/:id` - Удалить РП (админ)
+- [x] `POST /api/v1/workspaces` - Создать РП (админ)
+- [x] `GET /api/v1/workspaces` - Список РП пользователя
+- [x] `GET /api/v1/workspaces/:id` - Информация о РП
+- [x] `PUT /api/v1/workspaces/:id` - Обновить РП
+- [x] `DELETE /api/v1/workspaces/:id` - Удалить РП (админ)
 
 ### Участники
-- [ ] `POST /api/v1/workspaces/:id/members` - Добавить участника
-- [ ] `GET /api/v1/workspaces/:id/members` - Список участников
-- [ ] `PUT /api/v1/workspaces/:id/members/:user_id` - Изменить роль
-- [ ] `DELETE /api/v1/workspaces/:id/members/:user_id` - Удалить участника
-- [ ] `PUT /api/v1/workspaces/:id/leader` - Сменить руководителя
+- [x] `POST /api/v1/workspaces/:id/members` - Добавить участника
+- [x] `GET /api/v1/workspaces/:id/members` - Список участников
+- [x] `PUT /api/v1/workspaces/:id/members/:user_id` - Изменить роль
+- [x] `DELETE /api/v1/workspaces/:id/members/:user_id` - Удалить участника
+- [x] `PUT /api/v1/workspaces/:id/leader` - Сменить руководителя
 
 ### Тарифы
-- [ ] `GET /api/v1/workspaces/tariffs` - Список тарифов
-- [ ] `POST /api/v1/workspaces/tariffs` - Создать тариф (админ)
-- [ ] `PUT /api/v1/workspaces/tariffs/:id` - Обновить тариф (админ)
+- [x] `GET /api/v1/workspaces/tariffs` - Список тарифов
+- [x] `POST /api/v1/workspaces/tariffs` - Создать тариф (админ)
+- [x] `PUT /api/v1/workspaces/tariffs/:id` - Обновить тариф (админ)
 
 ---
 
@@ -98,28 +100,30 @@
 
 **Документация**: [chat_service.md](./api/chat_service.md)
 
+**Статус**: ✅ Готово
+
 ### Чаты
-- [ ] `POST /api/v1/chats` - Создать чат
-- [ ] `GET /api/v1/chats` - Список чатов
-- [ ] `GET /api/v1/chats/:id` - Информация о чате
-- [ ] `PUT /api/v1/chats/:id` - Обновить чат
-- [ ] `DELETE /api/v1/chats/:id` - Удалить чат
+- [x] `POST /api/v1/chats` - Создать чат
+- [x] `GET /api/v1/chats` - Список чатов
+- [x] `GET /api/v1/chats/:id` - Информация о чате
+- [x] `PUT /api/v1/chats/:id` - Обновить чат
+- [x] `DELETE /api/v1/chats/:id` - Удалить чат
 
 ### Участники чата
-- [ ] `POST /api/v1/chats/:id/members` - Добавить участников
-- [ ] `GET /api/v1/chats/:id/members` - Список участников
-- [ ] `PUT /api/v1/chats/:id/members/:user_id` - Изменить роль
-- [ ] `DELETE /api/v1/chats/:id/members/:user_id` - Удалить участника
+- [x] `POST /api/v1/chats/:id/members` - Добавить участников
+- [x] `GET /api/v1/chats/:id/members` - Список участников
+- [x] `PUT /api/v1/chats/:id/members/:user_id` - Изменить роль
+- [x] `DELETE /api/v1/chats/:id/members/:user_id` - Удалить участника
 
 ### Сообщения
-- [ ] `GET /api/v1/chats/:id/messages` - История сообщений
-- [ ] `POST /api/v1/chats/:id/messages` - Отправить сообщение
-- [ ] `PUT /api/v1/chats/:chat_id/messages/:message_id` - Редактировать
-- [ ] `DELETE /api/v1/chats/:chat_id/messages/:message_id` - Удалить
-- [ ] `PUT /api/v1/chats/:id/messages/read` - Отметить прочитанными
+- [x] `GET /api/v1/chats/:id/messages` - История сообщений
+- [x] `POST /api/v1/chats/:id/messages` - Отправить сообщение
+- [x] `PUT /api/v1/chats/:chat_id/messages/:message_id` - Редактировать
+- [x] `DELETE /api/v1/chats/:chat_id/messages/:message_id` - Удалить
+- [x] `PUT /api/v1/chats/:id/messages/read` - Отметить прочитанными
 
 ### WebSocket
-- [ ] `WS /api/v1/chats/ws` - WebSocket соединение
+- [x] `WS /api/v1/chats/ws` - WebSocket соединение
 
 ---
 
@@ -182,13 +186,13 @@
 8. ✅ Chat Service - WebSocket для real-time
 
 ### Фаза 4: Задачи
-9. ✅ Task Service - CRUD задач
-10. ✅ Task Service - Управление исполнителями
-11. ✅ Task Service - Привязка к чатам
+9.  Task Service - CRUD задач
+10. Task Service - Управление исполнителями
+11. Task Service - Привязка к чатам
 
 ### Фаза 5: Дополнительно
-12. ✅ Complaint Service - Обработка жалоб
-13. ✅ Admin функции - Панель администратора
+12.  Complaint Service - Обработка жалоб
+13.  Admin функции - Панель администратора
 
 ---
 
@@ -224,6 +228,6 @@
 
 ---
 
-**Последнее обновление**: 2024-12-19  
+**Последнее обновление**: 2024-12-20  
 **Версия API**: v1
 

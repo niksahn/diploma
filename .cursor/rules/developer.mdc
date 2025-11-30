@@ -1,8 +1,7 @@
 ---
-alwaysApply: true
+description: Только при разработке нового микросервиса или его доработке
+alwaysApply: false
 ---
-
-
 ### Backend разработка (Go)
 1. Использовать **Go (Golang)** для всех backend сервисов
 2. Структура проекта:
@@ -13,7 +12,7 @@ alwaysApply: true
    - `gorilla/websocket` или `nhooyr.io/websocket` для WebSocket
    - `pgx` или `GORM` для работы с PostgreSQL
 4. Обязательная обработка ошибок, логирование
-5. JWT токены (Access/Refresh) для аутентификации
+5.  **ВАЖНО** - ТОЛЬКО AUTH service делает работу с токенами.
 6. Использование goroutines для конкурентности
 
 ### Разработка микросервисов (Чистая архитектура)
@@ -28,7 +27,7 @@ services/{service-name}/
 │   ├── database/           # Подключение к БД, миграции
 │   ├── repository/         # Репозитории для работы с БД
 │   ├── utils/              # Утилиты для работы с данными (хеширование, валидация и т.д.)
-│   └── databaseModels/     # Модели данных БД (структуры таблиц)
+│   └── models/     # Модели данных БД (структуры таблиц)
 │
 ├── domain/                 # Доменный слой (опционально)
 │   ├── usecase/           # Бизнес-логика, use cases
@@ -52,7 +51,7 @@ services/{service-name}/
 - `database/` - подключение к базе данных, настройка пула соединений, миграции
 - `repository/` - репозитории для работы с БД (CRUD операции, запросы)
 - `utils/` - утилиты для работы с данными (хеширование паролей, JWT, валидация данных)
-- `databaseModels/` - структуры, соответствующие таблицам БД (entity models)
+- `models/` - структуры, соответствующие таблицам БД (entity models)
 
 **2. Domain Layer (Доменный слой) - опционально**
 - `usecase/` - бизнес-логика, use cases (создается при необходимости сложной бизнес-логики)
@@ -73,7 +72,7 @@ services/{service-name}/
    - Models в presentation описывают API контракт
 
 2. **Модели данных**:
-   - `databaseModels/` - структуры БД (могут отличаться от API моделей)
+   - `models/` - структуры БД (могут отличаться от API моделей)
    - `presentation/models/` - DTO для API (используются в Swagger)
    - Преобразование между слоями должно быть явным
 
@@ -90,7 +89,7 @@ services/{service-name}/
 
 **Шаг 2: Разработка**
 1. Реализовать `data/database/` - подключение к БД
-2. Создать `data/databaseModels/` - модели БД
+2. Создать `data/models/` - модели БД
 3. Реализовать `data/repository/` - репозитории
 4. Создать `data/utils/` - утилиты (если нужны)
 5. При необходимости создать `domain/usecase/` или `domain/interceptor/`
@@ -159,7 +158,7 @@ services/auth/
 │   ├── utils/
 │   │   ├── jwt.go               # Утилиты для работы с JWT
 │   │   └── password.go          # Хеширование паролей (bcrypt)
-│   └── databaseModels/
+│   └── models/
 │       └── models.go            # User, Administrator (структуры БД)
 │
 ├── presentation/
