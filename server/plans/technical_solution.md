@@ -145,13 +145,18 @@ volumes:
 |--------|------|-------------------|--------|
 | **API Gateway** | 8080 | Маршрутизация, health check | 1 |
 | **Auth Service** | 8081 | `/auth/register`, `/auth/login`, `/auth/refresh` | 6 |
-| **User Service** | 8082 | `/users/me`, `/users/:id`, `/users/search` | 6 |
+| **User Service** | 8082 | `/users/me`, `/users/:id`, `/users/search`, `/users/workspace/:id` | 7 |
 | **Workspace Service** | 8083 | `/workspaces`, `/workspaces/:id/members`, `/tariffs` | 12 |
 | **Chat Service** | 8084 | `/chats`, `/chats/:id/messages`, WebSocket | 15 |
 | **Task Service** | 8085 | `/tasks`, `/tasks/:id/assignees`, `/tasks/:id/status` | 13 |
 | **Complaint Service** | 8086 | `/complaints`, `/complaints/:id/status` | 5 |
 
 **Итого: 58 REST эндпоинтов + 1 WebSocket соединение**
+
+**Статус реализации**: 14/58 эндпоинтов (24%)
+- ✅ Auth Service: 7/7 эндпоинтов
+- ✅ User Service: 7/7 эндпоинтов
+- ⬜ Остальные сервисы: 0/44 эндпоинтов
 
 ## 6. План разработки (Roadmap)
 

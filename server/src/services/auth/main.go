@@ -97,6 +97,8 @@ func setupRouter(authHandler *handlers.AuthHandler) *gin.Engine {
 
 	// Swagger документация
 	docs.SwaggerInfo.BasePath = "/api/v1"
+	docs.SwaggerInfo.Host = "localhost:8081"
+	docs.SwaggerInfo.Schemes = []string{"http", "https"}
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Middleware
