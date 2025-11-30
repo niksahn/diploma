@@ -110,18 +110,27 @@ func setupRouter(chatHandler *handlers.ChatHandler, memberHandler *handlers.Memb
 	router.Use(gin.Recovery())
 	router.Use(corsMiddleware())
 
-	// API routes
+	// API routes - регистрируем в правильном порядке: от более специфичных к менее специфичным
 	api := router.Group("/api/v1/chats")
 	{
-		// WebSocket
+		// WebSocket (статический путь - регистрируем первым)
 		api.GET("/ws", handlers.HandleWebSocket(wsHub))
 
-		// Чаты
+		// Чаты (общие маршруты без параметров)
 		api.POST("", chatHandler.CreateChat)
 		api.GET("", chatHandler.GetChats)
-		api.GET("/:id", chatHandler.GetChat)
-		api.PUT("/:id", chatHandler.UpdateChat)
-		api.DELETE("/:id", chatHandler.DeleteChat)
+
+		// ВАЖНО: Регистрируем более специфичные маршруты ПЕРЕД общими /:id
+		// Это критично для правильной работы роутера Gin
+
+		// Сообщения с message_id (самые специфичные - регистрируем первыми)
+		api.PUT("/:id/messages/:message_id", messageHandler.UpdateMessage)
+		api.DELETE("/:id/messages/:message_id", messageHandler.DeleteMessage)
+
+		// Сообщения (менее специфичные)
+		api.GET("/:id/messages", messageHandler.GetMessages)
+		api.POST("/:id/messages", messageHandler.CreateMessage)
+		api.PUT("/:id/messages/read", messageHandler.MarkAsRead)
 
 		// Участники чата
 		api.POST("/:id/members", memberHandler.AddMembers)
@@ -129,12 +138,10 @@ func setupRouter(chatHandler *handlers.ChatHandler, memberHandler *handlers.Memb
 		api.PUT("/:id/members/:user_id", memberHandler.UpdateMemberRole)
 		api.DELETE("/:id/members/:user_id", memberHandler.RemoveMember)
 
-		// Сообщения
-		api.GET("/:id/messages", messageHandler.GetMessages)
-		api.POST("/:id/messages", messageHandler.CreateMessage)
-		api.PUT("/:id/messages/read", messageHandler.MarkAsRead)
-		api.PUT("/:chat_id/messages/:message_id", messageHandler.UpdateMessage)
-		api.DELETE("/:chat_id/messages/:message_id", messageHandler.DeleteMessage)
+		// Чаты (общие маршруты с :id - регистрируем ПОСЛЕДНИМИ)
+		api.GET("/:id", chatHandler.GetChat)
+		api.PUT("/:id", chatHandler.UpdateChat)
+		api.DELETE("/:id", chatHandler.DeleteChat)
 	}
 
 	// Health check

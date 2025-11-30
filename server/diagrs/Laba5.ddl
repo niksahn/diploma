@@ -5,7 +5,7 @@ CREATE TABLE workspaces (id SERIAL NOT NULL, creator int4 NOT NULL, tariffsid in
 CREATE TABLE tasks (id SERIAL NOT NULL, creator int4 NOT NULL, workspacesid int4 NOT NULL, title varchar(100) NOT NULL, description varchar(500), "date" date NOT NULL, status int4 NOT NULL, PRIMARY KEY (id));
 CREATE TABLE administrators (id SERIAL NOT NULL, login varchar(100) NOT NULL, password varchar(100) NOT NULL, PRIMARY KEY (id));
 CREATE TABLE complaints (id SERIAL NOT NULL, text varchar(255) NOT NULL, "date" date NOT NULL, deviceDescription varchar(255) NOT NULL, author int4 NOT NULL, PRIMARY KEY (id));
-CREATE TABLE tariffs (id SERIAL NOT NULL, name int4 NOT NULL, description int4 NOT NULL, PRIMARY KEY (id));
+CREATE TABLE tariffs (id SERIAL NOT NULL, name varchar(100) NOT NULL, description varchar(500) NOT NULL, PRIMARY KEY (id));
 CREATE TABLE userInWorkspace (usersid int4 NOT NULL, workspacesid int4 NOT NULL, role int4 NOT NULL, "date" date NOT NULL, PRIMARY KEY (usersid, workspacesid));
 CREATE TABLE userInChat (id SERIAL NOT NULL, role int4 NOT NULL, "date" date NOT NULL, chatsid int4 NOT NULL, usersid int4 NOT NULL, PRIMARY KEY (id));
 CREATE TABLE taskInChat (id SERIAL NOT NULL, chatsid int4 NOT NULL, tasksid int4 NOT NULL, PRIMARY KEY (id));
