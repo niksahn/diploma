@@ -42,5 +42,24 @@ services:
         condition: service_healthy
     restart: always
 
+  user-service:
+    build:
+      context: ./services/user
+      dockerfile: Dockerfile
+    container_name: messenger_user_service
+    ports:
+      - "8082:8082"
+    environment:
+      PORT: 8082
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: messenger_db
+      DB_USER: user
+      DB_PASSWORD: password
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+
 volumes:
   postgres_data:

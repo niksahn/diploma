@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/diploma/auth-service/database"
 	"github.com/diploma/auth-service/models"
@@ -27,7 +26,7 @@ func (r *Repository) CreateUser(ctx context.Context, user *models.User) error {
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id
 	`
-	
+
 	err := r.db.Pool.QueryRow(
 		ctx,
 		query,
@@ -38,14 +37,14 @@ func (r *Repository) CreateUser(ctx context.Context, user *models.User) error {
 		user.Patronymic,
 		user.Status,
 	).Scan(&user.ID)
-	
+
 	if err != nil {
 		if isUniqueViolation(err) {
 			return fmt.Errorf("user with login %s already exists", user.Login)
 		}
 		return fmt.Errorf("failed to create user: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -55,7 +54,7 @@ func (r *Repository) GetUserByLogin(ctx context.Context, login string) (*models.
 		FROM users
 		WHERE login = $1
 	`
-	
+
 	user := &models.User{}
 	err := r.db.Pool.QueryRow(ctx, query, login).Scan(
 		&user.ID,
@@ -66,14 +65,14 @@ func (r *Repository) GetUserByLogin(ctx context.Context, login string) (*models.
 		&user.Patronymic,
 		&user.Status,
 	)
-	
+
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("user not found")
 		}
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
-	
+
 	return user, nil
 }
 
@@ -83,7 +82,7 @@ func (r *Repository) GetUserByID(ctx context.Context, id int) (*models.User, err
 		FROM users
 		WHERE id = $1
 	`
-	
+
 	user := &models.User{}
 	err := r.db.Pool.QueryRow(ctx, query, id).Scan(
 		&user.ID,
@@ -94,14 +93,14 @@ func (r *Repository) GetUserByID(ctx context.Context, id int) (*models.User, err
 		&user.Patronymic,
 		&user.Status,
 	)
-	
+
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("user not found")
 		}
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
-	
+
 	return user, nil
 }
 
@@ -119,21 +118,21 @@ func (r *Repository) CreateAdministrator(ctx context.Context, admin *models.Admi
 		VALUES ($1, $2)
 		RETURNING id
 	`
-	
+
 	err := r.db.Pool.QueryRow(
 		ctx,
 		query,
 		admin.Login,
 		admin.Password,
 	).Scan(&admin.ID)
-	
+
 	if err != nil {
 		if isUniqueViolation(err) {
 			return fmt.Errorf("administrator with login %s already exists", admin.Login)
 		}
 		return fmt.Errorf("failed to create administrator: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -143,21 +142,21 @@ func (r *Repository) GetAdministratorByLogin(ctx context.Context, login string) 
 		FROM administrators
 		WHERE login = $1
 	`
-	
+
 	admin := &models.Administrator{}
 	err := r.db.Pool.QueryRow(ctx, query, login).Scan(
 		&admin.ID,
 		&admin.Login,
 		&admin.Password,
 	)
-	
+
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("administrator not found")
 		}
 		return nil, fmt.Errorf("failed to get administrator: %w", err)
 	}
-	
+
 	return admin, nil
 }
 
@@ -169,7 +168,7 @@ func (r *Repository) CreateRefreshToken(ctx context.Context, token *models.Refre
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id
 	`
-	
+
 	err := r.db.Pool.QueryRow(
 		ctx,
 		query,
@@ -179,11 +178,11 @@ func (r *Repository) CreateRefreshToken(ctx context.Context, token *models.Refre
 		token.Revoked,
 		token.Role,
 	).Scan(&token.ID)
-	
+
 	if err != nil {
 		return fmt.Errorf("failed to create refresh token: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -193,7 +192,7 @@ func (r *Repository) GetRefreshToken(ctx context.Context, token string) (*models
 		FROM refresh_tokens
 		WHERE token = $1
 	`
-	
+
 	refreshToken := &models.RefreshToken{}
 	err := r.db.Pool.QueryRow(ctx, query, token).Scan(
 		&refreshToken.ID,
@@ -203,14 +202,14 @@ func (r *Repository) GetRefreshToken(ctx context.Context, token string) (*models
 		&refreshToken.Revoked,
 		&refreshToken.Role,
 	)
-	
+
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("refresh token not found")
 		}
 		return nil, fmt.Errorf("failed to get refresh token: %w", err)
 	}
-	
+
 	return refreshToken, nil
 }
 
@@ -242,11 +241,11 @@ func isUniqueViolation(err error) bool {
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && 
-		(len(substr) == 0 || 
-			(len(s) > len(substr) && 
-				(s[:len(substr)] == substr || 
-					s[len(s)-len(substr):] == substr || 
+	return len(s) >= len(substr) &&
+		(len(substr) == 0 ||
+			(len(s) > len(substr) &&
+				(s[:len(substr)] == substr ||
+					s[len(s)-len(substr):] == substr ||
 					containsMiddle(s, substr))))
 }
 
@@ -258,4 +257,3 @@ func containsMiddle(s, substr string) bool {
 	}
 	return false
 }
-

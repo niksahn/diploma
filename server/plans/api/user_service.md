@@ -342,3 +342,5 @@ AUTH_SERVICE_URL=http://localhost:8081
 
 [← Назад к списку сервисов](./README.md)
 
+
+

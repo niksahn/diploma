@@ -620,3 +620,5 @@ CHAT_SERVICE_URL=http://localhost:8084
 
 [← Назад к списку сервисов](./README.md)
 
+
+

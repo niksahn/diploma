@@ -1,0 +1,424 @@
+basePath: /api/v1
+definitions:
+  models.SearchUsersResponse:
+    description: Список найденных пользователей с пагинацией
+    properties:
+      limit:
+        example: 20
+        type: integer
+      offset:
+        example: 0
+        type: integer
+      total:
+        example: 2
+        type: integer
+      users:
+        items:
+          $ref: '#/definitions/models.UserResponse'
+        type: array
+    type: object
+  models.UpdateProfileRequest:
+    description: Данные для обновления профиля пользователя
+    properties:
+      name:
+        example: Petr
+        maxLength: 40
+        minLength: 2
+        type: string
+      patronymic:
+        example: Petrovich
+        maxLength: 40
+        type: string
+      surname:
+        example: Petrov
+        maxLength: 40
+        minLength: 2
+        type: string
+    required:
+    - name
+    - surname
+    type: object
+  models.UpdateStatusRequest:
+    description: Новый статус пользователя (1=Онлайн, 2=Не беспокоить, 3=Отошел, 4=Офлайн)
+    properties:
+      status:
+        example: 2
+        maximum: 4
+        minimum: 1
+        type: integer
+    required:
+    - status
+    type: object
+  models.UpdateStatusResponse:
+    description: Результат обновления статуса
+    properties:
+      id:
+        example: 1
+        type: integer
+      status:
+        example: 2
+        type: integer
+      updated_at:
+        example: "2024-01-01T12:00:00Z"
+        type: string
+    type: object
+  models.UserResponse:
+    description: Информация о пользователе
+    properties:
+      id:
+        example: 1
+        type: integer
+      login:
+        example: user@example.com
+        type: string
+      name:
+        example: Ivan
+        type: string
+      patronymic:
+        example: Ivanovich
+        type: string
+      status:
+        example: 1
+        type: integer
+      surname:
+        example: Ivanov
+        type: string
+    type: object
+  models.WorkspaceUserResponse:
+    description: Информация о пользователе в контексте рабочего пространства
+    properties:
+      id:
+        example: 1
+        type: integer
+      joined_at:
+        example: "2024-01-01"
+        type: string
+      login:
+        example: user@example.com
+        type: string
+      name:
+        example: Ivan
+        type: string
+      patronymic:
+        example: Ivanovich
+        type: string
+      role:
+        example: 2
+        type: integer
+      status:
+        example: 1
+        type: integer
+      surname:
+        example: Ivanov
+        type: string
+    type: object
+  models.WorkspaceUsersResponse:
+    description: Список всех пользователей рабочего пространства
+    properties:
+      total:
+        example: 2
+        type: integer
+      users:
+        items:
+          $ref: '#/definitions/models.WorkspaceUserResponse'
+        type: array
+    type: object
+host: localhost:8082
+info:
+  contact:
+    email: support@messenger.local
+    name: API Support
+  description: Микросервис управления пользователями для корпоративного мессенджера
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: User Service API
+  version: 1.0.0
+paths:
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Выполняет поиск пользователей с фильтрацией по поисковой строке,
+        рабочему пространству и статусу
+      parameters:
+      - description: Строка поиска (по login, surname, name)
+        in: query
+        name: search
+        type: string
+      - description: Фильтр по рабочему пространству
+        in: query
+        name: workspace_id
+        type: integer
+      - description: Фильтр по статусу (1-4)
+        in: query
+        name: status
+        type: integer
+      - default: 50
+        description: Лимит результатов (по умолчанию 50, макс 100)
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Смещение для пагинации
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SearchUsersResponse'
+        "400":
+          description: Невалидные параметры
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Поиск пользователей
+      tags:
+      - users
+  /users/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает информацию о пользователе по его ID
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Пользователь не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить профиль пользователя по ID
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Обновляет данные пользователя. Доступно только для руководителя
+        РП, где состоит целевой пользователь
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные для обновления профиля
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserResponse'
+        "400":
+          description: Невалидные данные
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Недостаточно прав
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Пользователь не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить данные пользователя
+      tags:
+      - users
+  /users/me:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает информацию о текущем авторизованном пользователе
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить профиль текущего пользователя
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Обновляет данные профиля текущего авторизованного пользователя
+      parameters:
+      - description: Данные для обновления профиля
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserResponse'
+        "400":
+          description: Невалидные данные
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить профиль текущего пользователя
+      tags:
+      - users
+  /users/me/status:
+    put:
+      consumes:
+      - application/json
+      description: Обновляет статус текущего авторизованного пользователя (1=Онлайн,
+        2=Не беспокоить, 3=Отошел, 4=Офлайн)
+      parameters:
+      - description: Новый статус
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UpdateStatusResponse'
+        "400":
+          description: Невалидный статус
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить статус текущего пользователя
+      tags:
+      - users
+  /users/workspace/{workspace_id}:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список всех пользователей указанного рабочего пространства
+        с их ролями
+      parameters:
+      - description: ID рабочего пространства
+        in: path
+        name: workspace_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WorkspaceUsersResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Пользователь не является участником этого РП
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Рабочее пространство не найдено
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить пользователей рабочего пространства
+      tags:
+      - users
+securityDefinitions:
+  BearerAuth:
+    description: 'JWT токен в формате: Bearer {token}. Gateway проверяет токен и добавляет
+      X-User-ID в заголовок'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

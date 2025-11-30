@@ -9,11 +9,10 @@ run:
 
 .PHONY: build
 build:
-	@go build -o auth-service main.go
+	@go build -o user-service main.go
 
 .PHONY: test
 test:
 	@go test -v ./...
-
 
 

@@ -1,0 +1,212 @@
+---
+alwaysApply: true
+---
+
+
+### Backend разработка (Go)
+1. Использовать **Go (Golang)** для всех backend сервисов
+2. Структура проекта:
+   - `/services/auth`, `/services/user`, `/services/workspace`, `/services/chat`, `/services/task`, `/services/complaint`
+   - `/gateway` для API Gateway
+3. Библиотеки:
+   - `Gin` или `Echo` для REST API
+   - `gorilla/websocket` или `nhooyr.io/websocket` для WebSocket
+   - `pgx` или `GORM` для работы с PostgreSQL
+4. Обязательная обработка ошибок, логирование
+5. JWT токены (Access/Refresh) для аутентификации
+6. Использование goroutines для конкурентности
+
+### Разработка микросервисов (Чистая архитектура)
+
+Каждый микросервис должен быть организован по принципам чистой архитектуры с разделением на слои. Структура директорий должна строго следовать следующей схеме:
+
+#### Структура директорий микросервиса
+
+```
+services/{service-name}/
+├── data/                    # Слой данных
+│   ├── database/           # Подключение к БД, миграции
+│   ├── repository/         # Репозитории для работы с БД
+│   ├── utils/              # Утилиты для работы с данными (хеширование, валидация и т.д.)
+│   └── databaseModels/     # Модели данных БД (структуры таблиц)
+│
+├── domain/                 # Доменный слой (опционально)
+│   ├── usecase/           # Бизнес-логика, use cases
+│   └── interceptor/       # Перехватчики для сложной логики (валидация, трансформация)
+│
+├── presentation/           # Слой представления
+│   ├── handlers/          # HTTP handlers для обработки запросов
+│   └── models/            # Модели запросов и ответов API (DTO)
+│
+├── config/                 # Конфигурация сервиса
+├── docs/                   # Сгенерированная Swagger документация
+├── main.go                 # Точка входа
+├── Dockerfile              # Docker образ сервиса
+├── Makefile                # Команды для разработки
+└── go.mod                  # Зависимости Go
+```
+
+#### Описание слоев
+
+**1. Data Layer (Слой данных)**
+- `database/` - подключение к базе данных, настройка пула соединений, миграции
+- `repository/` - репозитории для работы с БД (CRUD операции, запросы)
+- `utils/` - утилиты для работы с данными (хеширование паролей, JWT, валидация данных)
+- `databaseModels/` - структуры, соответствующие таблицам БД (entity models)
+
+**2. Domain Layer (Доменный слой) - опционально**
+- `usecase/` - бизнес-логика, use cases (создается при необходимости сложной бизнес-логики)
+- `interceptor/` - перехватчики для сложной логики (валидация, трансформация данных, middleware логика)
+
+**3. Presentation Layer (Слой представления)**
+- `handlers/` - HTTP handlers для обработки запросов (Gin/Echo handlers)
+- `models/` - модели запросов и ответов API (DTO - Data Transfer Objects)
+  - Эти модели используются для Swagger документации
+  - Должны содержать аннотации `swaggo/swag` для генерации документации
+
+#### Правила разработки
+
+1. **Разделение ответственности**:
+   - Handlers только обрабатывают HTTP запросы/ответы
+   - Repository только работает с БД
+   - UseCase содержит бизнес-логику (если используется)
+   - Models в presentation описывают API контракт
+
+2. **Модели данных**:
+   - `databaseModels/` - структуры БД (могут отличаться от API моделей)
+   - `presentation/models/` - DTO для API (используются в Swagger)
+   - Преобразование между слоями должно быть явным
+
+3. **Swagger документация**:
+   - Все handlers должны иметь Swagger аннотации
+   - Модели в `presentation/models/` должны содержать `swag` теги
+   - После написания микросервиса **ОБЯЗАТЕЛЬНО** запустить генерацию Swagger
+
+#### Процесс разработки микросервиса
+
+**Шаг 1: Создание структуры**
+1. Создать директории согласно схеме выше
+2. Настроить `main.go`, `go.mod`, `Dockerfile`, `Makefile`
+
+**Шаг 2: Разработка**
+1. Реализовать `data/database/` - подключение к БД
+2. Создать `data/databaseModels/` - модели БД
+3. Реализовать `data/repository/` - репозитории
+4. Создать `data/utils/` - утилиты (если нужны)
+5. При необходимости создать `domain/usecase/` или `domain/interceptor/`
+6. Создать `presentation/models/` - DTO для API
+7. Реализовать `presentation/handlers/` - HTTP handlers с Swagger аннотациями
+
+**Шаг 3: Генерация Swagger документации**
+После завершения разработки микросервиса:
+
+```bash
+cd server/src/services/{service-name}
+swag init -g main.go -o docs --parseDependency --parseInternal
+```
+
+Или используя Makefile (если есть команда `swagger`):
+```bash
+make swagger
+```
+
+**Шаг 4: Добавление в Docker Compose**
+Добавить новый сервис в `server/src/docker-compose.yml`:
+
+```yaml
+{service-name}:
+  build:
+    context: ./services/{service-name}
+    dockerfile: Dockerfile
+  container_name: messenger_{service-name}
+  ports:
+    - "{PORT}:{PORT}"
+  environment:
+    PORT: {PORT}
+    DB_HOST: postgres
+    DB_PORT: 5432
+    DB_NAME: messenger_db
+    DB_USER: user
+    DB_PASSWORD: password
+    # Другие переменные окружения
+  depends_on:
+    postgres:
+      condition: service_healthy
+  restart: always
+```
+
+**Шаг 5: Билд и запуск**
+```bash
+cd server/src
+docker-compose build {service-name}
+docker-compose up {service-name}
+```
+
+Или для всех сервисов:
+```bash
+docker-compose up --build
+```
+
+#### Пример структуры для Auth Service
+
+```
+services/auth/
+├── data/
+│   ├── database/
+│   │   └── database.go          # Подключение к PostgreSQL
+│   ├── repository/
+│   │   └── repository.go        # Репозиторий для users и administrators
+│   ├── utils/
+│   │   ├── jwt.go               # Утилиты для работы с JWT
+│   │   └── password.go          # Хеширование паролей (bcrypt)
+│   └── databaseModels/
+│       └── models.go            # User, Administrator (структуры БД)
+│
+├── presentation/
+│   ├── handlers/
+│   │   └── auth_handler.go     # HTTP handlers с Swagger аннотациями
+│   └── models/
+│       └── models.go            # RegisterRequest, LoginRequest, TokenResponse и т.д.
+│
+├── config/
+│   └── config.go                # Конфигурация сервиса
+├── docs/
+│   └── docs.go                  # Сгенерированная Swagger документация
+├── main.go
+├── Dockerfile
+├── Makefile
+└── go.mod
+```
+
+### База данных
+1. Следовать схеме из [`server/diagrs/Laba5.ddl`](server/diagrs/Laba5.ddl)
+2. Использовать миграции (например, `golang-migrate`)
+3. Поддержка ACID транзакций
+4. Индексы согласно DDL схеме
+
+### Docker и инфраструктура
+1. Каждый сервис - отдельный Docker контейнер
+2. Единый `docker-compose.yml` для оркестрации (обычно в `server/src/docker-compose.yml`)
+3. PostgreSQL в отдельном контейнере
+4. Volumes для персистентности данных БД
+5. Сервисы должны иметь зависимости (depends_on)
+
+### API и протоколы
+1. REST API для CRUD операций
+2. WebSocket для реального времени (чаты)
+3. JSON для сериализации данных
+4. Единая точка входа через API Gateway
+5. Валидация запросов на уровне Gateway
+
+### Безопасность
+1. Хеширование паролей (bcrypt)
+2. JWT токены для авторизации
+3. Проверка прав доступа на уровне сервисов
+4. Роли пользователей в рабочих пространствах
+
+### Архитектурные принципы
+1. Изоляция компонентов - каждый сервис независим
+2. Масштабируемость - горизонтальное масштабирование сервисов
+3. Микросервисная архитектура
+4. Разделение ответственности между сервисами
+5. Асинхронная обработка где необходимо
