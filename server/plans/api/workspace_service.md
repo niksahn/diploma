@@ -494,8 +494,8 @@ CREATE TABLE userInWorkspace (
 ```sql
 CREATE TABLE tariffs (
   id SERIAL PRIMARY KEY,
-  name INT4 UNIQUE NOT NULL,
-  description INT4 UNIQUE NOT NULL
+  name VARCHAR(100) UNIQUE NOT NULL,
+  description VARCHAR(500) UNIQUE NOT NULL
 );
 ```
 

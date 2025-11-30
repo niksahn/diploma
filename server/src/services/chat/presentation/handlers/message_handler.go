@@ -208,7 +208,7 @@ func (h *MessageHandler) CreateMessage(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param chat_id path int true "ID чата"
+// @Param id path int true "ID чата"
 // @Param message_id path int true "ID сообщения"
 // @Param request body models.UpdateMessageRequest true "Новый текст сообщения"
 // @Success 200 {object} models.UpdateMessageResponse
@@ -216,7 +216,7 @@ func (h *MessageHandler) CreateMessage(c *gin.Context) {
 // @Failure 401 {object} map[string]string "Не авторизован"
 // @Failure 403 {object} map[string]string "Пользователь не является автором сообщения"
 // @Failure 404 {object} map[string]string "Сообщение не найдено"
-// @Router /chats/{chat_id}/messages/{message_id} [put]
+// @Router /chats/{id}/messages/{message_id} [put]
 func (h *MessageHandler) UpdateMessage(c *gin.Context) {
 	userID, err := getUserIDFromHeader(c)
 	if err != nil {
@@ -273,24 +273,17 @@ func (h *MessageHandler) UpdateMessage(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param chat_id path int true "ID чата"
+// @Param id path int true "ID чата"
 // @Param message_id path int true "ID сообщения"
 // @Success 204 "No Content"
 // @Failure 401 {object} map[string]string "Не авторизован"
 // @Failure 403 {object} map[string]string "Недостаточно прав"
 // @Failure 404 {object} map[string]string "Сообщение не найдено"
-// @Router /chats/{chat_id}/messages/{message_id} [delete]
+// @Router /chats/{id}/messages/{message_id} [delete]
 func (h *MessageHandler) DeleteMessage(c *gin.Context) {
 	userID, err := getUserIDFromHeader(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "user ID not found"})
-		return
-	}
-
-	chatIDStr := c.Param("chat_id")
-	chatID, err := strconv.Atoi(chatIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid chat ID"})
 		return
 	}
 
@@ -310,7 +303,7 @@ func (h *MessageHandler) DeleteMessage(c *gin.Context) {
 	// Проверяем права: автор или администратор чата
 	isAuthor := message.UserID == userID
 	if !isAuthor {
-		role, _ := h.repo.GetUserRoleInChat(c.Request.Context(), userID, chatID)
+		role, _ := h.repo.GetUserRoleInChat(c.Request.Context(), userID, message.ChatID)
 		if role != 2 {
 			c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
 			return
