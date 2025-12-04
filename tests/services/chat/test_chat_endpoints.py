@@ -21,15 +21,18 @@ import pytest
 import requests
 import time
 
+# Константы для тестов
+TEST_USER_ID = 1
+
 
 class TestChatCreation:
     """Тесты для POST /api/v1/chats"""
 
     def test_create_group_chat_success(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное создание группового чата"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         url = f"{chat_service_url}{chat_api_path}"
@@ -43,7 +46,7 @@ class TestChatCreation:
         response = requests.post(
             url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 201
@@ -56,10 +59,10 @@ class TestChatCreation:
         assert data["members_count"] == 3
 
     def test_create_personal_chat_success(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное создание личного чата"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         member = workspace["members"][1]
         
@@ -68,13 +71,13 @@ class TestChatCreation:
             "name": "",  # Для личного чата имя не требуется
             "type": 1,
             "workspace_id": workspace["workspace_id"],
-            "members": [leader["user_id"], member["user_id"]]
+            "members": [TEST_USER_ID, member["user_id"]]
         }
         
         response = requests.post(
             url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 201
@@ -84,10 +87,10 @@ class TestChatCreation:
         assert data["members_count"] == 2
 
     def test_create_channel_success(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное создание канала"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         url = f"{chat_service_url}{chat_api_path}"
@@ -101,7 +104,7 @@ class TestChatCreation:
         response = requests.post(
             url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 201
@@ -109,10 +112,10 @@ class TestChatCreation:
         assert data["type"] == 3
 
     def test_create_chat_unauthorized(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Создание чата без токена"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         
         url = f"{chat_service_url}{chat_api_path}"
         chat_data = {
@@ -140,16 +143,16 @@ class TestChatCreation:
         response = requests.post(
             url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {user_token['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 404
 
     def test_create_chat_invalid_name_too_short(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Создание группового чата с именем менее 3 символов"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         url = f"{chat_service_url}{chat_api_path}"
@@ -163,29 +166,29 @@ class TestChatCreation:
         response = requests.post(
             url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 400
 
     def test_create_personal_chat_wrong_members_count(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Создание личного чата с неправильным количеством участников"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         url = f"{chat_service_url}{chat_api_path}"
         chat_data = {
             "type": 1,
             "workspace_id": workspace["workspace_id"],
-            "members": [leader["user_id"], workspace["members"][1]["user_id"], workspace["members"][2]["user_id"]]
+            "members": [TEST_USER_ID, workspace["members"][1]["user_id"], workspace["members"][2]["user_id"]]
         }
         
         response = requests.post(
             url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 400
@@ -195,10 +198,10 @@ class TestChatList:
     """Тесты для GET /api/v1/chats"""
 
     def test_get_chats_success(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное получение списка чатов"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         # Создаем чат
@@ -212,14 +215,14 @@ class TestChatList:
         requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         # Получаем список чатов
         url = f"{chat_service_url}{chat_api_path}"
         response = requests.get(
             url,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 200
@@ -229,10 +232,10 @@ class TestChatList:
         assert len(data["chats"]) > 0
 
     def test_get_chats_filter_by_workspace(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Получение чатов с фильтром по РП"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         # Создаем чат
@@ -246,7 +249,7 @@ class TestChatList:
         requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         # Получаем чаты с фильтром
@@ -254,7 +257,7 @@ class TestChatList:
         response = requests.get(
             url,
             params={"workspace_id": workspace["workspace_id"]},
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 200
@@ -262,10 +265,10 @@ class TestChatList:
         assert all(chat["workspace_id"] == workspace["workspace_id"] for chat in data["chats"])
 
     def test_get_chats_filter_by_type(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Получение чатов с фильтром по типу"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         # Создаем групповой чат
@@ -279,7 +282,7 @@ class TestChatList:
         requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         # Получаем только групповые чаты
@@ -287,7 +290,7 @@ class TestChatList:
         response = requests.get(
             url,
             params={"type": 2},
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 200
@@ -306,10 +309,10 @@ class TestChatInfo:
     """Тесты для GET /api/v1/chats/:id"""
 
     def test_get_chat_info_success(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное получение информации о чате"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         # Создаем чат
@@ -323,7 +326,7 @@ class TestChatInfo:
         create_response = requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         chat_id = create_response.json()["id"]
         
@@ -331,7 +334,7 @@ class TestChatInfo:
         url = f"{chat_service_url}{chat_api_path}/{chat_id}"
         response = requests.get(
             url,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 200
@@ -343,10 +346,10 @@ class TestChatInfo:
         assert data["my_role"] == 2  # Создатель - администратор
 
     def test_get_chat_info_not_member(
-        self, chat_service_url, chat_api_path, workspace_with_members, user_token
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers, user_token
     ):
         """Получение информации о чате, в котором пользователь не участвует"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         # Создаем чат
@@ -355,12 +358,12 @@ class TestChatInfo:
             "name": "Test Chat",
             "type": 2,
             "workspace_id": workspace["workspace_id"],
-            "members": [leader["user_id"]]
+            "members": [TEST_USER_ID]
         }
         create_response = requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         chat_id = create_response.json()["id"]
         
@@ -368,7 +371,7 @@ class TestChatInfo:
         url = f"{chat_service_url}{chat_api_path}/{chat_id}"
         response = requests.get(
             url,
-            headers={"Authorization": f"Bearer {user_token['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 403
@@ -380,7 +383,7 @@ class TestChatInfo:
         url = f"{chat_service_url}{chat_api_path}/99999"
         response = requests.get(
             url,
-            headers={"Authorization": f"Bearer {user_token['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 404
@@ -390,10 +393,10 @@ class TestChatUpdate:
     """Тесты для PUT /api/v1/chats/:id"""
 
     def test_update_chat_success(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное обновление чата"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         # Создаем чат
@@ -407,7 +410,7 @@ class TestChatUpdate:
         create_response = requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         chat_id = create_response.json()["id"]
         
@@ -417,7 +420,7 @@ class TestChatUpdate:
         response = requests.put(
             url,
             json=update_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 200
@@ -426,10 +429,10 @@ class TestChatUpdate:
         assert "updated_at" in data
 
     def test_update_chat_forbidden(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Обновление чата обычным участником (не администратором)"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         member = workspace["members"][1]
         
@@ -439,12 +442,12 @@ class TestChatUpdate:
             "name": "Test Chat",
             "type": 2,
             "workspace_id": workspace["workspace_id"],
-            "members": [leader["user_id"], member["user_id"]]
+            "members": [TEST_USER_ID, member["user_id"]]
         }
         create_response = requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         chat_id = create_response.json()["id"]
         
@@ -464,10 +467,10 @@ class TestChatDelete:
     """Тесты для DELETE /api/v1/chats/:id"""
 
     def test_delete_chat_success(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное удаление чата"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         # Создаем чат
@@ -481,7 +484,7 @@ class TestChatDelete:
         create_response = requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         chat_id = create_response.json()["id"]
         
@@ -489,7 +492,7 @@ class TestChatDelete:
         url = f"{chat_service_url}{chat_api_path}/{chat_id}"
         response = requests.delete(
             url,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 204
@@ -497,15 +500,15 @@ class TestChatDelete:
         # Проверяем, что чат удален
         get_response = requests.get(
             url,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         assert get_response.status_code == 404
 
     def test_delete_chat_forbidden(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Удаление чата обычным участником"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         member = workspace["members"][1]
         
@@ -515,12 +518,12 @@ class TestChatDelete:
             "name": "Test Chat",
             "type": 2,
             "workspace_id": workspace["workspace_id"],
-            "members": [leader["user_id"], member["user_id"]]
+            "members": [TEST_USER_ID, member["user_id"]]
         }
         create_response = requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         chat_id = create_response.json()["id"]
         
@@ -538,10 +541,10 @@ class TestChatMembers:
     """Тесты для управления участниками чата"""
 
     def test_add_members_success(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное добавление участников"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         # Создаем чат
@@ -550,12 +553,12 @@ class TestChatMembers:
             "name": "Test Chat",
             "type": 2,
             "workspace_id": workspace["workspace_id"],
-            "members": [leader["user_id"]]
+            "members": [TEST_USER_ID]
         }
         create_response = requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         chat_id = create_response.json()["id"]
         
@@ -568,7 +571,7 @@ class TestChatMembers:
         response = requests.post(
             url,
             json=add_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 201
@@ -577,10 +580,10 @@ class TestChatMembers:
         assert len(data["added"]) == 2
 
     def test_add_members_forbidden(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Добавление участников обычным участником"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         member = workspace["members"][1]
         
@@ -590,12 +593,12 @@ class TestChatMembers:
             "name": "Test Chat",
             "type": 2,
             "workspace_id": workspace["workspace_id"],
-            "members": [leader["user_id"], member["user_id"]]
+            "members": [TEST_USER_ID, member["user_id"]]
         }
         create_response = requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         chat_id = create_response.json()["id"]
         
@@ -614,10 +617,10 @@ class TestChatMembers:
         assert response.status_code == 403
 
     def test_get_members_success(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное получение списка участников"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         # Создаем чат
@@ -631,7 +634,7 @@ class TestChatMembers:
         create_response = requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         chat_id = create_response.json()["id"]
         
@@ -639,7 +642,7 @@ class TestChatMembers:
         url = f"{chat_service_url}{chat_api_path}/{chat_id}/members"
         response = requests.get(
             url,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 200
@@ -650,10 +653,10 @@ class TestChatMembers:
         assert data["members"][0]["role"] == 2  # Создатель - администратор
 
     def test_update_member_role_success(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное изменение роли участника"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         member = workspace["members"][1]
         
@@ -663,12 +666,12 @@ class TestChatMembers:
             "name": "Test Chat",
             "type": 2,
             "workspace_id": workspace["workspace_id"],
-            "members": [leader["user_id"], member["user_id"]]
+            "members": [TEST_USER_ID, member["user_id"]]
         }
         create_response = requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         chat_id = create_response.json()["id"]
         
@@ -678,7 +681,7 @@ class TestChatMembers:
         response = requests.put(
             url,
             json=update_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 200
@@ -686,10 +689,10 @@ class TestChatMembers:
         assert data["role"] == 2
 
     def test_remove_member_success(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное удаление участника"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         member = workspace["members"][1]
         
@@ -699,12 +702,12 @@ class TestChatMembers:
             "name": "Test Chat",
             "type": 2,
             "workspace_id": workspace["workspace_id"],
-            "members": [leader["user_id"], member["user_id"]]
+            "members": [TEST_USER_ID, member["user_id"]]
         }
         create_response = requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         chat_id = create_response.json()["id"]
         
@@ -712,7 +715,7 @@ class TestChatMembers:
         url = f"{chat_service_url}{chat_api_path}/{chat_id}/members/{member['user_id']}"
         response = requests.delete(
             url,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 204
@@ -722,10 +725,10 @@ class TestMessages:
     """Тесты для работы с сообщениями"""
 
     def test_send_message_success(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешная отправка сообщения"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         # Создаем чат
@@ -739,7 +742,7 @@ class TestMessages:
         create_response = requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         chat_id = create_response.json()["id"]
         
@@ -749,22 +752,22 @@ class TestMessages:
         response = requests.post(
             url,
             json=message_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 201
         data = response.json()
         assert data["text"] == "Hello, world!"
         assert data["chat_id"] == chat_id
-        assert data["user_id"] == leader["user_id"]
+        assert data["user_id"] == TEST_USER_ID
         assert "id" in data
         assert "date" in data
 
     def test_get_messages_success(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное получение истории сообщений"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         # Создаем чат
@@ -778,7 +781,7 @@ class TestMessages:
         create_response = requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         chat_id = create_response.json()["id"]
         
@@ -788,13 +791,13 @@ class TestMessages:
             requests.post(
                 messages_url,
                 json={"text": f"Message {i}"},
-                headers={"Authorization": f"Bearer {leader['token']}"}
+                headers=user_auth_headers
             )
         
         # Получаем историю
         response = requests.get(
             messages_url,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 200
@@ -804,10 +807,10 @@ class TestMessages:
         assert len(data["messages"]) >= 3
 
     def test_edit_message_success(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное редактирование сообщения"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         # Создаем чат
@@ -821,7 +824,7 @@ class TestMessages:
         create_response = requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         chat_id = create_response.json()["id"]
         
@@ -830,7 +833,7 @@ class TestMessages:
         send_response = requests.post(
             messages_url,
             json={"text": "Original text"},
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         message_id = send_response.json()["id"]
         
@@ -840,7 +843,7 @@ class TestMessages:
         response = requests.put(
             edit_url,
             json=edit_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 200
@@ -849,10 +852,10 @@ class TestMessages:
         assert data["edited"] is True
 
     def test_delete_message_success(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное удаление сообщения"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         # Создаем чат
@@ -866,7 +869,7 @@ class TestMessages:
         create_response = requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         chat_id = create_response.json()["id"]
         
@@ -875,7 +878,7 @@ class TestMessages:
         send_response = requests.post(
             messages_url,
             json={"text": "Message to delete"},
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         message_id = send_response.json()["id"]
         
@@ -883,16 +886,16 @@ class TestMessages:
         delete_url = f"{chat_service_url}{chat_api_path}/{chat_id}/messages/{message_id}"
         response = requests.delete(
             delete_url,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 204
 
     def test_mark_messages_read_success(
-        self, chat_service_url, chat_api_path, workspace_with_members
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешная отметка сообщений как прочитанных"""
-        workspace = workspace_with_members
+        workspace = workspace_with_members, user_auth_headers
         leader = workspace["leader"]
         
         # Создаем чат
@@ -906,7 +909,7 @@ class TestMessages:
         create_response = requests.post(
             create_url,
             json=chat_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         chat_id = create_response.json()["id"]
         
@@ -915,7 +918,7 @@ class TestMessages:
         send_response = requests.post(
             messages_url,
             json={"text": "Test message"},
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         message_id = send_response.json()["id"]
         
@@ -925,11 +928,13 @@ class TestMessages:
         response = requests.put(
             read_url,
             json=read_data,
-            headers={"Authorization": f"Bearer {leader['token']}"}
+            headers=user_auth_headers
         )
         
         assert response.status_code == 200
         data = response.json()
         assert "marked_as_read" in data
         assert data["last_read_message_id"] == message_id
+
+
 

@@ -20,6 +20,12 @@ DB_NAME = os.getenv("DB_NAME", "messenger_db")
 DB_USER = os.getenv("DB_USER", "user")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
 
+# Константы ролей (дублируем из корневого conftest.py)
+ROLE_USER = "user"
+ROLE_ADMIN = "admin"
+TEST_USER_ID = 1
+TEST_ADMIN_ID = 1
+
 
 @pytest.fixture(scope="session")
 def workspace_service_url():
@@ -143,4 +149,22 @@ def workspace_data(tariff_id, user_token):
         "name": f"Test Workspace {user_token['user_id']}",
         "tariff_id": tariff_id,
         "leader_id": user_token['user_id']
+    }
+
+
+@pytest.fixture
+def user_auth_headers():
+    """Заголовки для аутентификации обычного пользователя"""
+    return {
+        "X-User-ID": str(TEST_USER_ID),
+        "X-User-Role": ROLE_USER
+    }
+
+
+@pytest.fixture
+def admin_auth_headers():
+    """Заголовки для аутентификации администратора"""
+    return {
+        "X-User-ID": str(TEST_ADMIN_ID),
+        "X-User-Role": ROLE_ADMIN
     }

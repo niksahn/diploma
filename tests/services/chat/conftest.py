@@ -23,6 +23,12 @@ DB_NAME = os.getenv("DB_NAME", "messenger_db")
 DB_USER = os.getenv("DB_USER", "user")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
 
+# Константы ролей (дублируем из корневого conftest.py)
+ROLE_USER = "user"
+ROLE_ADMIN = "admin"
+TEST_USER_ID = 1
+TEST_ADMIN_ID = 1
+
 
 @pytest.fixture(scope="session")
 def chat_service_url():
@@ -176,7 +182,7 @@ def multiple_users(auth_service_url, auth_api_path, unique_timestamp):
 
 
 @pytest.fixture
-def workspace_with_members(admin_token, multiple_users, workspace_service_url, workspace_api_path, db_cursor, clean_chat_data):
+def workspace_with_members(admin_auth_headers, multiple_users, workspace_service_url, workspace_api_path, db_cursor, clean_chat_data):
     """Создать рабочее пространство с участниками"""
     # Создаем тариф
     db_cursor.execute(
@@ -199,7 +205,7 @@ def workspace_with_members(admin_token, multiple_users, workspace_service_url, w
     response = requests.post(
         f"{workspace_service_url}{workspace_api_path}",
         json=workspace_data,
-        headers={"Authorization": f"Bearer {admin_token}"}
+        headers=admin_auth_headers
     )
     
     workspace_id = response.json()["id"]
@@ -217,4 +223,33 @@ def workspace_with_members(admin_token, multiple_users, workspace_service_url, w
         "members": multiple_users,
         "leader": multiple_users[0]
     }
+
+
+@pytest.fixture
+def user_auth_headers():
+    """Заголовки для аутентификации обычного пользователя"""
+    return {
+        "X-User-ID": str(TEST_USER_ID),
+        "X-User-Role": ROLE_USER
+    }
+
+
+@pytest.fixture
+def admin_auth_headers():
+    """Заголовки для аутентификации администратора"""
+    return {
+        "X-User-ID": str(TEST_ADMIN_ID),
+        "X-User-Role": ROLE_ADMIN
+    }
+
+
+@pytest.fixture
+def auth_headers_factory():
+    """Фабрика для создания заголовков с любым user_id и role"""
+    def _create_headers(user_id: int, role: str):
+        return {
+            "X-User-ID": str(user_id),
+            "X-User-Role": role
+        }
+    return _create_headers
 
