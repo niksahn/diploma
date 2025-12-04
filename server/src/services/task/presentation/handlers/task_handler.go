@@ -1,0 +1,895 @@
+package handlers
+
+import (
+	"net/http"
+	"strconv"
+	"time"
+
+	dm "github.com/diploma/task-service/data/models"
+	"github.com/diploma/task-service/data/repository"
+	"github.com/diploma/task-service/presentation/models"
+	"github.com/gin-gonic/gin"
+)
+
+type TaskHandler struct {
+	repo *repository.Repository
+}
+
+func NewTaskHandler(repo *repository.Repository) *TaskHandler {
+	return &TaskHandler{repo: repo}
+}
+
+// getUserID извлекает ID пользователя из заголовка X-User-ID
+func getUserID(c *gin.Context) (int, error) {
+	userIDStr := c.GetHeader("X-User-ID")
+	if userIDStr == "" {
+		return 0, nil
+	}
+	return strconv.Atoi(userIDStr)
+}
+
+// ========== Task CRUD Operations ==========
+
+// CreateTask godoc
+// @Summary Создать задачу
+// @Description Создает новую задачу в рабочем пространстве
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param request body models.CreateTaskRequest true "Данные задачи"
+// @Success 201 {object} models.TaskResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Security BearerAuth
+// @Router /tasks [post]
+func (h *TaskHandler) CreateTask(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil || userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	var req models.CreateTaskRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid request data"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Проверяем, что пользователь является участником РП
+	if err := h.repo.ValidateUserInWorkspace(ctx, userID, req.WorkspaceID); err != nil {
+		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "user is not a member of workspace"})
+		return
+	}
+
+	// Устанавливаем статус по умолчанию, если не указан
+	if req.Status == 0 {
+		req.Status = dm.TaskStatusCreated
+	}
+
+	// Проверяем валидность статуса
+	if !dm.IsValidTaskStatus(req.Status) {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid task status"})
+		return
+	}
+
+	// Создаем задачу
+	task := &dm.Task{
+		Creator:     userID,
+		WorkspaceID: req.WorkspaceID,
+		Title:       req.Title,
+		Description: req.Description,
+		Date:        req.Date,
+		Status:      req.Status,
+	}
+
+	createdTask, err := h.repo.CreateTask(ctx, task)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create task"})
+		return
+	}
+
+	// Добавляем исполнителей, если указаны
+	if len(req.AssignedUsers) > 0 {
+		for _, assigneeID := range req.AssignedUsers {
+			// Проверяем, что исполнитель является участником РП
+			if err := h.repo.ValidateUserInWorkspace(ctx, assigneeID, req.WorkspaceID); err != nil {
+				continue // Пропускаем, если пользователь не в РП
+			}
+			h.repo.AddTaskAssignee(ctx, createdTask.ID, assigneeID)
+		}
+	}
+
+	// Прикрепляем к чату, если указан
+	if req.ChatID != nil {
+		if err := h.repo.ValidateChatOwnership(ctx, *req.ChatID, req.WorkspaceID); err == nil {
+			h.repo.AttachTaskToChat(ctx, createdTask.ID, *req.ChatID)
+		}
+	}
+
+	// Получаем полную информацию о созданной задаче
+	taskDetails, err := h.repo.GetTaskByID(ctx, createdTask.ID, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get created task"})
+		return
+	}
+
+	response := h.convertToTaskResponse(taskDetails)
+	c.JSON(http.StatusCreated, response)
+}
+
+// GetTasks godoc
+// @Summary Получить список задач
+// @Description Возвращает список задач в рабочем пространстве
+// @Tags tasks
+// @Produce json
+// @Param workspace_id query int true "ID рабочего пространства"
+// @Success 200 {object} models.TaskListResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Security BearerAuth
+// @Router /tasks [get]
+func (h *TaskHandler) GetTasks(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil || userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	workspaceIDStr := c.Query("workspace_id")
+	if workspaceIDStr == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "workspace_id is required"})
+		return
+	}
+
+	workspaceID, err := strconv.Atoi(workspaceIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid workspace_id"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Проверяем, что пользователь является участником РП
+	if err := h.repo.ValidateUserInWorkspace(ctx, userID, workspaceID); err != nil {
+		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "user is not a member of workspace"})
+		return
+	}
+
+	tasks, err := h.repo.GetTasksByWorkspace(ctx, workspaceID, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get tasks"})
+		return
+	}
+
+	var taskResponses []models.TaskResponse
+	for _, task := range tasks {
+		taskResponses = append(taskResponses, h.convertToTaskResponse(&task))
+	}
+
+	response := models.TaskListResponse{
+		Tasks: taskResponses,
+		Total: len(taskResponses),
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// GetTask godoc
+// @Summary Получить информацию о задаче
+// @Description Возвращает детальную информацию о задаче
+// @Tags tasks
+// @Produce json
+// @Param id path int true "ID задачи"
+// @Success 200 {object} models.TaskResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Security BearerAuth
+// @Router /tasks/{id} [get]
+func (h *TaskHandler) GetTask(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil || userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	taskID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid task id"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	task, err := h.repo.GetTaskByID(ctx, taskID, userID)
+	if err != nil {
+		if err.Error() == "task not found" {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "task not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get task"})
+		return
+	}
+
+	response := h.convertToTaskResponse(task)
+	c.JSON(http.StatusOK, response)
+}
+
+// UpdateTask godoc
+// @Summary Обновить задачу
+// @Description Обновляет информацию о задаче
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param id path int true "ID задачи"
+// @Param request body models.UpdateTaskRequest true "Обновляемые данные задачи"
+// @Success 200 {object} models.SuccessResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Security BearerAuth
+// @Router /tasks/{id} [put]
+func (h *TaskHandler) UpdateTask(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil || userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	taskID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid task id"})
+		return
+	}
+
+	var req models.UpdateTaskRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid request data"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Проверяем существование задачи и права доступа
+	task, err := h.repo.GetTaskByID(ctx, taskID, userID)
+	if err != nil {
+		if err.Error() == "task not found" {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "task not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get task"})
+		return
+	}
+
+	// Проверяем, что пользователь является создателем задачи
+	if task.Creator != userID {
+		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "only task creator can update it"})
+		return
+	}
+
+	// Обновляем задачу
+	err = h.repo.UpdateTask(ctx, taskID, req.Title, req.Description, req.Date)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update task"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.SuccessResponse{
+		Message: "task updated successfully",
+	})
+}
+
+// DeleteTask godoc
+// @Summary Удалить задачу
+// @Description Удаляет задачу (только создатель)
+// @Tags tasks
+// @Produce json
+// @Param id path int true "ID задачи"
+// @Success 204
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Security BearerAuth
+// @Router /tasks/{id} [delete]
+func (h *TaskHandler) DeleteTask(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil || userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	taskID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid task id"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Проверяем существование задачи и права доступа
+	task, err := h.repo.GetTaskByID(ctx, taskID, userID)
+	if err != nil {
+		if err.Error() == "task not found" {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "task not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get task"})
+		return
+	}
+
+	// Проверяем, что пользователь является создателем задачи
+	if task.Creator != userID {
+		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "only task creator can delete it"})
+		return
+	}
+
+	// Удаляем задачу
+	err = h.repo.DeleteTask(ctx, taskID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to delete task"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+// UpdateTaskStatus godoc
+// @Summary Изменить статус задачи
+// @Description Изменяет статус задачи
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param id path int true "ID задачи"
+// @Param request body models.UpdateTaskStatusRequest true "Новый статус"
+// @Success 200 {object} models.SuccessResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Security BearerAuth
+// @Router /tasks/{id}/status [put]
+func (h *TaskHandler) UpdateTaskStatus(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil || userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	taskID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid task id"})
+		return
+	}
+
+	var req models.UpdateTaskStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid request data"})
+		return
+	}
+
+	// Проверяем валидность статуса
+	if !dm.IsValidTaskStatus(req.Status) {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid task status"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Проверяем существование задачи
+	_, err = h.repo.GetTaskByID(ctx, taskID, userID)
+	if err != nil {
+		if err.Error() == "task not found" {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "task not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get task"})
+		return
+	}
+
+	// Обновляем статус
+	err = h.repo.UpdateTaskStatus(ctx, taskID, req.Status)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update task status"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.SuccessResponse{
+		Message: "task status updated successfully",
+	})
+}
+
+// ========== Assignee Operations ==========
+
+// AddTaskAssignees godoc
+// @Summary Назначить исполнителей
+// @Description Добавляет исполнителей к задаче
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param id path int true "ID задачи"
+// @Param request body models.AddTaskAssigneesRequest true "Список пользователей"
+// @Success 200 {object} models.SuccessResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Security BearerAuth
+// @Router /tasks/{id}/assignees [post]
+func (h *TaskHandler) AddTaskAssignees(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil || userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	taskID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid task id"})
+		return
+	}
+
+	var req models.AddTaskAssigneesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid request data"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Получаем информацию о задаче для проверки прав доступа
+	task, err := h.repo.GetTaskByID(ctx, taskID, userID)
+	if err != nil {
+		if err.Error() == "task not found" {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "task not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get task"})
+		return
+	}
+
+	// Добавляем исполнителей
+	addedCount := 0
+	for _, assigneeID := range req.UserIDs {
+		// Проверяем, что исполнитель является участником РП
+		if err := h.repo.ValidateUserInWorkspace(ctx, assigneeID, task.WorkspaceID); err != nil {
+			continue // Пропускаем, если пользователь не в РП
+		}
+
+		if err := h.repo.AddTaskAssignee(ctx, taskID, assigneeID); err == nil {
+			addedCount++
+		}
+	}
+
+	c.JSON(http.StatusOK, models.SuccessResponse{
+		Message: "assignees added successfully",
+		Data:    map[string]int{"added_count": addedCount},
+	})
+}
+
+// GetTaskAssignees godoc
+// @Summary Получить список исполнителей
+// @Description Возвращает список исполнителей задачи
+// @Tags tasks
+// @Produce json
+// @Param id path int true "ID задачи"
+// @Success 200 {object} models.TaskAssigneesResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Security BearerAuth
+// @Router /tasks/{id}/assignees [get]
+func (h *TaskHandler) GetTaskAssignees(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil || userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	taskID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid task id"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Проверяем существование задачи
+	_, err = h.repo.GetTaskByID(ctx, taskID, userID)
+	if err != nil {
+		if err.Error() == "task not found" {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "task not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get task"})
+		return
+	}
+
+	assignees, err := h.repo.GetTaskAssignees(ctx, taskID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get task assignees"})
+		return
+	}
+
+	var assigneeResponses []models.TaskAssigneeResponse
+	for _, assignee := range assignees {
+		assigneeResponses = append(assigneeResponses, models.TaskAssigneeResponse{
+			UserID:     assignee.UserID,
+			Login:      assignee.Login,
+			Name:       assignee.Name,
+			Surname:    assignee.Surname,
+			Patronymic: assignee.Patronymic,
+			AssignedAt: assignee.AssignedAt,
+		})
+	}
+
+	response := models.TaskAssigneesResponse{
+		Assignees: assigneeResponses,
+		Total:     len(assigneeResponses),
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// RemoveTaskAssignee godoc
+// @Summary Удалить исполнителя
+// @Description Удаляет исполнителя из задачи
+// @Tags tasks
+// @Produce json
+// @Param id path int true "ID задачи"
+// @Param user_id path int true "ID пользователя"
+// @Success 200 {object} models.SuccessResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Security BearerAuth
+// @Router /tasks/{id}/assignees/{user_id} [delete]
+func (h *TaskHandler) RemoveTaskAssignee(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil || userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	taskID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid task id"})
+		return
+	}
+
+	assigneeID, err := strconv.Atoi(c.Param("user_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid user id"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Получаем информацию о задаче для проверки прав доступа
+	task, err := h.repo.GetTaskByID(ctx, taskID, userID)
+	if err != nil {
+		if err.Error() == "task not found" {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "task not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get task"})
+		return
+	}
+
+	// Проверяем, что пользователь является создателем задачи
+	if task.Creator != userID {
+		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "only task creator can remove assignees"})
+		return
+	}
+
+	// Удаляем исполнителя
+	err = h.repo.RemoveTaskAssignee(ctx, taskID, assigneeID)
+	if err != nil {
+		if err.Error() == "assignee not found" {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "assignee not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to remove assignee"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.SuccessResponse{
+		Message: "assignee removed successfully",
+	})
+}
+
+// ========== Chat Operations ==========
+
+// AttachTaskToChat godoc
+// @Summary Прикрепить задачу к чату
+// @Description Прикрепляет задачу к чату в том же рабочем пространстве
+// @Tags tasks
+// @Accept json
+// @Produce json
+// @Param id path int true "ID задачи"
+// @Param request body models.AttachTaskToChatRequest true "ID чата"
+// @Success 200 {object} models.SuccessResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Security BearerAuth
+// @Router /tasks/{id}/chats [post]
+func (h *TaskHandler) AttachTaskToChat(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil || userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	taskID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid task id"})
+		return
+	}
+
+	var req models.AttachTaskToChatRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid request data"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Получаем информацию о задаче
+	task, err := h.repo.GetTaskByID(ctx, taskID, userID)
+	if err != nil {
+		if err.Error() == "task not found" {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "task not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get task"})
+		return
+	}
+
+	// Проверяем, что пользователь является создателем задачи
+	if task.Creator != userID {
+		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "only task creator can attach to chats"})
+		return
+	}
+
+	// Проверяем, что чат принадлежит тому же РП
+	if err := h.repo.ValidateChatOwnership(ctx, req.ChatID, task.WorkspaceID); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "chat not found in task workspace"})
+		return
+	}
+
+	// Прикрепляем задачу к чату
+	err = h.repo.AttachTaskToChat(ctx, taskID, req.ChatID)
+	if err != nil {
+		if err.Error() == "task already attached to chat or invalid chat/task" {
+			c.JSON(http.StatusConflict, models.ErrorResponse{Error: "task already attached to this chat"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to attach task to chat"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.SuccessResponse{
+		Message: "task attached to chat successfully",
+	})
+}
+
+// GetTaskChats godoc
+// @Summary Получить список чатов задачи
+// @Description Возвращает список чатов, к которым прикреплена задача
+// @Tags tasks
+// @Produce json
+// @Param id path int true "ID задачи"
+// @Success 200 {object} models.TaskChatsResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Security BearerAuth
+// @Router /tasks/{id}/chats [get]
+func (h *TaskHandler) GetTaskChats(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil || userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	taskID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid task id"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Проверяем существование задачи
+	_, err = h.repo.GetTaskByID(ctx, taskID, userID)
+	if err != nil {
+		if err.Error() == "task not found" {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "task not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get task"})
+		return
+	}
+
+	chats, err := h.repo.GetTaskChats(ctx, taskID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get task chats"})
+		return
+	}
+
+	var chatResponses []models.TaskChatResponse
+	for _, chat := range chats {
+		chatResponses = append(chatResponses, models.TaskChatResponse{
+			ChatID:      chat.ChatID,
+			ChatName:    chat.ChatName,
+			ChatType:    chat.ChatType,
+			WorkspaceID: chat.WorkspaceID,
+			AttachedAt:  chat.AttachedAt,
+		})
+	}
+
+	response := models.TaskChatsResponse{
+		Chats: chatResponses,
+		Total: len(chatResponses),
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// DetachTaskFromChat godoc
+// @Summary Открепить задачу от чата
+// @Description Открепляет задачу от указанного чата
+// @Tags tasks
+// @Produce json
+// @Param id path int true "ID задачи"
+// @Param chat_id path int true "ID чата"
+// @Success 200 {object} models.SuccessResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Security BearerAuth
+// @Router /tasks/{id}/chats/{chat_id} [delete]
+func (h *TaskHandler) DetachTaskFromChat(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil || userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	taskID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid task id"})
+		return
+	}
+
+	chatID, err := strconv.Atoi(c.Param("chat_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid chat id"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Получаем информацию о задаче для проверки прав доступа
+	task, err := h.repo.GetTaskByID(ctx, taskID, userID)
+	if err != nil {
+		if err.Error() == "task not found" {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "task not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get task"})
+		return
+	}
+
+	// Проверяем, что пользователь является создателем задачи
+	if task.Creator != userID {
+		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "only task creator can detach from chats"})
+		return
+	}
+
+	// Открепляем задачу от чата
+	err = h.repo.DetachTaskFromChat(ctx, taskID, chatID)
+	if err != nil {
+		if err.Error() == "task not attached to chat" {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "task not attached to this chat"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to detach task from chat"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.SuccessResponse{
+		Message: "task detached from chat successfully",
+	})
+}
+
+// ========== History Operations ==========
+
+// GetTaskHistory godoc
+// @Summary Получить историю изменений
+// @Description Возвращает историю изменений задачи
+// @Tags tasks
+// @Produce json
+// @Param id path int true "ID задачи"
+// @Success 200 {object} models.TaskHistoryResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Security BearerAuth
+// @Router /tasks/{id}/history [get]
+func (h *TaskHandler) GetTaskHistory(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil || userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	taskID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid task id"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Проверяем существование задачи
+	_, err = h.repo.GetTaskByID(ctx, taskID, userID)
+	if err != nil {
+		if err.Error() == "task not found" {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "task not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get task"})
+		return
+	}
+
+	history, err := h.repo.GetTaskHistory(ctx, taskID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get task history"})
+		return
+	}
+
+	var changeResponses []models.TaskChangeResponse
+	for _, change := range history {
+		changeResponses = append(changeResponses, models.TaskChangeResponse{
+			ID:          change.ID,
+			Description: change.Description,
+			TaskID:      change.TaskID,
+			ChangedAt:   time.Now(), // В реальной реализации нужно хранить время изменения
+		})
+	}
+
+	response := models.TaskHistoryResponse{
+		Changes: changeResponses,
+		Total:   len(changeResponses),
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// ========== Helper Methods ==========
+
+// convertToTaskResponse преобразует модель данных в ответ API
+func (h *TaskHandler) convertToTaskResponse(task *dm.TaskWithDetails) models.TaskResponse {
+	return models.TaskResponse{
+		ID:            task.ID,
+		Creator:       task.Creator,
+		CreatorName:   task.CreatorName,
+		WorkspaceID:   task.WorkspaceID,
+		WorkspaceName: task.WorkspaceName,
+		Title:         task.Title,
+		Description:   task.Description,
+		Date:          task.Date,
+		Status:        task.Status,
+		StatusName:    dm.GetTaskStatusName(task.Status),
+		AssigneeCount: task.AssigneeCount,
+		ChatCount:     task.ChatCount,
+		CreatedAt:     task.CreatedAt,
+	}
+}

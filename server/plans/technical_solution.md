@@ -35,11 +35,14 @@
 
 ### 3.1. API Gateway
 *   **Роль**: Единая точка входа для всех клиентов (Web, Desktop).
-*   **Реализация**: Сервис на Go (или Nginx).
+*   **Реализация**: Kong Gateway (API Gateway на базе Nginx с Lua).
 *   **Функции**:
     *   Маршрутизация запросов к соответствующим микросервисам.
-    *   Предварительная проверка авторизации (валидация JWT).
-    *   Агрегация ответов (опционально).
+    *   JWT валидация и аутентификация.
+    *   Rate limiting для защиты от DDoS.
+    *   CORS поддержка для веб-клиентов.
+    *   Метрики и мониторинг (Prometheus).
+    *   Request/response трансформация.
 
 ### 3.2. Сервисы Бизнес-логики (Backend Services)
 
@@ -78,50 +81,78 @@
 
 ## 4. Структура Docker Compose
 
-Примерная структура `docker-compose.yml`:
+Kong Gateway используется как единая точка входа на порт 8080. Структура `docker-compose.yml`:
 
 ```yaml
 version: '3.8'
 services:
-  # База данных
+  # Kong Database для хранения конфигурации Kong
+  kong-database:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: kong
+      POSTGRES_USER: kong
+      POSTGRES_PASSWORD: kong
+
+  # Kong Gateway - единая точка входа
+  kong:
+    image: kong:3.4
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-database
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_ADMIN_GUI_LISTEN: 0.0.0.0:8002
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+      KONG_PLUGINS: bundled,jwt,request-transformer,cors,prometheus
+    ports:
+      - "8080:8000"    # Kong Proxy (единая точка входа)
+      - "8001:8001"    # Kong Admin API
+      - "8002:8002"    # Kong Manager GUI
+    volumes:
+      - ./kong.yml:/kong/declarative/kong.yml:ro
+    depends_on:
+      kong-database:
+        condition: service_healthy
+
+  # PostgreSQL база данных приложения
   postgres:
     image: postgres:15-alpine
-    volumes:
-      - db_data:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: messenger_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
-  # Сервисы (пример для одного, остальные аналогично)
+  # Микросервисы (примеры)
   auth-service:
     build: ./services/auth
     ports:
-      - "8081:8080"
+      - "8081:8081"
     environment:
-      - DB_HOST=postgres
+      PORT: 8081
+      DB_HOST: postgres
+      JWT_SECRET: your_jwt_secret_key
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      kong:
+        condition: service_started
 
-  chat-service:
-    build: ./services/chat
+  # Swagger UI для документации API
+  swagger-ui:
+    image: swaggerapi/swagger-ui:v5.10.3
     environment:
-      - DB_HOST=postgres
-    depends_on:
-      - postgres
-
-  # API Gateway
-  gateway:
-    build: ./gateway
+      SWAGGER_JSON_URL: /swagger.json
+      URLS: [{"name": "Auth Service", "url": "/auth/swagger.json"}, ...]
     ports:
-      - "8080:8080" # Единый порт наружу
-    depends_on:
-      - auth-service
-      - chat-service
-      # ... остальные сервисы
+      - "8089:8080"
 
 volumes:
-  db_data:
+  postgres_data:
+  kong_data:
 ```
 
 ## 5. REST API Спецификация
@@ -141,34 +172,36 @@ volumes:
 
 ### Краткая сводка эндпоинтов:
 
-| Сервис | Порт | Основные эндпоинты | Кол-во |
-|--------|------|-------------------|--------|
-| **API Gateway** | 8080 | Маршрутизация, health check | 1 |
-| **Auth Service** | 8081 | `/auth/register`, `/auth/login`, `/auth/refresh` | 6 |
-| **User Service** | 8082 | `/users/me`, `/users/:id`, `/users/search`, `/users/workspace/:id` | 7 |
-| **Workspace Service** | 8083 | `/workspaces`, `/workspaces/:id/members`, `/tariffs` | 12 |
-| **Chat Service** | 8084 | `/chats`, `/chats/:id/messages`, WebSocket | 15 |
-| **Task Service** | 8085 | `/tasks`, `/tasks/:id/assignees`, `/tasks/:id/status` | 13 |
-| **Complaint Service** | 8086 | `/complaints`, `/complaints/:id/status` | 5 |
+| Сервис | Порт | Основные эндпоинты | Кол-во | Статус |
+|--------|------|-------------------|--------|--------|
+| **Kong Gateway** | 8080 | Маршрутизация, JWT валидация, health check | 1 | ✅ |
+| **Auth Service** | 8081 | `/auth/register`, `/auth/login`, `/auth/refresh` | 7 | ✅ |
+| **User Service** | 8082 | `/users/me`, `/users/:id`, `/users/search`, `/users/workspace/:id` | 7 | ✅ |
+| **Workspace Service** | 8083 | `/workspaces`, `/workspaces/:id/members`, `/tariffs` | 12 | ✅ |
+| **Chat Service** | 8084 | `/chats`, `/chats/:id/messages`, WebSocket | 15 | ✅ |
+| **Task Service** | 8085 | `/tasks`, `/tasks/:id/assignees`, `/tasks/:id/status` | 13 | ✅ |
+| **Complaint Service** | 8086 | `/complaints`, `/complaints/:id/status` | 5 | ⬜ |
 
 **Итого: 58 REST эндпоинтов + 1 WebSocket соединение**
 
-**Статус реализации**: 29/58 эндпоинтов (50%)
+**Статус реализации**: 54/58 эндпоинтов (93%)
 - ✅ Auth Service: 7/7 эндпоинтов
 - ✅ User Service: 7/7 эндпоинтов
 - ✅ Workspace Service: 12/12 эндпоинтов
 - ✅ Chat Service: 15/15 эндпоинтов + WebSocket
-- ⬜ Остальные сервисы: 0/18 эндпоинтов
+- ✅ Task Service: 13/13 эндпоинтов
+- ⬜ Complaint Service: 0/5 эндпоинтов (в разработке)
 
 ## 6. План разработки (Roadmap)
 
 1.  **Проектирование БД**: Создание SQL-схемы на основе ER-диаграммы.
-2.  **Базовая инфраструктура**: Настройка Docker Compose и репозитория.
-3.  **Auth Service**: Реализация регистрации и логина.
-4.  **Gateway**: Настройка проксирования и валидации JWT.
-5.  **Workspace & User Services**: Базовая логика пользователей и пространств.
-6.  **Chat Service**: Реализация WebSocket и обмена сообщениями.
-7.  **Task Service**: Управление задачами.
-8.  **Complaint Service**: Обработка жалоб.
-9.  **Интеграция**: Сборка всего в единый контур.
+2.  **Базовая инфраструктура**: Настройка Kong Gateway + Docker Compose.
+3.  **Auth Service**: Реализация регистрации, логина и JWT токенов.
+4.  **Kong Gateway**: Настройка маршрутизации, JWT валидации, CORS, rate limiting.
+5.  **User & Workspace Services**: Полная реализация пользователей и рабочих пространств.
+6.  **Chat Service**: Реализация REST API и WebSocket для real-time общения.
+7.  **Task Service**: ✅ Реализован - управление задачами, исполнителями и историей изменений.
+8.  **Complaint Service**: Обработка жалоб пользователей.
+9.  **Интеграция**: Сборка всего в единый контур с мониторингом.
 10. **Тестирование**: Unit, интеграционные и E2E тесты.
+11. **Документация**: Поддержание актуальной документации API и архитектуры.
