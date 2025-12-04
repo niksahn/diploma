@@ -23,6 +23,9 @@ import threading
 import time
 import queue
 
+# Mock токен для WebSocket тестов (поскольку handler требует токен в query)
+MOCK_JWT_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoidXNlciJ9.mock"
+
 
 class WebSocketClient:
     """Вспомогательный класс для работы с WebSocket"""
@@ -105,12 +108,12 @@ class TestWebSocketConnection:
     """Тесты подключения к WebSocket"""
 
     def test_websocket_connect_success(
-        self, chat_service_url, chat_api_path, user_token
+        self, chat_service_url, chat_api_path, user_auth_headers
     ):
         """Успешное подключение к WebSocket"""
         client = WebSocketClient(
             f"{chat_service_url}{chat_api_path}/ws",
-            user_token["token"]
+            MOCK_JWT_TOKEN
         )
         
         try:
@@ -356,7 +359,7 @@ class TestWebSocketChatEvents:
             member_client.close()
 
     def test_join_chat_error_not_member(
-        self, chat_service_url, chat_api_path, workspace_with_members, user_token
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Ошибка при присоединении к чату, в котором пользователь не участвует"""
         workspace = workspace_with_members
@@ -380,7 +383,7 @@ class TestWebSocketChatEvents:
         # Подключаемся к WebSocket как посторонний пользователь
         client = WebSocketClient(
             f"{chat_service_url}{chat_api_path}/ws",
-            user_token["token"]
+            MOCK_JWT_TOKEN
         )
         
         try:
@@ -455,4 +458,6 @@ class TestWebSocketChatEvents:
             
         finally:
             member_client.close()
+
+
 

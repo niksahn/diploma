@@ -10,6 +10,14 @@ from typing import Optional
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://localhost:8081")
 API_BASE_PATH = "/api/v1/auth"
 
+# Константы ролей
+ROLE_USER = "user"
+ROLE_ADMIN = "admin"
+
+# Константы для заголовков аутентификации (имитация API Gateway)
+TEST_USER_ID = 1
+TEST_ADMIN_ID = 1
+
 
 @pytest.fixture(scope="session")
 def base_url():
@@ -66,4 +74,33 @@ def admin_login_data(valid_admin_data):
         "login": valid_admin_data["login"],
         "password": valid_admin_data["password"]
     }
+
+
+@pytest.fixture
+def user_auth_headers():
+    """Заголовки для аутентификации обычного пользователя (имитация API Gateway)"""
+    return {
+        "X-User-ID": str(TEST_USER_ID),
+        "X-User-Role": ROLE_USER
+    }
+
+
+@pytest.fixture
+def admin_auth_headers():
+    """Заголовки для аутентификации администратора (имитация API Gateway)"""
+    return {
+        "X-User-ID": str(TEST_ADMIN_ID),
+        "X-User-Role": ROLE_ADMIN
+    }
+
+
+@pytest.fixture
+def auth_headers_factory():
+    """Фабрика для создания заголовков с любым user_id и role"""
+    def _create_headers(user_id: int, role: str):
+        return {
+            "X-User-ID": str(user_id),
+            "X-User-Role": role
+        }
+    return _create_headers
 

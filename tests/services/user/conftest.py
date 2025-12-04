@@ -4,6 +4,7 @@
 import pytest
 import os
 import psycopg2
+import requests
 from psycopg2.extras import RealDictCursor
 
 # URL сервисов
@@ -16,6 +17,10 @@ DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "messenger_db")
 DB_USER = os.getenv("DB_USER", "user")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
+
+# Константы ролей (дублируем из корневого conftest.py для локального использования)
+ROLE_USER = "user"
+TEST_USER_ID = 1
 
 
 @pytest.fixture(scope="session")
@@ -64,3 +69,28 @@ def clean_workspace_data(db_cursor):
     # Порядок важен из-за внешних ключей
     db_cursor.execute('DELETE FROM "userInWorkspace"')
     db_cursor.execute('DELETE FROM workspaces')
+
+
+@pytest.fixture
+def test_user_id(db_cursor, valid_user_data, base_url, api_path):
+    """Создает тестового пользователя и возвращает его ID"""
+    # Регистрируем пользователя
+    register_url = f"{base_url}{api_path}/register"
+    requests.post(register_url, json=valid_user_data)
+
+    # Получаем его ID из базы данных
+    db_cursor.execute(
+        "SELECT id FROM users WHERE login = %s",
+        (valid_user_data["login"],)
+    )
+    result = db_cursor.fetchone()
+    return result['id'] if result else TEST_USER_ID
+
+
+@pytest.fixture
+def user_auth_headers_with_id(test_user_id):
+    """Заголовки аутентификации с реальным user_id"""
+    return {
+        "X-User-ID": str(test_user_id),
+        "X-User-Role": ROLE_USER
+    }
