@@ -1,0 +1,7 @@
+version: '3.8'
+
+services:
+  kong:
+    environment:
+      # Отключаем rate limiting, JWT и request-transformer для тестов
+      - KONG_PLUGINS=bundled,cors,prometheus

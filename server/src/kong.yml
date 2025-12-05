@@ -1,0 +1,459 @@
+_format_version: "3.0"
+
+# Kong Gateway declarative configuration
+# Все сервисы, роуты и плагины для корпоративного мессенджера
+
+services:
+  # Auth Service - аутентификация и JWT токены
+  - name: auth-service
+    url: http://auth-service:8081
+    routes:
+      - name: auth-route
+        paths:
+          - /api/v1/auth
+        strip_path: false
+        methods: ["GET", "POST", "PUT", "DELETE"]
+        preserve_host: false
+    plugins:
+      # CORS для веб-клиентов
+      - name: cors
+        config:
+          origins:
+            - "http://localhost:3000"
+            - "https://messenger.example.com"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+          credentials: true
+
+  # User Service - управление профилями пользователей
+  - name: user-service
+    url: http://user-service:8082
+    routes:
+      - name: user-route
+        paths:
+          - /api/v1/users
+        strip_path: false
+        methods: ["GET", "POST", "PUT", "DELETE"]
+        preserve_host: false
+    plugins:
+      # JWT валидация для защищенных эндпоинтов
+      - name: jwt
+        config:
+          secret_is_base64: false
+          key_claim_name: iss
+          claims_to_verify:
+            - exp
+      # Прокидывание user_id и role в заголовки
+      - name: request-transformer
+        config:
+          add:
+            headers:
+              - "X-User-ID:$(jwt.claims.user_id)"
+              - "X-User-Role:$(jwt.claims.role)"
+      # CORS для веб-клиентов
+      - name: cors
+        config:
+          origins:
+            - "http://localhost:3000"
+            - "https://messenger.example.com"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+          credentials: true
+      # Prometheus метрики
+      - name: prometheus
+        config:
+          per_consumer: false
+          status_code_metrics: true
+          latency_metrics: true
+          bandwidth_metrics: true
+
+  # Workspace Service - управление рабочими пространствами
+  - name: workspace-service
+    url: http://workspace-service:8083
+    routes:
+      - name: workspace-route
+        paths:
+          - /api/v1/workspaces
+        strip_path: false
+        methods: ["GET", "POST", "PUT", "DELETE"]
+        preserve_host: false
+    plugins:
+      # JWT валидация для защищенных эндпоинтов
+      - name: jwt
+        config:
+          secret_is_base64: false
+          key_claim_name: iss
+          claims_to_verify:
+            - exp
+      # Прокидывание user_id и role в заголовки
+      - name: request-transformer
+        config:
+          add:
+            headers:
+              - "X-User-ID:$(jwt.claims.user_id)"
+              - "X-User-Role:$(jwt.claims.role)"
+      # CORS для веб-клиентов
+      - name: cors
+        config:
+          origins:
+            - "http://localhost:3000"
+            - "https://messenger.example.com"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+          credentials: true
+      # Prometheus метрики
+      - name: prometheus
+        config:
+          per_consumer: false
+          status_code_metrics: true
+          latency_metrics: true
+          bandwidth_metrics: true
+
+  # Chat Service - чаты и WebSocket
+  - name: chat-service
+    url: http://chat-service:8084
+    routes:
+      - name: chat-route
+        paths:
+          - /api/v1/chats
+        strip_path: false
+        methods: ["GET", "POST", "PUT", "DELETE"]
+        preserve_host: false
+      # Отдельный роут для WebSocket соединений
+      - name: websocket-route
+        paths:
+          - /ws
+        strip_path: false
+        methods: ["GET"]
+        preserve_host: false
+        protocols: ["http", "https"]
+    plugins:
+      # JWT валидация для защищенных эндпоинтов
+      - name: jwt
+        config:
+          secret_is_base64: false
+          key_claim_name: iss
+          claims_to_verify:
+            - exp
+      # Прокидывание user_id и role в заголовки
+      - name: request-transformer
+        config:
+          add:
+            headers:
+              - "X-User-ID:$(jwt.claims.user_id)"
+              - "X-User-Role:$(jwt.claims.role)"
+      # CORS для веб-клиентов
+      - name: cors
+        config:
+          origins:
+            - "http://localhost:3000"
+            - "https://messenger.example.com"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+            - Upgrade
+            - Connection
+          credentials: true
+      # Prometheus метрики
+      - name: prometheus
+        config:
+          per_consumer: false
+          status_code_metrics: true
+          latency_metrics: true
+          bandwidth_metrics: true
+
+  # Swagger UI Service
+  - name: swagger-ui-service
+    url: http://swagger-ui:8080
+    routes:
+      - name: swagger-ui-main-route
+        paths:
+          - /swagger
+          - /swagger/
+        strip_path: false
+        methods: ["GET"]
+        preserve_host: false
+
+  # Kong Admin API Service для Swagger
+  - name: kong-admin-service
+    url: http://kong:8001
+    routes:
+      - name: kong-swagger-route
+        paths:
+          - /swagger/kong.json
+        strip_path: true
+        methods: ["GET"]
+        preserve_host: false
+        plugins:
+          # Заменяем ответ на наш OpenAPI файл
+          - name: response-transformer
+            config:
+              add:
+                headers:
+                  - "Content-Type:application/json"
+          - name: request-transformer
+            config:
+              replace:
+                uri: "/kong-openapi.json"
+
+  # Task Service - управление задачами
+  - name: task-service
+    url: http://task-service:8085
+    routes:
+      - name: task-route
+        paths:
+          - /api/v1/tasks
+        strip_path: false
+        methods: ["GET", "POST", "PUT", "DELETE"]
+        preserve_host: false
+    plugins:
+      # JWT валидация для защищенных эндпоинтов
+      - name: jwt
+        config:
+          secret_is_base64: false
+          key_claim_name: iss
+          claims_to_verify:
+            - exp
+      # Прокидывание user_id и role в заголовки
+      - name: request-transformer
+        config:
+          add:
+            headers:
+              - "X-User-ID:$(jwt.claims.user_id)"
+              - "X-User-Role:$(jwt.claims.role)"
+      # Rate limiting
+      - name: rate-limiting
+        config:
+          minute: 100
+          policy: local
+      # CORS для веб-клиентов
+      - name: cors
+        config:
+          origins:
+            - "http://localhost:3000"
+            - "https://messenger.example.com"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+          credentials: true
+      # Prometheus метрики
+      - name: prometheus
+        config:
+          per_consumer: false
+          status_code_metrics: true
+          latency_metrics: true
+          bandwidth_metrics: true
+
+  # TODO: Добавить complaint-service когда будет реализован
+  # - name: complaint-service
+  #   url: http://complaint-service:8086
+  #   routes:
+  #     - name: complaint-route
+  #       paths:
+  #         - /api/v1/complaints
+  #       strip_path: false
+  #       methods: ["GET", "POST", "PUT", "DELETE"]
+  #   plugins:
+  #     - name: jwt
+  #     - name: request-transformer
+  #       config:
+  #         add:
+  #           headers:
+  #             - "X-User-ID:$(jwt.claims.user_id)"
+  #             - "X-User-Role:$(jwt.claims.role)"
+  #     - name: rate-limiting
+  #     - name: cors
+  #     - name: prometheus
+
+# Swagger UI роуты для каждого микросервиса
+routes:
+  # Auth Service Swagger
+  - name: auth-swagger-route
+    paths:
+      - /swagger/auth
+      - /swagger/auth/
+    methods: ["GET"]
+    service:
+      name: auth-service
+    preserve_host: false
+    plugins:
+      - name: request-transformer
+        config:
+          replace:
+            uri: "/docs/swagger.json"
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods: ["GET"]
+          headers: ["*"]
+
+  # User Service Swagger
+  - name: user-swagger-route
+    paths:
+      - /swagger/user
+      - /swagger/user/
+    methods: ["GET"]
+    service:
+      name: user-service
+    preserve_host: false
+    plugins:
+      - name: request-transformer
+        config:
+          replace:
+            uri: "/docs/swagger.json"
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods: ["GET"]
+          headers: ["*"]
+
+  # Workspace Service Swagger
+  - name: workspace-swagger-route
+    paths:
+      - /swagger/workspace
+      - /swagger/workspace/
+    methods: ["GET"]
+    service:
+      name: workspace-service
+    preserve_host: false
+    plugins:
+      - name: request-transformer
+        config:
+          replace:
+            uri: "/docs/swagger.json"
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods: ["GET"]
+          headers: ["*"]
+
+  # Chat Service Swagger
+  - name: chat-swagger-route
+    paths:
+      - /swagger/chat
+      - /swagger/chat/
+    methods: ["GET"]
+    service:
+      name: chat-service
+    preserve_host: false
+    plugins:
+      - name: request-transformer
+        config:
+          replace:
+            uri: "/docs/swagger.json"
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods: ["GET"]
+          headers: ["*"]
+
+  # Task Service Swagger
+  - name: task-swagger-route
+    paths:
+      - /swagger/task
+      - /swagger/task/
+    methods: ["GET"]
+    service:
+      name: task-service
+    preserve_host: false
+    plugins:
+      - name: request-transformer
+        config:
+          replace:
+            uri: "/docs/swagger.json"
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods: ["GET"]
+          headers: ["*"]
+
+  # Основной Swagger UI
+  - name: swagger-ui-route
+    paths:
+      - /swagger
+      - /swagger/
+    methods: ["GET"]
+    service:
+      name: swagger-ui-service
+    preserve_host: false
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods: ["GET"]
+          headers: ["*"]
+
+  # Kong Admin API Swagger
+  - name: kong-admin-swagger-route
+    paths:
+      - /swagger/kong.json
+    methods: ["GET"]
+    service:
+      name: kong-admin-service
+    preserve_host: false
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods: ["GET"]
+          headers: ["*"]
+
+  # Health check роут (публичный)
+  - name: health-route
+    paths:
+      - /health
+    methods: ["GET"]
+    service:
+      name: auth-service  # Используем auth service для health check
+    preserve_host: false
+    plugins:
+      # CORS для health check
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods:
+            - GET
+          headers:
+            - Authorization
+            - Content-Type

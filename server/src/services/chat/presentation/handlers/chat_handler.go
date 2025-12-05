@@ -386,3 +386,12 @@ func (h *ChatHandler) DeleteChat(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
+
+
+
+
+
+
+
+
+

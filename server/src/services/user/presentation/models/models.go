@@ -61,3 +61,12 @@ type WorkspaceUsersResponse struct {
 	Users []WorkspaceUserResponse `json:"users"`
 	Total int                     `json:"total" example:"2"`
 }
+
+
+
+
+
+
+
+
+

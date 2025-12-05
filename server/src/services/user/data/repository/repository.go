@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/diploma/user-service/data/database"
@@ -158,9 +159,9 @@ func (r *Repository) SearchUsers(ctx context.Context, search string, workspaceID
 	var baseQuery, countQuery string
 	if workspaceID != nil {
 		baseQuery = `FROM users u
-			INNER JOIN "userInWorkspace" uiw ON u.id = uiw.usersid`
+			INNER JOIN userinworkspace uiw ON u.id = uiw.usersid`
 		countQuery = `SELECT COUNT(DISTINCT u.id) FROM users u
-			INNER JOIN "userInWorkspace" uiw ON u.id = uiw.usersid`
+			INNER JOIN userinworkspace uiw ON u.id = uiw.usersid`
 	} else {
 		baseQuery = "FROM users"
 		countQuery = "SELECT COUNT(*) FROM users"
@@ -264,25 +265,34 @@ type WorkspaceUser struct {
 
 // GetUsersByWorkspace получает всех пользователей рабочего пространства
 func (r *Repository) GetUsersByWorkspace(ctx context.Context, workspaceID int) ([]WorkspaceUser, error) {
+	log.Printf("GetUsersByWorkspace: workspaceID=%d", workspaceID)
+
 	query := `
-		SELECT u.id, u.login, u.surname, u.name, u.patronymic, u.status, uiw.role, uiw.date
+		SELECT u.id, u.login, u.surname, u.name, u.patronymic, u.status, uiw.role, uiw.date::text
 		FROM users u
-		INNER JOIN "userInWorkspace" uiw ON u.id = uiw.usersid
+		INNER JOIN userinworkspace uiw ON u.id = uiw.usersid
 		WHERE uiw.workspacesid = $1
 		ORDER BY u.surname, u.name
 	`
 
+	log.Printf("GetUsersByWorkspace: executing query: %s", query)
+
 	rows, err := r.db.Pool.Query(ctx, query, workspaceID)
 	if err != nil {
+		log.Printf("GetUsersByWorkspace: query failed: %v", err)
 		return nil, fmt.Errorf("failed to get users by workspace: %w", err)
 	}
 	defer rows.Close()
+
+	log.Printf("GetUsersByWorkspace: query executed successfully")
 
 	var result []WorkspaceUser
 	for rows.Next() {
 		var user models.User
 		var patronymic sql.NullString
 		var wu WorkspaceUser
+
+		log.Printf("GetUsersByWorkspace: scanning row")
 
 		err := rows.Scan(
 			&user.ID,
@@ -295,8 +305,11 @@ func (r *Repository) GetUsersByWorkspace(ctx context.Context, workspaceID int) (
 			&wu.JoinedAt,
 		)
 		if err != nil {
+			log.Printf("GetUsersByWorkspace: scan failed: %v", err)
 			return nil, fmt.Errorf("failed to scan user: %w", err)
 		}
+
+		log.Printf("GetUsersByWorkspace: scanned user ID=%d, JoinedAt=%s", user.ID, wu.JoinedAt)
 
 		if patronymic.Valid {
 			user.Patronymic = &patronymic.String
@@ -306,6 +319,8 @@ func (r *Repository) GetUsersByWorkspace(ctx context.Context, workspaceID int) (
 		result = append(result, wu)
 	}
 
+	log.Printf("GetUsersByWorkspace: returning %d users", len(result))
+
 	return result, nil
 }
 
@@ -313,8 +328,8 @@ func (r *Repository) GetUsersByWorkspace(ctx context.Context, workspaceID int) (
 func (r *Repository) IsWorkspaceLeader(ctx context.Context, leaderID, targetUserID int) (bool, error) {
 	query := `
 		SELECT COUNT(*) > 0
-		FROM "userInWorkspace" uiw1
-		INNER JOIN "userInWorkspace" uiw2 ON uiw1.workspacesid = uiw2.workspacesid
+		FROM userinworkspace uiw1
+		INNER JOIN userinworkspace uiw2 ON uiw1.workspacesid = uiw2.workspacesid
 		WHERE uiw1.usersid = $1
 		  AND uiw1.role = 1
 		  AND uiw2.usersid = $2
@@ -333,7 +348,7 @@ func (r *Repository) IsWorkspaceLeader(ctx context.Context, leaderID, targetUser
 func (r *Repository) IsUserInWorkspace(ctx context.Context, userID, workspaceID int) (bool, error) {
 	query := `
 		SELECT COUNT(*) > 0
-		FROM "userInWorkspace"
+		FROM userinworkspace
 		WHERE usersid = $1 AND workspacesid = $2
 	`
 

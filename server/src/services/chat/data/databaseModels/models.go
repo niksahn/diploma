@@ -26,3 +26,12 @@ type UserInChat struct {
 	Role   int    `db:"role"` // 1 = участник, 2 = администратор
 	Date   string `db:"date"` // Дата присоединения
 }
+
+
+
+
+
+
+
+
+

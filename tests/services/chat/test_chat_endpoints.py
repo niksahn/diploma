@@ -29,12 +29,12 @@ class TestChatCreation:
     """Тесты для POST /api/v1/chats"""
 
     def test_create_group_chat_success(
-        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
+        self, chat_service_url, chat_api_path, workspace_with_members, admin_token
     ):
         """Успешное создание группового чата"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
-        
+
         url = f"{chat_service_url}{chat_api_path}"
         chat_data = {
             "name": "Test Group Chat",
@@ -42,13 +42,15 @@ class TestChatCreation:
             "workspace_id": workspace["workspace_id"],
             "members": [m["user_id"] for m in workspace["members"][:3]]
         }
-        
+
+        # Используем токен администратора для создания чата
+        headers = {"Authorization": f"Bearer {admin_token}"}
         response = requests.post(
             url,
             json=chat_data,
-            headers=user_auth_headers
+            headers=headers
         )
-        
+
         assert response.status_code == 201
         data = response.json()
         assert data["name"] == chat_data["name"]
@@ -62,7 +64,7 @@ class TestChatCreation:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное создание личного чата"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         member = workspace["members"][1]
         
@@ -90,7 +92,7 @@ class TestChatCreation:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное создание канала"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         
         url = f"{chat_service_url}{chat_api_path}"
@@ -115,7 +117,7 @@ class TestChatCreation:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Создание чата без токена"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         
         url = f"{chat_service_url}{chat_api_path}"
         chat_data = {
@@ -152,7 +154,7 @@ class TestChatCreation:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Создание группового чата с именем менее 3 символов"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         
         url = f"{chat_service_url}{chat_api_path}"
@@ -175,7 +177,7 @@ class TestChatCreation:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Создание личного чата с неправильным количеством участников"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         
         url = f"{chat_service_url}{chat_api_path}"
@@ -201,7 +203,7 @@ class TestChatList:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное получение списка чатов"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         
         # Создаем чат
@@ -235,7 +237,7 @@ class TestChatList:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Получение чатов с фильтром по РП"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         
         # Создаем чат
@@ -268,7 +270,7 @@ class TestChatList:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Получение чатов с фильтром по типу"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         
         # Создаем групповой чат
@@ -312,7 +314,7 @@ class TestChatInfo:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное получение информации о чате"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         
         # Создаем чат
@@ -349,7 +351,7 @@ class TestChatInfo:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers, user_token
     ):
         """Получение информации о чате, в котором пользователь не участвует"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         
         # Создаем чат
@@ -396,7 +398,7 @@ class TestChatUpdate:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное обновление чата"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         
         # Создаем чат
@@ -432,7 +434,7 @@ class TestChatUpdate:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Обновление чата обычным участником (не администратором)"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         member = workspace["members"][1]
         
@@ -470,7 +472,7 @@ class TestChatDelete:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное удаление чата"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         
         # Создаем чат
@@ -508,7 +510,7 @@ class TestChatDelete:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Удаление чата обычным участником"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         member = workspace["members"][1]
         
@@ -544,7 +546,7 @@ class TestChatMembers:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное добавление участников"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         
         # Создаем чат
@@ -583,7 +585,7 @@ class TestChatMembers:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Добавление участников обычным участником"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         member = workspace["members"][1]
         
@@ -620,7 +622,7 @@ class TestChatMembers:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное получение списка участников"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         
         # Создаем чат
@@ -656,7 +658,7 @@ class TestChatMembers:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное изменение роли участника"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         member = workspace["members"][1]
         
@@ -692,7 +694,7 @@ class TestChatMembers:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное удаление участника"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         member = workspace["members"][1]
         
@@ -728,7 +730,7 @@ class TestMessages:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешная отправка сообщения"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         
         # Создаем чат
@@ -767,7 +769,7 @@ class TestMessages:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное получение истории сообщений"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         
         # Создаем чат
@@ -810,7 +812,7 @@ class TestMessages:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное редактирование сообщения"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         
         # Создаем чат
@@ -855,7 +857,7 @@ class TestMessages:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешное удаление сообщения"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         
         # Создаем чат
@@ -895,7 +897,7 @@ class TestMessages:
         self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers
     ):
         """Успешная отметка сообщений как прочитанных"""
-        workspace = workspace_with_members, user_auth_headers
+        workspace = workspace_with_members
         leader = workspace["leader"]
         
         # Создаем чат

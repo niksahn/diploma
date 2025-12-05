@@ -303,3 +303,12 @@ func (h *MemberHandler) RemoveMember(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
+
+
+
+
+
+
+
+
+

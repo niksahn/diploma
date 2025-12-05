@@ -1,0 +1,1018 @@
+basePath: /api/v1/chats
+definitions:
+  models.AddMembersRequest:
+    description: Данные для добавления участников в чат
+    properties:
+      role:
+        example: 1
+        maximum: 2
+        minimum: 1
+        type: integer
+      user_ids:
+        example:
+        - 4
+        - 6
+        - 7
+        items:
+          type: integer
+        minItems: 1
+        type: array
+    required:
+    - role
+    - user_ids
+    type: object
+  models.AddMembersResponse:
+    description: Результат добавления участников
+    properties:
+      added:
+        example:
+        - 4
+        - 6
+        - 7
+        items:
+          type: integer
+        type: array
+      chat_id:
+        example: 1
+        type: integer
+    type: object
+  models.ChatListItem:
+    description: Информация о чате в списке
+    properties:
+      id:
+        example: 1
+        type: integer
+      last_message:
+        $ref: '#/definitions/models.LastMessageInfo'
+      members_count:
+        example: 4
+        type: integer
+      name:
+        example: Project Discussion
+        type: string
+      type:
+        example: 2
+        type: integer
+      unread_count:
+        example: 5
+        type: integer
+      workspace_id:
+        example: 1
+        type: integer
+    type: object
+  models.ChatListResponse:
+    description: Список чатов пользователя
+    properties:
+      chats:
+        items:
+          $ref: '#/definitions/models.ChatListItem'
+        type: array
+      total:
+        example: 2
+        type: integer
+    type: object
+  models.ChatMemberResponse:
+    description: Информация об участнике чата
+    properties:
+      id:
+        example: 1
+        type: integer
+      joined_at:
+        example: "2024-01-01"
+        type: string
+      login:
+        example: user@example.com
+        type: string
+      name:
+        example: Ivan
+        type: string
+      patronymic:
+        example: Ivanovich
+        type: string
+      role:
+        example: 2
+        type: integer
+      status:
+        example: 1
+        type: integer
+      surname:
+        example: Ivanov
+        type: string
+      user_id:
+        example: 1
+        type: integer
+    type: object
+  models.ChatMembersResponse:
+    description: Список участников чата
+    properties:
+      members:
+        items:
+          $ref: '#/definitions/models.ChatMemberResponse'
+        type: array
+      total:
+        example: 2
+        type: integer
+    type: object
+  models.ChatResponse:
+    description: Информация о чате
+    properties:
+      created_at:
+        example: "2024-01-01T00:00:00Z"
+        type: string
+      id:
+        example: 1
+        type: integer
+      members_count:
+        example: 4
+        type: integer
+      my_role:
+        example: 2
+        type: integer
+      name:
+        example: Project Discussion
+        type: string
+      type:
+        example: 2
+        type: integer
+      workspace_id:
+        example: 1
+        type: integer
+    type: object
+  models.CreateChatRequest:
+    description: Данные для создания нового чата
+    properties:
+      members:
+        example:
+        - 1
+        - 2
+        - 3
+        - 5
+        items:
+          type: integer
+        minItems: 1
+        type: array
+      name:
+        example: Project Discussion
+        maxLength: 100
+        minLength: 3
+        type: string
+      type:
+        example: 2
+        maximum: 3
+        minimum: 1
+        type: integer
+      workspace_id:
+        example: 1
+        type: integer
+    required:
+    - members
+    - name
+    - type
+    - workspace_id
+    type: object
+  models.CreateMessageRequest:
+    description: Данные для создания нового сообщения
+    properties:
+      text:
+        example: Hello everyone!
+        maxLength: 1000
+        minLength: 1
+        type: string
+    required:
+    - text
+    type: object
+  models.LastMessageInfo:
+    properties:
+      date:
+        example: 1704110400
+        type: integer
+      text:
+        example: Hello everyone!
+        type: string
+      user_name:
+        example: Ivan Ivanov
+        type: string
+    type: object
+  models.MarkAsReadRequest:
+    description: ID последнего прочитанного сообщения
+    properties:
+      last_message_id:
+        example: 100
+        type: integer
+    required:
+    - last_message_id
+    type: object
+  models.MarkAsReadResponse:
+    description: Результат отметки сообщений
+    properties:
+      chat_id:
+        example: 1
+        type: integer
+      last_read_message_id:
+        example: 100
+        type: integer
+      marked_as_read:
+        example: 15
+        type: integer
+    type: object
+  models.MessageResponse:
+    description: Информация о сообщении
+    properties:
+      chat_id:
+        example: 1
+        type: integer
+      date:
+        example: 1704110400
+        type: integer
+      edited:
+        example: false
+        type: boolean
+      id:
+        example: 1
+        type: integer
+      status:
+        example: read
+        type: string
+      text:
+        example: Hello everyone!
+        type: string
+      user_id:
+        example: 1
+        type: integer
+      user_name:
+        example: Ivan Ivanov
+        type: string
+    type: object
+  models.MessagesResponse:
+    description: Список сообщений чата
+    properties:
+      has_more:
+        example: false
+        type: boolean
+      messages:
+        items:
+          $ref: '#/definitions/models.MessageResponse'
+        type: array
+      total:
+        example: 2
+        type: integer
+    type: object
+  models.UpdateChatRequest:
+    description: Данные для обновления чата
+    properties:
+      name:
+        example: Updated Project Discussion
+        maxLength: 100
+        minLength: 3
+        type: string
+    required:
+    - name
+    type: object
+  models.UpdateMemberRoleRequest:
+    description: Новая роль участника (1=участник, 2=администратор)
+    properties:
+      role:
+        example: 2
+        maximum: 2
+        minimum: 1
+        type: integer
+    required:
+    - role
+    type: object
+  models.UpdateMemberRoleResponse:
+    description: Результат изменения роли
+    properties:
+      chat_id:
+        example: 1
+        type: integer
+      role:
+        example: 2
+        type: integer
+      user_id:
+        example: 3
+        type: integer
+    type: object
+  models.UpdateMessageRequest:
+    description: Новый текст сообщения
+    properties:
+      text:
+        example: Updated message text
+        maxLength: 1000
+        minLength: 1
+        type: string
+    required:
+    - text
+    type: object
+  models.UpdateMessageResponse:
+    description: Результат обновления сообщения
+    properties:
+      chat_id:
+        example: 1
+        type: integer
+      edited:
+        example: true
+        type: boolean
+      edited_at:
+        example: "2024-01-01T12:05:00Z"
+        type: string
+      id:
+        example: 1
+        type: integer
+      text:
+        example: Updated message text
+        type: string
+    type: object
+host: localhost:8084
+info:
+  contact:
+    email: support@messenger.local
+    name: API Support
+  description: Микросервис управления чатами и сообщениями для корпоративного мессенджера
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Chat Service API
+  version: 1.0.0
+paths:
+  /chats:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список всех чатов, в которых участвует пользователь
+      parameters:
+      - description: Фильтр по рабочему пространству
+        in: query
+        name: workspace_id
+        type: integer
+      - description: Фильтр по типу чата (1=личный, 2=групповой, 3=канал)
+        in: query
+        name: type
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ChatListResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить список чатов пользователя
+      tags:
+      - chats
+    post:
+      consumes:
+      - application/json
+      description: Создает новый чат в рабочем пространстве
+      parameters:
+      - description: Данные для создания чата
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateChatRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.ChatResponse'
+        "400":
+          description: Невалидные данные
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Пользователь не является участником РП
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: РП не найдено
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать новый чат
+      tags:
+      - chats
+  /chats/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет чат и все связанные данные (только для администраторов)
+      parameters:
+      - description: ID чата
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Недостаточно прав
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Чат не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить чат
+      tags:
+      - chats
+    get:
+      consumes:
+      - application/json
+      description: Возвращает детальную информацию о чате
+      parameters:
+      - description: ID чата
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ChatResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Пользователь не является участником чата
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Чат не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить информацию о чате
+      tags:
+      - chats
+    put:
+      consumes:
+      - application/json
+      description: Обновляет название и другие настройки чата (только для администраторов)
+      parameters:
+      - description: ID чата
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные для обновления чата
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateChatRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ChatResponse'
+        "400":
+          description: Невалидные данные
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Недостаточно прав
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Чат не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить настройки чата
+      tags:
+      - chats
+  /chats/{id}/members:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список всех участников чата
+      parameters:
+      - description: ID чата
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ChatMembersResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Пользователь не является участником чата
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Чат не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить список участников чата
+      tags:
+      - chat-members
+    post:
+      consumes:
+      - application/json
+      description: Добавляет новых участников в групповой чат или канал
+      parameters:
+      - description: ID чата
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные для добавления участников
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.AddMembersRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.AddMembersResponse'
+        "400":
+          description: Невалидные данные
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Недостаточно прав
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Чат не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Добавить участников в чат
+      tags:
+      - chat-members
+  /chats/{id}/members/{user_id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет участника из группового чата или канала (только для администраторов)
+      parameters:
+      - description: ID чата
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID пользователя
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Недостаточно прав
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Чат или участник не найдены
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить участника из чата
+      tags:
+      - chat-members
+    put:
+      consumes:
+      - application/json
+      description: Изменяет роль участника чата (только для администраторов)
+      parameters:
+      - description: ID чата
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID пользователя
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - description: Новая роль
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateMemberRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UpdateMemberRoleResponse'
+        "400":
+          description: Невалидная роль
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Недостаточно прав
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Чат или участник не найдены
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Изменить роль участника чата
+      tags:
+      - chat-members
+  /chats/{id}/messages:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает историю сообщений чата с пагинацией
+      parameters:
+      - description: ID чата
+        in: path
+        name: id
+        required: true
+        type: integer
+      - default: 50
+        description: Лимит сообщений (по умолчанию 50, макс 100)
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Смещение для пагинации
+        in: query
+        name: offset
+        type: integer
+      - description: Получить сообщения до указанной даты (timestamp)
+        in: query
+        name: before
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MessagesResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Пользователь не является участником чата
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Чат не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить историю сообщений чата
+      tags:
+      - messages
+    post:
+      consumes:
+      - application/json
+      description: Создает новое сообщение в чате (альтернатива WebSocket)
+      parameters:
+      - description: ID чата
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Текст сообщения
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.MessageResponse'
+        "400":
+          description: Невалидные данные
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Пользователь не является участником чата
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Чат не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Отправить сообщение в чат
+      tags:
+      - messages
+  /chats/{id}/messages/{message_id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет сообщение (автор или администратор чата)
+      parameters:
+      - description: ID чата
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID сообщения
+        in: path
+        name: message_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Недостаточно прав
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Сообщение не найдено
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить сообщение
+      tags:
+      - messages
+    put:
+      consumes:
+      - application/json
+      description: Обновляет текст сообщения (только автор сообщения)
+      parameters:
+      - description: ID чата
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID сообщения
+        in: path
+        name: message_id
+        required: true
+        type: integer
+      - description: Новый текст сообщения
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UpdateMessageResponse'
+        "400":
+          description: Невалидные данные
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Пользователь не является автором сообщения
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Сообщение не найдено
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Редактировать сообщение
+      tags:
+      - messages
+  /chats/{id}/messages/read:
+    put:
+      consumes:
+      - application/json
+      description: Отмечает все сообщения до указанного ID как прочитанные
+      parameters:
+      - description: ID чата
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID последнего прочитанного сообщения
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.MarkAsReadRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MarkAsReadResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Пользователь не является участником чата
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Чат не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Отметить сообщения как прочитанные
+      tags:
+      - messages
+  /chats/ws:
+    get:
+      description: Устанавливает WebSocket соединение для обмена сообщениями в реальном
+        времени
+      parameters:
+      - description: JWT токен
+        in: query
+        name: token
+        required: true
+        type: string
+      responses: {}
+      summary: WebSocket соединение для real-time общения
+      tags:
+      - websocket
+securityDefinitions:
+  BearerAuth:
+    description: 'JWT токен в формате: Bearer {token}. Gateway проверяет токен и добавляет
+      X-User-ID в заголовок'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

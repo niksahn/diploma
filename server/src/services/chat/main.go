@@ -31,7 +31,7 @@ import (
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 
 // @host localhost:8084
-// @BasePath /api/v1
+// @BasePath /api/v1/chats
 
 // @securityDefinitions.apikey BearerAuth
 // @in header
@@ -102,7 +102,7 @@ func setupRouter(chatHandler *handlers.ChatHandler, memberHandler *handlers.Memb
 	router := gin.Default()
 
 	// Swagger документация
-	docs.SwaggerInfo.BasePath = "/api/v1"
+	docs.SwaggerInfo.BasePath = "/api/v1/chats"
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Middleware

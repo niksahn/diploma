@@ -29,3 +29,12 @@ EXPOSE 8082
 CMD ["./user-service"]
 
 
+
+
+
+
+
+
+
+
+
