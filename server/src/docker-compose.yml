@@ -32,6 +32,7 @@ services:
       KONG_ADMIN_GUI_LISTEN: 0.0.0.0:8002
       KONG_PROXY_LISTEN: 0.0.0.0:8000
       KONG_PLUGINS: bundled,jwt,request-transformer,cors,prometheus
+      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
     ports:
       - "8080:8000"    # Kong Proxy (единая точка входа)
       - "8001:8001"    # Kong Admin API
@@ -42,8 +43,6 @@ services:
     depends_on:
       kong-database:
         condition: service_healthy
-      swagger-static:
-        condition: service_started
     restart: always
 
   postgres:
@@ -207,21 +206,6 @@ services:
   #       condition: service_started
   #       restart: always
 
-  # Nginx для статических файлов (Swagger JSON)
-  swagger-static:
-    image: nginx:alpine
-    container_name: messenger_swagger_static
-    volumes:
-      - ./services/auth/docs:/usr/share/nginx/html/auth:ro
-      - ./services/user/docs:/usr/share/nginx/html/user:ro
-      - ./services/workspace/docs:/usr/share/nginx/html/workspace:ro
-      - ./services/chat/docs:/usr/share/nginx/html/chat:ro
-      - ./services/task/docs:/usr/share/nginx/html/task:ro
-      - ./kong-openapi.json:/usr/share/nginx/html/kong.json:ro
-      - ./nginx-swagger.conf:/etc/nginx/conf.d/default.conf:ro
-    ports:
-      - "8090:80"  # Статические файлы на порту 8090
-    restart: always
 
   # Swagger UI для документации API
   swagger-ui:
@@ -232,12 +216,12 @@ services:
       BASE_URL: /
       URLS: >
         [
-          {"name": "Auth Service", "url": "http://localhost:8090/auth/swagger.json"},
-          {"name": "User Service", "url": "http://localhost:8090/user/swagger.json"},
-          {"name": "Workspace Service", "url": "http://localhost:8090/workspace/swagger.json"},
-          {"name": "Chat Service", "url": "http://localhost:8090/chat/swagger.json"},
-          {"name": "Task Service", "url": "http://localhost:8090/task/swagger.json"},
-          {"name": "Kong Gateway", "url": "http://localhost:8090/kong.json"}
+          {"name": "Auth Service", "url": "http://localhost:8080/swagger/auth/swagger.json"},
+          {"name": "User Service", "url": "http://localhost:8080/swagger/user/swagger.json"},
+          {"name": "Workspace Service", "url": "http://localhost:8080/swagger/workspace/swagger.json"},
+          {"name": "Chat Service", "url": "http://localhost:8080/swagger/chat/swagger.json"},
+          {"name": "Task Service", "url": "http://localhost:8080/swagger/task/swagger.json"},
+          {"name": "Kong Gateway", "url": "http://localhost:8080/swagger/kong.json"}
         ]
       URLS_PRIMARY_NAME: "Auth Service"
       TRY_IT_OUT_ENABLED: "true"
