@@ -18,7 +18,7 @@ type CreateChatRequest struct {
 	Name        string `json:"name" binding:"required,min=3,max=100" example:"Project Discussion"`
 	Type        int    `json:"type" binding:"required,min=1,max=3" example:"2"`
 	WorkspaceID int    `json:"workspace_id" binding:"required" example:"1"`
-	Members     []int  `json:"members" binding:"required,min=1" example:"[1,2,3,5]"`
+	Members     []int  `json:"members" binding:"required,min=1" example:"1,2,3,5"`
 }
 
 // UpdateChatRequest представляет запрос на обновление чата
@@ -56,14 +56,14 @@ type ChatListResponse struct {
 // AddMembersRequest представляет запрос на добавление участников
 // @Description Данные для добавления участников в чат
 type AddMembersRequest struct {
-	UserIDs []int `json:"user_ids" binding:"required,min=1" example:"[4,6,7]"`
+	UserIDs []int `json:"user_ids" binding:"required,min=1" example:"4,6,7"`
 	Role    int   `json:"role" binding:"required,min=1,max=2" example:"1"`
 }
 
 // AddMembersResponse представляет ответ на добавление участников
 // @Description Результат добавления участников
 type AddMembersResponse struct {
-	Added  []int `json:"added" example:"[4,6,7]"`
+	Added  []int `json:"added" example:"4,6,7"`
 	ChatID int   `json:"chat_id" example:"1"`
 }
 

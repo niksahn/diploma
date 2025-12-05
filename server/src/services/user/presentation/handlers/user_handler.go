@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -358,34 +359,47 @@ func (h *UserHandler) SearchUsers(c *gin.Context) {
 func (h *UserHandler) GetUsersByWorkspace(c *gin.Context) {
 	userID, err := getUserIDFromHeader(c)
 	if err != nil {
+		fmt.Printf("GetUsersByWorkspace: failed to get user ID from header: %v\n", err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "user ID not found"})
 		return
 	}
 
+	fmt.Printf("GetUsersByWorkspace: userID=%d\n", userID)
+
 	workspaceIDStr := c.Param("workspace_id")
 	workspaceID, err := strconv.Atoi(workspaceIDStr)
 	if err != nil {
+		fmt.Printf("GetUsersByWorkspace: invalid workspace ID: %s\n", workspaceIDStr)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace ID"})
 		return
 	}
 
+	fmt.Printf("GetUsersByWorkspace: workspaceID=%d\n", workspaceID)
+
 	// Проверяем, является ли пользователь участником этого РП
 	isMember, err := h.repo.IsUserInWorkspace(c.Request.Context(), userID, workspaceID)
 	if err != nil {
+		fmt.Printf("GetUsersByWorkspace: failed to check workspace membership: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check workspace membership"})
 		return
 	}
 
+	fmt.Printf("GetUsersByWorkspace: isMember=%v\n", isMember)
+
 	if !isMember {
+		fmt.Printf("GetUsersByWorkspace: user is not a member\n")
 		c.JSON(http.StatusForbidden, gin.H{"error": "user is not a member of this workspace"})
 		return
 	}
 
 	workspaceUsers, err := h.repo.GetUsersByWorkspace(c.Request.Context(), workspaceID)
 	if err != nil {
+		fmt.Printf("GetUsersByWorkspace: failed to get users by workspace: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	fmt.Printf("GetUsersByWorkspace: found %d users\n", len(workspaceUsers))
 
 	var userResponses []models.WorkspaceUserResponse
 	for _, wu := range workspaceUsers {
@@ -409,5 +423,8 @@ func (h *UserHandler) GetUsersByWorkspace(c *gin.Context) {
 		Total: len(userResponses),
 	})
 }
+
+
+
 
 

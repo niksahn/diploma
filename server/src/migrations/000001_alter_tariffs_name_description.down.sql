@@ -17,3 +17,12 @@ ALTER TABLE tariffs
 CREATE UNIQUE INDEX IF NOT EXISTS tariffs_name ON tariffs (name);
 CREATE UNIQUE INDEX IF NOT EXISTS tariffs_description ON tariffs (description);
 
+
+
+
+
+
+
+
+
+

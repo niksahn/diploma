@@ -209,3 +209,12 @@ DB_PASSWORD=password
   - Проверка прав доступа
   - WebSocket события и real-time общение
 
+
+
+
+
+
+
+
+
+

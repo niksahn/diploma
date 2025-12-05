@@ -18,3 +18,12 @@ type UserInWorkspace struct {
 	Role        int    `db:"role"`
 	Date        string `db:"date"`
 }
+
+
+
+
+
+
+
+
+

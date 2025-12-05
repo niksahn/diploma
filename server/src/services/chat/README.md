@@ -153,3 +153,12 @@ swag init -g main.go -o docs --parseDependency --parseInternal
 - `WEBSOCKET_ENABLED` - Включить WebSocket (по умолчанию: true)
 - `WEBSOCKET_PING_INTERVAL` - Интервал ping в секундах (по умолчанию: 30)
 
+
+
+
+
+
+
+
+
+

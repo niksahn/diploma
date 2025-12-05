@@ -37,3 +37,12 @@ func NewDB(cfg *config.Config) (*DB, error) {
 func (db *DB) Close() {
 	db.Pool.Close()
 }
+
+
+
+
+
+
+
+
+

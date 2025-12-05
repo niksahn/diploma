@@ -150,107 +150,6 @@ alwaysApply: true
 
 **Проверка актуальности**: Перед коммитом изменений в код убедиться, что соответствующая документация обновлена.
 
-### Backend разработка (Go)
-1. Использовать **Go (Golang)** для всех backend сервисов
-2. Структура проекта:
-   - `/services/auth`, `/services/user`, `/services/workspace`, `/services/chat`, `/services/task`, `/services/complaint`
-   - `/gateway` для API Gateway
-3. Библиотеки:
-   - `Gin` или `Echo` для REST API
-   - `gorilla/websocket` или `nhooyr.io/websocket` для WebSocket
-   - `pgx` или `GORM` для работы с PostgreSQL
-4. Обязательная обработка ошибок, логирование
-5. JWT токены (Access/Refresh) для аутентификации
-6. Использование goroutines для конкурентности
-
-### База данных
-1. Следовать схеме из [`server/diagrs/Laba5.ddl`](server/diagrs/Laba5.ddl)
-2. Использовать миграции (например, `golang-migrate`)
-3. Поддержка ACID транзакций
-4. Индексы согласно DDL схеме
-
-### Docker и инфраструктура
-1. Каждый сервис - отдельный Docker контейнер
-2. Единый `docker-compose.yml` для оркестрации (обычно в `server/src/docker-compose.yml`)
-3. PostgreSQL в отдельном контейнере
-4. Volumes для персистентности данных БД
-5. Сервисы должны иметь зависимости (depends_on)
-
-### API и протоколы
-1. REST API для CRUD операций
-2. WebSocket для реального времени (чаты)
-3. JSON для сериализации данных
-4. Единая точка входа через API Gateway
-5. Валидация запросов на уровне Gateway
-
-### Безопасность
-1. Хеширование паролей (bcrypt)
-2. JWT токены для авторизации
-3. Проверка прав доступа на уровне сервисов
-4. Роли пользователей в рабочих пространствах
-
-### Архитектурные принципы
-1. Изоляция компонентов - каждый сервис независим
-2. Масштабируемость - горизонтальное масштабирование сервисов
-3. Микросервисная архитектура
-4. Разделение ответственности между сервисами
-5. Асинхронная обработка где необходимо
-
-### Тестирование
-
-**ОБЯЗАТЕЛЬНО**: Для каждого микросервиса должны быть написаны функциональные тесты на Python, которые покрывают все эндпоинты сервиса.
-
-**Требования к тестированию**:
-1. **Язык тестирования**: Python
-2. **Тип тестов**: Функциональные (интеграционные) тесты
-3. **Покрытие**: Все эндпоинты каждого микросервиса должны быть покрыты тестами
-4. **Структура тестов**:
-   - Тесты для каждого микросервиса в отдельной директории (например, `tests/services/auth/`, `tests/services/user/`, и т.д.)
-   - Тесты для API Gateway в `tests/gateway/`
-   - Каждый эндпоинт должен иметь отдельный тест-кейс
-5. **Библиотеки для тестирования**:
-   - `pytest` - основной фреймворк для тестирования
-   - `requests` или `httpx` - для HTTP запросов к API
-   - `websocket-client` или `websockets` - для тестирования WebSocket соединений
-   - `pytest-docker` или `testcontainers` - для поднятия тестовых контейнеров (опционально)
-6. **Сценарии тестирования**:
-   - Успешные запросы (happy path)
-   - Обработка ошибок (неверные данные, отсутствие авторизации, неверные права доступа)
-   - Валидация входных данных
-   - Проверка кодов ответов HTTP
-   - Проверка структуры JSON ответов
-7. **Запуск тестов**:
-   - Тесты должны запускаться в изолированной среде (Docker контейнеры)
-   - Использовать тестовую базу данных или моки
-   - Тесты должны быть независимыми и идемпотентными
-8. **Интеграция в CI/CD**:
-   - Тесты должны запускаться автоматически при коммитах
-   - Все тесты должны проходить перед мерджем в основную ветку
-
-**Структура директории тестов**:
-```
-tests/
-├── gateway/
-│   └── test_gateway_endpoints.py
-├── services/
-│   ├── auth/
-│   │   └── test_auth_endpoints.py
-│   ├── user/
-│   │   └── test_user_endpoints.py
-│   ├── workspace/
-│   │   └── test_workspace_endpoints.py
-│   ├── chat/
-│   │   ├── test_chat_endpoints.py
-│   │   └── test_websocket.py
-│   ├── task/
-│   │   └── test_task_endpoints.py
-│   └── complaint/
-│       └── test_complaint_endpoints.py
-├── conftest.py  # Общие фикстуры и настройки
-└── requirements.txt  # Зависимости для тестов
-```
-
-**Приоритет тестирования**: Тесты должны разрабатываться параллельно с реализацией эндпоинтов или сразу после их реализации.
 
 ## Обращение к документации
 
@@ -272,13 +171,13 @@ tests/
 
 **REST API Документация** (полная спецификация всех эндпоинтов):
 - **Главная страница API**: [`server/plans/api/README.md`](server/plans/api/README.md) - обзор всех 58 эндпоинтов
-- **API Gateway**: [`server/plans/api/gateway.md`](server/plans/api/gateway.md) - маршрутизация, health check (1 эндпоинт)
-- **Auth Service**: [`server/plans/api/auth_service.md`](server/plans/api/auth_service.md) - регистрация, логин, JWT (6 эндпоинтов)
-- **User Service**: [`server/plans/api/user_service.md`](server/plans/api/user_service.md) - профили, статусы, поиск (6 эндпоинтов)
-- **Workspace Service**: [`server/plans/api/workspace_service.md`](server/plans/api/workspace_service.md) - РП, участники, тарифы (12 эндпоинтов)
-- **Chat Service**: [`server/plans/api/chat_service.md`](server/plans/api/chat_service.md) - чаты, сообщения, WebSocket (15 эндпоинтов)
-- **Task Service**: [`server/plans/api/task_service.md`](server/plans/api/task_service.md) - задачи, исполнители, история (13 эндпоинтов)
-- **Complaint Service**: [`server/plans/api/complaint_service.md`](server/plans/api/complaint_service.md) - жалобы пользователей (5 эндпоинтов)
+- **API Gateway**: [`server/plans/api/gateway.md`](server/plans/api/gateway.md) - маршрутизация, health check 
+- **Auth Service**: [`server/plans/api/auth_service.md`](server/plans/api/auth_service.md) - регистрация, логин, JWT 
+- **User Service**: [`server/plans/api/user_service.md`](server/plans/api/user_service.md) - профили, статусы, поиск 
+- **Workspace Service**: [`server/plans/api/workspace_service.md`](server/plans/api/workspace_service.md) - РП, участники, тарифы 
+- **Chat Service**: [`server/plans/api/chat_service.md`](server/plans/api/chat_service.md) - чаты, сообщения, WebSocket 
+- **Task Service**: [`server/plans/api/task_service.md`](server/plans/api/task_service.md) - задачи, исполнители, история 
+- **Complaint Service**: [`server/plans/api/complaint_service.md`](server/plans/api/complaint_service.md) - жалобы пользователей 
 
 ## Приоритеты разработки
 1. Проектирование БД и миграции

@@ -1,0 +1,695 @@
+basePath: /api/v1
+definitions:
+  models.AddTaskAssigneesRequest:
+    properties:
+      user_ids:
+        items:
+          type: integer
+        minItems: 1
+        type: array
+    required:
+    - user_ids
+    type: object
+  models.AttachTaskToChatRequest:
+    properties:
+      chat_id:
+        type: integer
+    required:
+    - chat_id
+    type: object
+  models.CreateTaskRequest:
+    properties:
+      assigned_users:
+        items:
+          type: integer
+        type: array
+      chat_id:
+        type: integer
+      date:
+        type: string
+      description:
+        type: string
+      status:
+        type: integer
+      title:
+        maxLength: 100
+        minLength: 3
+        type: string
+      workspace_id:
+        type: integer
+    required:
+    - date
+    - title
+    - workspace_id
+    type: object
+  models.ErrorResponse:
+    properties:
+      error:
+        properties:
+          code:
+            type: string
+          details:
+            items:
+              properties:
+                field:
+                  type: string
+                message:
+                  type: string
+              type: object
+            type: array
+          message:
+            type: string
+        type: object
+    type: object
+  models.SuccessResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+    type: object
+  models.TaskAssigneeResponse:
+    properties:
+      assigned_at:
+        type: string
+      login:
+        type: string
+      name:
+        type: string
+      patronymic:
+        type: string
+      surname:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  models.TaskAssigneesResponse:
+    properties:
+      assignees:
+        items:
+          $ref: '#/definitions/models.TaskAssigneeResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  models.TaskChangeResponse:
+    properties:
+      changed_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      task_id:
+        type: integer
+    type: object
+  models.TaskChatResponse:
+    properties:
+      attached_at:
+        type: string
+      chat_id:
+        type: integer
+      chat_name:
+        type: string
+      chat_type:
+        type: integer
+      workspace_id:
+        type: integer
+    type: object
+  models.TaskChatsResponse:
+    properties:
+      chats:
+        items:
+          $ref: '#/definitions/models.TaskChatResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  models.TaskHistoryResponse:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/models.TaskChangeResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  models.TaskListResponse:
+    properties:
+      tasks:
+        items:
+          $ref: '#/definitions/models.TaskResponse'
+        type: array
+      total:
+        type: integer
+    type: object
+  models.TaskResponse:
+    properties:
+      assignee_count:
+        type: integer
+      chat_count:
+        type: integer
+      created_at:
+        type: string
+      creator:
+        type: integer
+      creator_name:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      status:
+        type: integer
+      status_name:
+        type: string
+      title:
+        type: string
+      workspace_id:
+        type: integer
+      workspace_name:
+        type: string
+    type: object
+  models.UpdateTaskRequest:
+    properties:
+      date:
+        type: string
+      description:
+        type: string
+      title:
+        type: string
+    type: object
+  models.UpdateTaskStatusRequest:
+    properties:
+      status:
+        maximum: 5
+        minimum: 1
+        type: integer
+    required:
+    - status
+    type: object
+host: localhost:8085
+info:
+  contact:
+    email: support@messenger.local
+    name: API Support
+  description: Микросервис управления задачами для корпоративного мессенджера
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Task Service API
+  version: 1.0.0
+paths:
+  /tasks:
+    get:
+      description: Возвращает список задач в рабочем пространстве
+      parameters:
+      - description: ID рабочего пространства
+        in: query
+        name: workspace_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TaskListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить список задач
+      tags:
+      - tasks
+    post:
+      consumes:
+      - application/json
+      description: Создает новую задачу в рабочем пространстве
+      parameters:
+      - description: Данные задачи
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.TaskResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Создать задачу
+      tags:
+      - tasks
+  /tasks/{id}:
+    delete:
+      description: Удаляет задачу (только создатель)
+      parameters:
+      - description: ID задачи
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Удалить задачу
+      tags:
+      - tasks
+    get:
+      description: Возвращает детальную информацию о задаче
+      parameters:
+      - description: ID задачи
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TaskResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить информацию о задаче
+      tags:
+      - tasks
+    put:
+      consumes:
+      - application/json
+      description: Обновляет информацию о задаче
+      parameters:
+      - description: ID задачи
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Обновляемые данные задачи
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить задачу
+      tags:
+      - tasks
+  /tasks/{id}/assignees:
+    get:
+      description: Возвращает список исполнителей задачи
+      parameters:
+      - description: ID задачи
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TaskAssigneesResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить список исполнителей
+      tags:
+      - tasks
+    post:
+      consumes:
+      - application/json
+      description: Добавляет исполнителей к задаче
+      parameters:
+      - description: ID задачи
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Список пользователей
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.AddTaskAssigneesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Назначить исполнителей
+      tags:
+      - tasks
+  /tasks/{id}/assignees/{user_id}:
+    delete:
+      description: Удаляет исполнителя из задачи
+      parameters:
+      - description: ID задачи
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID пользователя
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Удалить исполнителя
+      tags:
+      - tasks
+  /tasks/{id}/chats:
+    get:
+      description: Возвращает список чатов, к которым прикреплена задача
+      parameters:
+      - description: ID задачи
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TaskChatsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить список чатов задачи
+      tags:
+      - tasks
+    post:
+      consumes:
+      - application/json
+      description: Прикрепляет задачу к чату в том же рабочем пространстве
+      parameters:
+      - description: ID задачи
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID чата
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.AttachTaskToChatRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Прикрепить задачу к чату
+      tags:
+      - tasks
+  /tasks/{id}/chats/{chat_id}:
+    delete:
+      description: Открепляет задачу от указанного чата
+      parameters:
+      - description: ID задачи
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ID чата
+        in: path
+        name: chat_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Открепить задачу от чата
+      tags:
+      - tasks
+  /tasks/{id}/history:
+    get:
+      description: Возвращает историю изменений задачи
+      parameters:
+      - description: ID задачи
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TaskHistoryResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить историю изменений
+      tags:
+      - tasks
+  /tasks/{id}/status:
+    put:
+      consumes:
+      - application/json
+      description: Изменяет статус задачи
+      parameters:
+      - description: ID задачи
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новый статус
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateTaskStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Изменить статус задачи
+      tags:
+      - tasks
+securityDefinitions:
+  BearerAuth:
+    description: 'JWT токен в формате: Bearer {token}. Gateway проверяет токен и добавляет
+      X-User-ID и X-User-Role в заголовки'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
