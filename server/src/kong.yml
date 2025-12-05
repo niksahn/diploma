@@ -189,39 +189,6 @@ services:
           latency_metrics: true
           bandwidth_metrics: true
 
-  # Swagger UI Service
-  - name: swagger-ui-service
-    url: http://swagger-ui:8080
-    routes:
-      - name: swagger-ui-main-route
-        paths:
-          - /swagger
-          - /swagger/
-        strip_path: false
-        methods: ["GET"]
-        preserve_host: false
-
-  # Kong Admin API Service для Swagger
-  - name: kong-admin-service
-    url: http://kong:8001
-    routes:
-      - name: kong-swagger-route
-        paths:
-          - /swagger/kong.json
-        strip_path: true
-        methods: ["GET"]
-        preserve_host: false
-        plugins:
-          # Заменяем ответ на наш OpenAPI файл
-          - name: response-transformer
-            config:
-              add:
-                headers:
-                  - "Content-Type:application/json"
-          - name: request-transformer
-            config:
-              replace:
-                uri: "/kong-openapi.json"
 
   # Task Service - управление задачами
   - name: task-service
@@ -277,6 +244,28 @@ services:
           latency_metrics: true
           bandwidth_metrics: true
 
+  # Kong Admin API Service для Swagger
+  - name: kong-admin-service
+    url: http://kong:8001
+    routes:
+      - name: kong-swagger-route
+        paths:
+          - /swagger/kong.json
+        strip_path: true
+        methods: ["GET"]
+        preserve_host: false
+        plugins:
+          # Заменяем ответ на наш OpenAPI файл
+          - name: response-transformer
+            config:
+              add:
+                headers:
+                  - "Content-Type:application/json"
+          - name: request-transformer
+            config:
+              replace:
+                uri: "/kong-openapi.json"
+
   # TODO: Добавить complaint-service когда будет реализован
   # - name: complaint-service
   #   url: http://complaint-service:8086
@@ -299,161 +288,138 @@ services:
   #     - name: prometheus
 
 # Swagger UI роуты для каждого микросервиса
-routes:
-  # Auth Service Swagger
-  - name: auth-swagger-route
-    paths:
-      - /swagger/auth
-      - /swagger/auth/
-    methods: ["GET"]
-    service:
-      name: auth-service
-    preserve_host: false
-    plugins:
-      - name: request-transformer
-        config:
-          replace:
-            uri: "/docs/swagger.json"
-      - name: cors
-        config:
-          origins:
-            - "*"
-          methods: ["GET"]
-          headers: ["*"]
+- name: auth-swagger-route
+  paths:
+    - /swagger/auth
+    - /swagger/auth/
+  methods: ["GET"]
+  service:
+    name: auth-service
+  preserve_host: false
+  plugins:
+    - name: request-transformer
+      config:
+        replace:
+          uri: "/docs/swagger.json"
+    - name: cors
+      config:
+        origins:
+          - "*"
+        methods: ["GET"]
+        headers: ["*"]
 
-  # User Service Swagger
-  - name: user-swagger-route
-    paths:
-      - /swagger/user
-      - /swagger/user/
-    methods: ["GET"]
-    service:
-      name: user-service
-    preserve_host: false
-    plugins:
-      - name: request-transformer
-        config:
-          replace:
-            uri: "/docs/swagger.json"
-      - name: cors
-        config:
-          origins:
-            - "*"
-          methods: ["GET"]
-          headers: ["*"]
+- name: user-swagger-route
+  paths:
+    - /swagger/user
+    - /swagger/user/
+  methods: ["GET"]
+  service:
+    name: user-service
+  preserve_host: false
+  plugins:
+    - name: request-transformer
+      config:
+        replace:
+          uri: "/docs/swagger.json"
+    - name: cors
+      config:
+        origins:
+          - "*"
+        methods: ["GET"]
+        headers: ["*"]
 
-  # Workspace Service Swagger
-  - name: workspace-swagger-route
-    paths:
-      - /swagger/workspace
-      - /swagger/workspace/
-    methods: ["GET"]
-    service:
-      name: workspace-service
-    preserve_host: false
-    plugins:
-      - name: request-transformer
-        config:
-          replace:
-            uri: "/docs/swagger.json"
-      - name: cors
-        config:
-          origins:
-            - "*"
-          methods: ["GET"]
-          headers: ["*"]
+- name: workspace-swagger-route
+  paths:
+    - /swagger/workspace
+    - /swagger/workspace/
+  methods: ["GET"]
+  service:
+    name: workspace-service
+  preserve_host: false
+  plugins:
+    - name: request-transformer
+      config:
+        replace:
+          uri: "/docs/swagger.json"
+    - name: cors
+      config:
+        origins:
+          - "*"
+        methods: ["GET"]
+        headers: ["*"]
 
-  # Chat Service Swagger
-  - name: chat-swagger-route
-    paths:
-      - /swagger/chat
-      - /swagger/chat/
-    methods: ["GET"]
-    service:
-      name: chat-service
-    preserve_host: false
-    plugins:
-      - name: request-transformer
-        config:
-          replace:
-            uri: "/docs/swagger.json"
-      - name: cors
-        config:
-          origins:
-            - "*"
-          methods: ["GET"]
-          headers: ["*"]
+- name: chat-swagger-route
+  paths:
+    - /swagger/chat
+    - /swagger/chat/
+  methods: ["GET"]
+  service:
+    name: chat-service
+  preserve_host: false
+  plugins:
+    - name: request-transformer
+      config:
+        replace:
+          uri: "/docs/swagger.json"
+    - name: cors
+      config:
+        origins:
+          - "*"
+        methods: ["GET"]
+        headers: ["*"]
 
-  # Task Service Swagger
-  - name: task-swagger-route
-    paths:
-      - /swagger/task
-      - /swagger/task/
-    methods: ["GET"]
-    service:
-      name: task-service
-    preserve_host: false
-    plugins:
-      - name: request-transformer
-        config:
-          replace:
-            uri: "/docs/swagger.json"
-      - name: cors
-        config:
-          origins:
-            - "*"
-          methods: ["GET"]
-          headers: ["*"]
+- name: task-swagger-route
+  paths:
+    - /swagger/task
+    - /swagger/task/
+  methods: ["GET"]
+  service:
+    name: task-service
+  preserve_host: false
+  plugins:
+    - name: request-transformer
+      config:
+        replace:
+          uri: "/docs/swagger.json"
+    - name: cors
+      config:
+        origins:
+          - "*"
+        methods: ["GET"]
+        headers: ["*"]
 
-  # Основной Swagger UI
-  - name: swagger-ui-route
-    paths:
-      - /swagger
-      - /swagger/
-    methods: ["GET"]
-    service:
-      name: swagger-ui-service
-    preserve_host: false
-    plugins:
-      - name: cors
-        config:
-          origins:
-            - "*"
-          methods: ["GET"]
-          headers: ["*"]
+# Kong Admin API Swagger
+- name: kong-admin-swagger-route
+  paths:
+    - /swagger/kong.json
+  methods: ["GET"]
+  service:
+    name: kong-admin-service
+  preserve_host: false
+  plugins:
+    - name: cors
+      config:
+        origins:
+          - "*"
+        methods: ["GET"]
+        headers: ["*"]
 
-  # Kong Admin API Swagger
-  - name: kong-admin-swagger-route
-    paths:
-      - /swagger/kong.json
-    methods: ["GET"]
-    service:
-      name: kong-admin-service
-    preserve_host: false
-    plugins:
-      - name: cors
-        config:
-          origins:
-            - "*"
-          methods: ["GET"]
-          headers: ["*"]
-
-  # Health check роут (публичный)
-  - name: health-route
-    paths:
-      - /health
-    methods: ["GET"]
-    service:
-      name: auth-service  # Используем auth service для health check
-    preserve_host: false
-    plugins:
-      # CORS для health check
-      - name: cors
-        config:
-          origins:
-            - "*"
-          methods:
-            - GET
-          headers:
-            - Authorization
-            - Content-Type
+# Health check роут (публичный)
+- name: health-route
+  paths:
+    - /health
+  methods: ["GET"]
+  service:
+    name: auth-service  # Используем auth service для health check
+  preserve_host: false
+  plugins:
+    # CORS для health check
+    - name: cors
+      config:
+        origins:
+          - "*"
+        methods:
+          - GET
+        headers:
+          - Authorization
+          - Content-Type
