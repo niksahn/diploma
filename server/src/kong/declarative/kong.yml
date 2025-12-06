@@ -14,18 +14,51 @@ services:
         strip_path: false
         methods: ["GET", "POST", "PUT", "DELETE"]
         preserve_host: false
+      - name: auth-swagger-route
+        paths:
+          - /swagger/auth
+          - /swagger/auth/
+        methods: ["GET"]
+        preserve_host: false
+        plugins:
+          - name: request-transformer
+            config:
+              replace:
+                uri: "/docs/swagger.json"
+          - name: cors
+            config:
+              origins:
+                - "*"
+              methods: ["GET"]
+              headers: ["*"]
+      - name: health-route
+        paths:
+          - /health
+        methods: ["GET"]
+        preserve_host: false
+        plugins:
+          - name: cors
+            config:
+              origins:
+                - "*"
+              methods:
+                - GET
+              headers:
+                - Authorization
+                - Content-Type
     plugins:
       # Rate limiting для auth endpoints (строгое ограничение)
-      - name: rate-limiting
-        config:
-          minute: 5
-          policy: local
-          hide_client_headers: false
-      # CORS для веб-клиентов
+      # - name: rate-limiting
+      #   config:
+      #     minute: 5
+      #     policy: local
+      #     hide_client_headers: false
+      # CORS для веб-клиентов и Swagger UI
       - name: cors
         config:
           origins:
             - "http://localhost:3000"
+            - "http://localhost:8089"
             - "https://messenger.example.com"
           methods:
             - GET
@@ -48,6 +81,23 @@ services:
         strip_path: false
         methods: ["GET", "POST", "PUT", "DELETE"]
         preserve_host: false
+      - name: user-swagger-route
+        paths:
+          - /swagger/user
+          - /swagger/user/
+        methods: ["GET"]
+        preserve_host: false
+        plugins:
+          - name: request-transformer
+            config:
+              replace:
+                uri: "/docs/swagger.json"
+          - name: cors
+            config:
+              origins:
+                - "*"
+              methods: ["GET"]
+              headers: ["*"]
     plugins:
       # JWT валидация для защищенных эндпоинтов
       - name: jwt
@@ -64,16 +114,17 @@ services:
               - "X-User-ID:$(jwt.claims.user_id)"
               - "X-User-Role:$(jwt.claims.role)"
       # Rate limiting для защищенных запросов
-      - name: rate-limiting
-        config:
-          minute: 100
-          policy: local
-          hide_client_headers: false
-      # CORS для веб-клиентов
+      # - name: rate-limiting
+      #   config:
+      #     minute: 100
+      #     policy: local
+      #     hide_client_headers: false
+      # CORS для веб-клиентов и Swagger UI
       - name: cors
         config:
           origins:
             - "http://localhost:3000"
+            - "http://localhost:8089"
             - "https://messenger.example.com"
           methods:
             - GET
@@ -103,6 +154,23 @@ services:
         strip_path: false
         methods: ["GET", "POST", "PUT", "DELETE"]
         preserve_host: false
+      - name: workspace-swagger-route
+        paths:
+          - /swagger/workspace
+          - /swagger/workspace/
+        methods: ["GET"]
+        preserve_host: false
+        plugins:
+          - name: request-transformer
+            config:
+              replace:
+                uri: "/docs/swagger.json"
+          - name: cors
+            config:
+              origins:
+                - "*"
+              methods: ["GET"]
+              headers: ["*"]
     plugins:
       # JWT валидация для защищенных эндпоинтов
       - name: jwt
@@ -119,16 +187,17 @@ services:
               - "X-User-ID:$(jwt.claims.user_id)"
               - "X-User-Role:$(jwt.claims.role)"
       # Rate limiting для защищенных запросов
-      - name: rate-limiting
-        config:
-          minute: 100
-          policy: local
-          hide_client_headers: false
-      # CORS для веб-клиентов
+      # - name: rate-limiting
+      #   config:
+      #     minute: 100
+      #     policy: local
+      #     hide_client_headers: false
+      # CORS для веб-клиентов и Swagger UI
       - name: cors
         config:
           origins:
             - "http://localhost:3000"
+            - "http://localhost:8089"
             - "https://messenger.example.com"
           methods:
             - GET
@@ -166,6 +235,23 @@ services:
         methods: ["GET"]
         preserve_host: false
         protocols: ["http", "https"]
+      - name: chat-swagger-route
+        paths:
+          - /swagger/chat
+          - /swagger/chat/
+        methods: ["GET"]
+        preserve_host: false
+        plugins:
+          - name: request-transformer
+            config:
+              replace:
+                uri: "/docs/swagger.json"
+          - name: cors
+            config:
+              origins:
+                - "*"
+              methods: ["GET"]
+              headers: ["*"]
     plugins:
       # JWT валидация для защищенных эндпоинтов
       - name: jwt
@@ -182,16 +268,17 @@ services:
               - "X-User-ID:$(jwt.claims.user_id)"
               - "X-User-Role:$(jwt.claims.role)"
       # Rate limiting для защищенных запросов
-      - name: rate-limiting
-        config:
-          minute: 100
-          policy: local
-          hide_client_headers: false
-      # CORS для веб-клиентов
+      # - name: rate-limiting
+      #   config:
+      #     minute: 100
+      #     policy: local
+      #     hide_client_headers: false
+      # CORS для веб-клиентов и Swagger UI
       - name: cors
         config:
           origins:
             - "http://localhost:3000"
+            - "http://localhost:8089"
             - "https://messenger.example.com"
           methods:
             - GET
@@ -224,6 +311,13 @@ services:
         strip_path: false
         methods: ["GET"]
         preserve_host: false
+        plugins:
+          - name: cors
+            config:
+              origins:
+                - "*"
+              methods: ["GET"]
+              headers: ["*"]
 
   # Kong Admin API Service для Swagger
   - name: kong-admin-service
@@ -246,6 +340,12 @@ services:
             config:
               replace:
                 uri: "/kong-openapi.json"
+          - name: cors
+            config:
+              origins:
+                - "*"
+              methods: ["GET"]
+              headers: ["*"]
 
   # TODO: Добавить task-service когда будет реализован
   # - name: task-service
@@ -289,141 +389,3 @@ services:
   #     - name: cors
   #     - name: prometheus
 
-# Swagger UI роуты для каждого микросервиса
-routes:
-  # Auth Service Swagger
-  - name: auth-swagger-route
-    paths:
-      - /swagger/auth
-      - /swagger/auth/
-    methods: ["GET"]
-    service:
-      name: auth-service
-    preserve_host: false
-    plugins:
-      - name: request-transformer
-        config:
-          replace:
-            uri: "/docs/swagger.json"
-      - name: cors
-        config:
-          origins:
-            - "*"
-          methods: ["GET"]
-          headers: ["*"]
-
-  # User Service Swagger
-  - name: user-swagger-route
-    paths:
-      - /swagger/user
-      - /swagger/user/
-    methods: ["GET"]
-    service:
-      name: user-service
-    preserve_host: false
-    plugins:
-      - name: request-transformer
-        config:
-          replace:
-            uri: "/docs/swagger.json"
-      - name: cors
-        config:
-          origins:
-            - "*"
-          methods: ["GET"]
-          headers: ["*"]
-
-  # Workspace Service Swagger
-  - name: workspace-swagger-route
-    paths:
-      - /swagger/workspace
-      - /swagger/workspace/
-    methods: ["GET"]
-    service:
-      name: workspace-service
-    preserve_host: false
-    plugins:
-      - name: request-transformer
-        config:
-          replace:
-            uri: "/docs/swagger.json"
-      - name: cors
-        config:
-          origins:
-            - "*"
-          methods: ["GET"]
-          headers: ["*"]
-
-  # Chat Service Swagger
-  - name: chat-swagger-route
-    paths:
-      - /swagger/chat
-      - /swagger/chat/
-    methods: ["GET"]
-    service:
-      name: chat-service
-    preserve_host: false
-    plugins:
-      - name: request-transformer
-        config:
-          replace:
-            uri: "/docs/swagger.json"
-      - name: cors
-        config:
-          origins:
-            - "*"
-          methods: ["GET"]
-          headers: ["*"]
-
-  # Основной Swagger UI
-  - name: swagger-ui-route
-    paths:
-      - /swagger
-      - /swagger/
-    methods: ["GET"]
-    service:
-      name: swagger-ui-service
-    preserve_host: false
-    plugins:
-      - name: cors
-        config:
-          origins:
-            - "*"
-          methods: ["GET"]
-          headers: ["*"]
-
-  # Kong Admin API Swagger
-  - name: kong-admin-swagger-route
-    paths:
-      - /swagger/kong.json
-    methods: ["GET"]
-    service:
-      name: kong-admin-service
-    preserve_host: false
-    plugins:
-      - name: cors
-        config:
-          origins:
-            - "*"
-          methods: ["GET"]
-          headers: ["*"]
-
-  # Health check роут (публичный)
-  - name: health-route
-    paths:
-      - /health
-    methods: ["GET"]
-    service:
-      name: auth-service  # Используем auth service для health check
-    preserve_host: false
-    plugins:
-      # CORS для health check
-      - name: cors
-        config:
-          origins:
-            - "*"
-          methods:
-            - GET
-          headers:
-            - Authorization
-            - Content-Type

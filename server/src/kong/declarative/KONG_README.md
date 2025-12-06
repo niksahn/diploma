@@ -282,17 +282,11 @@ server/src/
 
 ## Swagger API Documentation
 
-Kong Gateway предоставляет полную Swagger документацию для всех API.
+Swagger UI предоставляет полную документацию для всех API сервисов.
 
 ### Доступ к документации
 
 - **Объединенная Swagger UI**: http://localhost:8089
-- **Отдельные сервисы**:
-  - Auth Service: http://localhost:8080/swagger/auth/
-  - User Service: http://localhost:8080/swagger/user/
-  - Workspace Service: http://localhost:8080/swagger/workspace/
-  - Chat Service: http://localhost:8080/swagger/chat/
-  - Kong Gateway: http://localhost:8080/swagger/kong.json
 
 ### Объединенная документация
 
@@ -301,24 +295,34 @@ Swagger UI на порту 8089 предоставляет:
 - **Переключение между сервисами** через dropdown
 - **Try it out** функциональность для тестирования
 - **Авторизация** через JWT токены
+- **Все запросы идут через Kong Gateway** (localhost:8080) с применением всех плагинов
 
 ### Использование Swagger UI
 
 1. **Открыть**: http://localhost:8089
-2. **Выбрать сервис** из списка
+2. **Выбрать сервис** из списка (Auth, User, Workspace, Chat, Task, Kong Gateway)
 3. **Авторизоваться** (для защищенных эндпоинтов):
    - Нажать "Authorize"
    - Ввести: `Bearer <your_jwt_token>`
 4. **Тестировать эндпоинты** с помощью "Try it out"
 
-### Kong Admin API
+**Важно**: Все запросы из Swagger UI идут через Kong Gateway на порту 8080, поэтому применяются все плагины:
+- JWT валидация
+- Rate limiting
+- CORS
+- Request transformation (добавление X-User-ID и X-User-Role)
 
-Kong Admin API также документирован:
-- **Swagger JSON**: http://localhost:8080/swagger/kong.json
-- **Включает эндпоинты для**:
-  - Управления сервисами и роутами
-  - Мониторинга плагинов
-  - Проверки upstream health
+### Структура файлов
+
+Swagger JSON файлы хранятся в `server/src/swagger-docs/`:
+- `auth.json` - Auth Service
+- `user.json` - User Service
+- `workspace.json` - Workspace Service
+- `chat.json` - Chat Service
+- `task.json` - Task Service
+- `kong.json` - Kong Gateway Admin API
+
+Все файлы имеют `host: localhost:8080`, чтобы запросы шли через Kong Gateway.
 
 ---
 
