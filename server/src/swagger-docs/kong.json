@@ -1,0 +1,252 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Kong Gateway API",
+    "description": "Kong Gateway Admin API для управления корпоративным мессенджером",
+    "version": "3.4.0",
+    "contact": {
+      "name": "Kong Gateway",
+      "url": "https://docs.konghq.com/gateway/latest/"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8001",
+      "description": "Kong Admin API"
+    }
+  ],
+  "security": [],
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Kong Gateway Info",
+        "description": "Получить информацию о Kong Gateway",
+        "responses": {
+          "200": {
+            "description": "Информация о Kong",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "string",
+                      "example": "3.4.0"
+                    },
+                    "hostname": {
+                      "type": "string",
+                      "example": "kong"
+                    },
+                    "node_id": {
+                      "type": "string",
+                      "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/services": {
+      "get": {
+        "summary": "Список сервисов",
+        "description": "Получить список всех зарегистрированных сервисов",
+        "responses": {
+          "200": {
+            "description": "Список сервисов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {"type": "string"},
+                          "name": {"type": "string", "example": "auth-service"},
+                          "url": {"type": "string", "example": "http://auth-service:8081"},
+                          "created_at": {"type": "integer"}
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/routes": {
+      "get": {
+        "summary": "Список роутов",
+        "description": "Получить список всех маршрутов",
+        "responses": {
+          "200": {
+            "description": "Список роутов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {"type": "string"},
+                          "service": {
+                            "type": "object",
+                            "properties": {
+                              "name": {"type": "string", "example": "auth-service"}
+                            }
+                          },
+                          "paths": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "example": ["/api/v1/auth"]
+                          },
+                          "methods": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "example": ["GET", "POST"]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/plugins": {
+      "get": {
+        "summary": "Список плагинов",
+        "description": "Получить список всех активных плагинов",
+        "responses": {
+          "200": {
+            "description": "Список плагинов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {"type": "string"},
+                          "name": {"type": "string", "example": "jwt"},
+                          "service": {
+                            "type": "object",
+                            "properties": {
+                              "name": {"type": "string", "example": "user-service"}
+                            }
+                          },
+                          "config": {"type": "object"}
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/upstreams": {
+      "get": {
+        "summary": "Upstream сервисы",
+        "description": "Получить информацию о состоянии upstream сервисов",
+        "responses": {
+          "200": {
+            "description": "Список upstream сервисов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {"type": "string"},
+                          "name": {"type": "string", "example": "auth-service"},
+                          "healthchecks": {
+                            "type": "object",
+                            "properties": {
+                              "healthy": {"type": "boolean"},
+                              "threshold": {"type": "number"}
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/status": {
+      "get": {
+        "summary": "Статус Kong",
+        "description": "Получить статус Kong Gateway",
+        "responses": {
+          "200": {
+            "description": "Статус Kong",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "database": {
+                      "type": "object",
+                      "properties": {
+                        "reachable": {"type": "boolean"}
+                      }
+                    },
+                    "server": {
+                      "type": "object",
+                      "properties": {
+                        "connections_accepted": {"type": "integer"},
+                        "connections_active": {"type": "integer"},
+                        "connections_handled": {"type": "integer"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "http",
+        "scheme": "basic"
+      }
+    }
+  }
+}
+
+
+
+
+
+
