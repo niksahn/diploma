@@ -1,6 +1,6 @@
 # Complaint Service
 
-**Статус**: ⬜ Не реализован
+**Статус**: ✅ Реализован
 
 **Порт**: `8086`
 
@@ -46,7 +46,8 @@ Complaint Service обрабатывает жалобы пользователе
   "author": 1,
   "author_name": "Ivan Ivanov",
   "status": "pending",
-  "created_at": "2024-01-01T12:00:00Z"
+  "created_at": "2024-01-01T12:00:00Z",
+  "updated_at": "2024-01-01T12:00:00Z"
 }
 ```
 
@@ -99,7 +100,7 @@ Complaint Service обрабатывает жалобы пользователе
       "author_name": "Petr Petrov",
       "status": "in_progress",
       "created_at": "2024-01-02T10:00:00Z",
-      "assigned_to": "Admin",
+      "assigned_to": "admin@example.com",
       "updated_at": "2024-01-02T11:00:00Z"
     }
   ],
@@ -139,7 +140,7 @@ Complaint Service обрабатывает жалобы пользователе
     {
       "status": "in_progress",
       "comment": "Investigating the issue",
-      "changed_by": "Admin",
+      "changed_by": "admin@example.com",
       "changed_at": "2024-01-01T14:00:00Z"
     },
     {
@@ -186,7 +187,7 @@ Complaint Service обрабатывает жалобы пользователе
   "id": 1,
   "status": "resolved",
   "comment": "Issue fixed in version 1.2.3",
-  "changed_by": "Admin",
+  "changed_by": "admin@example.com",
   "changed_at": "2024-01-03T00:00:00Z"
 }
 ```
@@ -242,11 +243,15 @@ CREATE TABLE complaints (
   text VARCHAR(255) NOT NULL,
   date DATE NOT NULL,
   deviceDescription VARCHAR(255) NOT NULL,
-  author INT4 NOT NULL REFERENCES users(id)
+  author INT4 NOT NULL REFERENCES users(id),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','in_progress','resolved','rejected')),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX complaints_id ON complaints(id);
 CREATE INDEX complaints_author ON complaints(author);
+CREATE INDEX complaints_status ON complaints(status);
 ```
 
 ### Дополнительная таблица для истории (опционально)
@@ -260,6 +265,8 @@ CREATE TABLE complaint_status_history (
   changed_by INT4 REFERENCES administrators(id),
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX complaint_status_history_complaint_idx ON complaint_status_history(complaint_id);
 ```
 
 ---
@@ -360,7 +367,7 @@ Thank you for your feedback!
 
 ---
 
-**Последнее обновление**: 2024-12-04
+**Последнее обновление**: 2025-12-06
 
 
 

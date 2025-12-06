@@ -19,7 +19,7 @@ services:
       - "8002:8002"    # Kong Manager GUI
     volumes:
       - ./kong/declarative/kong.yml:/kong/declarative/kong.yml:ro
-      - ./swagger-docs/kong-openapi.json
+      - ./swagger-docs/kong-openapi.json:/usr/local/kong/kong-openapi.json:ro
     restart: always
 
   postgres:
@@ -160,28 +160,28 @@ services:
         condition: service_started
     restart: always
 
-  # TODO: Реализовать complaint-service
-  # complaint-service:
-  #   build:
-  #     context: ./services/complaint
-  #     dockerfile: Dockerfile
-  #   container_name: messenger_complaint_service
-  #   ports:
-  #     - "8086:8086"
-  #   environment:
-  #     PORT: 8086
-  #     DB_HOST: postgres
-  #     DB_PORT: 5432
-  #     DB_NAME: messenger_db
-  #     DB_USER: user
-  #     DB_PASSWORD: password
-  #     AUTH_SERVICE_URL: http://auth-service:8081
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     kong:
-  #       condition: service_started
-  #       restart: always
+  complaint-service:
+    build:
+      context: ./services/complaint
+      dockerfile: Dockerfile
+    container_name: messenger_complaint_service
+    ports:
+      - "8086:8086"
+    environment:
+      PORT: 8086
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: messenger_db
+      DB_USER: user
+      DB_PASSWORD: password
+      AUTH_SERVICE_URL: http://auth-service:8081
+      USER_SERVICE_URL: http://user-service:8082
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kong:
+        condition: service_started
+    restart: always
 
 
   # Swagger UI для документации API
@@ -198,6 +198,7 @@ services:
           {"name": "Workspace Service", "url": "/swagger-docs/workspace.json"},
           {"name": "Chat Service", "url": "/swagger-docs/chat.json"},
           {"name": "Task Service", "url": "/swagger-docs/task.json"},
+          {"name": "Complaint Service", "url": "/swagger-docs/complaint.json"},
           {"name": "Kong Gateway", "url": "/swagger-docs/kong.json"}
         ]
       URLS_PRIMARY_NAME: "Auth Service"
@@ -222,4 +223,3 @@ services:
 
 volumes:
   postgres_data:
-  kong_data:

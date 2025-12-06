@@ -3,6 +3,14 @@ _format_version: "3.0"
 # Kong Gateway declarative configuration
 # Все сервисы, роуты и плагины для корпоративного мессенджера
 
+# Consumer для JWT валидации
+consumers:
+  - username: auth-service
+    jwt_secrets:
+      - key: "messenger-auth-service"
+        secret: "your_jwt_secret_key_here_minimum_32_characters_long_for_production"
+        algorithm: HS256
+
 services:
   # Auth Service - аутентификация и JWT токены
   - name: auth-service
@@ -12,7 +20,7 @@ services:
         paths:
           - /api/v1/auth
         strip_path: false
-        methods: ["GET", "POST", "PUT", "DELETE"]
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
         preserve_host: false
       - name: auth-swagger-route
         paths:
@@ -47,13 +55,6 @@ services:
                 - Authorization
                 - Content-Type
     plugins:
-      # Rate limiting для auth endpoints (строгое ограничение)
-      # - name: rate-limiting
-      #   config:
-      #     minute: 5
-      #     policy: local
-      #     hide_client_headers: false
-      # CORS для веб-клиентов и Swagger UI
       - name: cors
         config:
           origins:
@@ -79,7 +80,7 @@ services:
         paths:
           - /api/v1/users
         strip_path: false
-        methods: ["GET", "POST", "PUT", "DELETE"]
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
         preserve_host: false
       - name: user-swagger-route
         paths:
@@ -106,19 +107,6 @@ services:
           key_claim_name: iss
           claims_to_verify:
             - exp
-      # Прокидывание user_id и role в заголовки
-      - name: request-transformer
-        config:
-          add:
-            headers:
-              - "X-User-ID:$(jwt.claims.user_id)"
-              - "X-User-Role:$(jwt.claims.role)"
-      # Rate limiting для защищенных запросов
-      # - name: rate-limiting
-      #   config:
-      #     minute: 100
-      #     policy: local
-      #     hide_client_headers: false
       # CORS для веб-клиентов и Swagger UI
       - name: cors
         config:
@@ -152,7 +140,7 @@ services:
         paths:
           - /api/v1/workspaces
         strip_path: false
-        methods: ["GET", "POST", "PUT", "DELETE"]
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
         preserve_host: false
       - name: workspace-swagger-route
         paths:
@@ -179,19 +167,6 @@ services:
           key_claim_name: iss
           claims_to_verify:
             - exp
-      # Прокидывание user_id и role в заголовки
-      - name: request-transformer
-        config:
-          add:
-            headers:
-              - "X-User-ID:$(jwt.claims.user_id)"
-              - "X-User-Role:$(jwt.claims.role)"
-      # Rate limiting для защищенных запросов
-      # - name: rate-limiting
-      #   config:
-      #     minute: 100
-      #     policy: local
-      #     hide_client_headers: false
       # CORS для веб-клиентов и Swagger UI
       - name: cors
         config:
@@ -225,7 +200,7 @@ services:
         paths:
           - /api/v1/chats
         strip_path: false
-        methods: ["GET", "POST", "PUT", "DELETE"]
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
         preserve_host: false
       # Отдельный роут для WebSocket соединений
       - name: websocket-route
@@ -260,19 +235,6 @@ services:
           key_claim_name: iss
           claims_to_verify:
             - exp
-      # Прокидывание user_id и role в заголовки
-      - name: request-transformer
-        config:
-          add:
-            headers:
-              - "X-User-ID:$(jwt.claims.user_id)"
-              - "X-User-Role:$(jwt.claims.role)"
-      # Rate limiting для защищенных запросов
-      # - name: rate-limiting
-      #   config:
-      #     minute: 100
-      #     policy: local
-      #     hide_client_headers: false
       # CORS для веб-клиентов и Swagger UI
       - name: cors
         config:
@@ -347,45 +309,86 @@ services:
               methods: ["GET"]
               headers: ["*"]
 
-  # TODO: Добавить task-service когда будет реализован
-  # - name: task-service
-  #   url: http://task-service:8085
-  #   routes:
-  #     - name: task-route
-  #       paths:
-  #         - /api/v1/tasks
-  #       strip_path: false
-  #       methods: ["GET", "POST", "PUT", "DELETE"]
-  #   plugins:
-  #     - name: jwt
-  #     - name: request-transformer
-  #       config:
-  #         add:
-  #           headers:
-  #             - "X-User-ID:$(jwt.claims.user_id)"
-  #             - "X-User-Role:$(jwt.claims.role)"
-  #     - name: rate-limiting
-  #     - name: cors
-  #     - name: prometheus
+  - name: task-service
+    url: http://task-service:8085
+    routes:
+      - name: task-route
+        paths:
+          - /api/v1/tasks
+        strip_path: false
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    plugins:
+      - name: jwt
+        config:
+          secret_is_base64: false
+          key_claim_name: iss
+          claims_to_verify:
+            - exp
+      - name: request-transformer
+        config:
+          add:
+            headers:
+              - "X-User-ID:$(jwt.claims.user_id)"
+              - "X-User-Role:$(jwt.claims.role)"
+      - name: cors
+        config:
+          origins:
+            - "http://localhost:3000"
+            - "http://localhost:8089"
+            - "https://messenger.example.com"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+          credentials: true
+      - name: prometheus
+        config:
+          per_consumer: false
+          status_code_metrics: true
+          latency_metrics: true
+          bandwidth_metrics: true
 
-  # TODO: Добавить complaint-service когда будет реализован
-  # - name: complaint-service
-  #   url: http://complaint-service:8086
-  #   routes:
-  #     - name: complaint-route
-  #       paths:
-  #         - /api/v1/complaints
-  #       strip_path: false
-  #       methods: ["GET", "POST", "PUT", "DELETE"]
-  #   plugins:
-  #     - name: jwt
-  #     - name: request-transformer
-  #       config:
-  #         add:
-  #           headers:
-  #             - "X-User-ID:$(jwt.claims.user_id)"
-  #             - "X-User-Role:$(jwt.claims.role)"
-  #     - name: rate-limiting
-  #     - name: cors
-  #     - name: prometheus
+  - name: complaint-service
+    url: http://complaint-service:8086
+    routes:
+      - name: complaint-route
+        paths:
+          - /api/v1/complaints
+        strip_path: false
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    plugins:
+      - name: jwt
+        config:
+          secret_is_base64: false
+          key_claim_name: iss
+          claims_to_verify:
+            - exp
+      - name: request-transformer
+        config:
+          add:
+            headers:
+              - "X-User-ID:$(jwt.claims.user_id)"
+              - "X-User-Role:$(jwt.claims.role)"
+      - name: cors
+        config:
+          origins:
+            - "http://localhost:3000"
+            - "http://localhost:8089"
+            - "https://messenger.example.com"
+          methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+          headers:
+            - Authorization
+            - Content-Type
+          credentials: true
+      - name: prometheus
+        config:
+          per_consumer: false
+          status_code_metrics: true
+          latency_metrics: true
+          bandwidth_metrics: true
 
