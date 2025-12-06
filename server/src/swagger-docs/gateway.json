@@ -1,0 +1,127 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Gateway API",
+    "version": "1.0.0",
+    "description": "Go API Gateway (passthrough to auth/user/workspace/chat/task/complaint). JWT validated via auth-service; forwards X-User-ID/X-User-Roles."
+  },
+  "host": "localhost:8080",
+  "basePath": "/",
+  "schemes": ["http"],
+  "securityDefinitions": {
+    "BearerAuth": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "Bearer <token>"
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": { "type": "string", "example": "ok" },
+                "service": { "type": "string", "example": "gateway" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/api/v1/gateway/me": {
+      "get": {
+        "tags": ["gateway"],
+        "summary": "Current user profile with workspaces",
+        "description": "Fan-out to user-service `/api/v1/users/me` and workspace-service `/api/v1/workspaces`.",
+        "security": [{ "BearerAuth": [] }],
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "Aggregated profile",
+            "schema": { "$ref": "#/definitions/AggregatedProfile" }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": { "$ref": "#/definitions/Error" }
+          },
+          "502": {
+            "description": "Upstream error",
+            "schema": { "$ref": "#/definitions/Error" }
+          }
+        }
+      }
+    },
+
+    "/api/v1/auth/register": { "$ref": "./auth.json#/paths/~1auth~1register" },
+    "/api/v1/auth/login": { "$ref": "./auth.json#/paths/~1auth~1login" },
+    "/api/v1/auth/refresh": { "$ref": "./auth.json#/paths/~1auth~1refresh" },
+    "/api/v1/auth/logout": { "$ref": "./auth.json#/paths/~1auth~1logout" },
+    "/api/v1/auth/admin/login": { "$ref": "./auth.json#/paths/~1auth~1admin~1login" },
+    "/api/v1/auth/admin/register": { "$ref": "./auth.json#/paths/~1auth~1admin~1register" },
+    "/api/v1/auth/validate": { "$ref": "./auth.json#/paths/~1auth~1validate" },
+
+    "/api/v1/users": { "$ref": "./user.json#/paths/~1users" },
+    "/api/v1/users/me": { "$ref": "./user.json#/paths/~1users~1me" },
+    "/api/v1/users/me/status": { "$ref": "./user.json#/paths/~1users~1me~1status" },
+    "/api/v1/users/workspace/{workspace_id}": { "$ref": "./user.json#/paths/~1users~1workspace~1{workspace_id}" },
+    "/api/v1/users/{id}": { "$ref": "./user.json#/paths/~1users~1{id}" },
+
+    "/api/v1/workspaces": { "$ref": "./workspace.json#/paths/~1workspaces" },
+    "/api/v1/workspaces/{id}": { "$ref": "./workspace.json#/paths/~1workspaces~1{id}" },
+    "/api/v1/workspaces/{id}/members": { "$ref": "./workspace.json#/paths/~1workspaces~1{id}~1members" },
+    "/api/v1/workspaces/{id}/members/{user_id}": { "$ref": "./workspace.json#/paths/~1workspaces~1{id}~1members~1{user_id}" },
+    "/api/v1/workspaces/{id}/leader": { "$ref": "./workspace.json#/paths/~1workspaces~1{id}~1leader" },
+    "/api/v1/workspaces/tariffs": { "$ref": "./workspace.json#/paths/~1workspaces~1tariffs" },
+    "/api/v1/workspaces/tariffs/{id}": { "$ref": "./workspace.json#/paths/~1workspaces~1tariffs~1{id}" },
+
+    "/api/v1/chats": { "$ref": "./chat.json#/paths/~1chats" },
+    "/api/v1/chats/{id}": { "$ref": "./chat.json#/paths/~1chats~1{id}" },
+    "/api/v1/chats/{id}/members": { "$ref": "./chat.json#/paths/~1chats~1{id}~1members" },
+    "/api/v1/chats/{id}/members/{user_id}": { "$ref": "./chat.json#/paths/~1chats~1{id}~1members~1{user_id}" },
+    "/api/v1/chats/{id}/messages": { "$ref": "./chat.json#/paths/~1chats~1{id}~1messages" },
+    "/api/v1/chats/{id}/messages/{message_id}": { "$ref": "./chat.json#/paths/~1chats~1{id}~1messages~1{message_id}" },
+    "/api/v1/chats/{id}/messages/read": { "$ref": "./chat.json#/paths/~1chats~1{id}~1messages~1read" },
+    "/api/v1/chats/ws": { "$ref": "./chat.json#/paths/~1chats~1ws" },
+
+    "/api/v1/tasks": { "$ref": "./task.json#/paths/~1tasks" },
+    "/api/v1/tasks/{id}": { "$ref": "./task.json#/paths/~1tasks~1{id}" },
+    "/api/v1/tasks/{id}/status": { "$ref": "./task.json#/paths/~1tasks~1{id}~1status" },
+    "/api/v1/tasks/{id}/assignees": { "$ref": "./task.json#/paths/~1tasks~1{id}~1assignees" },
+    "/api/v1/tasks/{id}/assignees/{user_id}": { "$ref": "./task.json#/paths/~1tasks~1{id}~1assignees~1{user_id}" },
+    "/api/v1/tasks/{id}/chats": { "$ref": "./task.json#/paths/~1tasks~1{id}~1chats" },
+    "/api/v1/tasks/{id}/chats/{chat_id}": { "$ref": "./task.json#/paths/~1tasks~1{id}~1chats~1{chat_id}" },
+    "/api/v1/tasks/{id}/history": { "$ref": "./task.json#/paths/~1tasks~1{id}~1history" },
+
+    "/api/v1/complaints": { "$ref": "./complaint.json#/paths/~1complaints" },
+    "/api/v1/complaints/{id}": { "$ref": "./complaint.json#/paths/~1complaints~1{id}" },
+    "/api/v1/complaints/{id}/status": { "$ref": "./complaint.json#/paths/~1complaints~1{id}~1status" }
+  },
+
+  "definitions": {
+    "AggregatedProfile": {
+      "type": "object",
+      "properties": {
+        "user": { "$ref": "./user.json#/definitions/models.UserInfo" },
+        "workspaces": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "Error": {
+      "type": "object",
+      "properties": {
+        "message": { "type": "string", "example": "upstream unavailable" }
+      }
+    }
+  }
+}
+

@@ -23,6 +23,7 @@
 
 **Статус**: ✅ Готово (Kong выведен из эксплуатации)
 
+- [x] Единый swagger Gateway (`/swagger-docs/gateway.json`)
 - [x] Proxy `/api/v1/auth/*` → Auth Service (без auth middleware)
 - [x] Proxy `/api/v1/users/*` → User Service
 - [x] Proxy `/api/v1/workspaces/*` → Workspace Service
