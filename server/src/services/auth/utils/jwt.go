@@ -21,6 +21,7 @@ func GenerateAccessToken(cfg *config.Config, userID int, role string) (string, e
 		UserID: userID,
 		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    "messenger-auth-service",
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(cfg.JWTAccessExpiration) * time.Second)),
 			IssuedAt:   jwt.NewNumericDate(time.Now()),
 		},
@@ -38,6 +39,7 @@ func GenerateRefreshToken(cfg *config.Config, userID int, role string) (string, 
 		Role:   role,
 		Type:   "refresh",
 		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    "messenger-auth-service",
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
