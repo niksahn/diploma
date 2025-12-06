@@ -2,26 +2,6 @@ version: '3.8'
 
 services:
 
-  # Kong Gateway - единая точка входа
-  kong:
-    image: kong:3.4
-    container_name: messenger_kong
-    environment:
-      KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
-      KONG_ADMIN_LISTEN: 0.0.0.0:8001
-      KONG_ADMIN_GUI_LISTEN: 0.0.0.0:8002
-      KONG_PROXY_LISTEN: 0.0.0.0:8000
-      KONG_PLUGINS: bundled,jwt,request-transformer,cors,prometheus
-    ports:
-      - "8080:8000"    # Kong Proxy (единая точка входа)
-      - "8001:8001"    # Kong Admin API
-      - "8002:8002"    # Kong Manager GUI
-    volumes:
-      - ./kong/declarative/kong.yml:/kong/declarative/kong.yml:ro
-      - ./swagger-docs/kong-openapi.json:/usr/local/kong/kong-openapi.json:ro
-    restart: always
-
   postgres:
     image: postgres:15-alpine
     container_name: messenger_postgres
@@ -61,8 +41,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      kong:
-        condition: service_started
     restart: always
 
   user-service:
@@ -82,8 +60,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      kong:
-        condition: service_started
     restart: always
 
   workspace-service:
@@ -105,8 +81,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      kong:
-        condition: service_started
     restart: always
 
   chat-service:
@@ -131,8 +105,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      kong:
-        condition: service_started
     restart: always
 
   task-service:
@@ -156,8 +128,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      kong:
-        condition: service_started
     restart: always
 
   complaint-service:
@@ -179,7 +149,38 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      kong:
+    restart: always
+
+  gateway:
+    build:
+      context: ./services/gateway
+      dockerfile: Dockerfile
+    container_name: messenger_gateway
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      AUTH_SERVICE_URL: http://auth-service:8081
+      USER_SERVICE_URL: http://user-service:8082
+      WORKSPACE_SERVICE_URL: http://workspace-service:8083
+      CHAT_SERVICE_URL: http://chat-service:8084
+      TASK_SERVICE_URL: http://task-service:8085
+      COMPLAINT_SERVICE_URL: http://complaint-service:8086
+      SWAGGER_UI_SERVICE_URL: http://swagger-ui:8080
+      AUTH_VALIDATE_ENDPOINT: /api/v1/auth/validate
+      REQUEST_TIMEOUT: 10s
+    depends_on:
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+      workspace-service:
+        condition: service_started
+      chat-service:
+        condition: service_started
+      task-service:
+        condition: service_started
+      complaint-service:
         condition: service_started
     restart: always
 
@@ -199,7 +200,7 @@ services:
           {"name": "Chat Service", "url": "/swagger-docs/chat.json"},
           {"name": "Task Service", "url": "/swagger-docs/task.json"},
           {"name": "Complaint Service", "url": "/swagger-docs/complaint.json"},
-          {"name": "Kong Gateway", "url": "/swagger-docs/kong.json"}
+          {"name": "Gateway", "url": "/swagger-docs/gateway.json"}
         ]
       URLS_PRIMARY_NAME: "Auth Service"
       TRY_IT_OUT_ENABLED: "true"
@@ -216,9 +217,7 @@ services:
       - ./swagger-docs:/usr/share/nginx/html/swagger-docs:ro
     ports:
       - "8089:8080"  # Swagger UI на порту 8089
-    depends_on:
-      kong:
-        condition: service_started
+    depends_on: []
     restart: always
 
 volumes:

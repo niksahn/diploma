@@ -10,19 +10,28 @@
 
 | Статус | Количество |
 |--------|-----------|
-| **Всего эндпоинтов** | 58 |
-| **Реализовано** | 58 |
+| **Всего эндпоинтов** | 59 |
+| **Реализовано** | 59 |
 | **В разработке** | 0 |
 | **Осталось** | 0 |
 
 ---
 
-## 1. Kong Gateway (`:8080`)
+## 1. Go API Gateway (`:8080`)
 
 **Документация**: [gateway.md](./api/gateway.md)
 
-**Статус**: ✅ Готово
+**Статус**: ✅ Готово (Kong выведен из эксплуатации)
 
+- [x] Proxy `/api/v1/auth/*` → Auth Service (без auth middleware)
+- [x] Proxy `/api/v1/users/*` → User Service
+- [x] Proxy `/api/v1/workspaces/*` → Workspace Service
+- [x] Proxy `/api/v1/chats/*` → Chat Service
+- [x] Proxy `/api/v1/tasks/*` → Task Service
+- [x] Proxy `/api/v1/complaints/*` → Complaint Service
+- [x] `WS /ws` → Chat Service
+- [x] `GET /api/v1/gateway/me` — агрегирующий (профиль + рабочие пространства)
+- [x] Swagger прокси `/swagger/<service>/*`
 - [x] `GET /health` - Health check
 
 ---
@@ -174,7 +183,7 @@
 ## Приоритеты разработки
 
 ### Фаза 1: Основа (Критично)
-1. ✅ Kong Gateway - Маршрутизация, JWT валидация, CORS, rate limiting
+1. ✅ Go API Gateway - Маршрутизация, JWT валидация, прокси, swagger
 2. ✅ Auth Service - Регистрация и логин (7 эндпоинтов)
 3. ✅ User Service - Базовые операции с профилем (7 эндпоинтов)
 
