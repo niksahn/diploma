@@ -180,17 +180,17 @@ volumes:
 | **Workspace Service** | 8083 | `/workspaces`, `/workspaces/:id/members`, `/tariffs` | 12 | ✅ |
 | **Chat Service** | 8084 | `/chats`, `/chats/:id/messages`, WebSocket | 15 | ✅ |
 | **Task Service** | 8085 | `/tasks`, `/tasks/:id/assignees`, `/tasks/:id/status` | 13 | ✅ |
-| **Complaint Service** | 8086 | `/complaints`, `/complaints/:id/status` | 5 | ⬜ |
+| **Complaint Service** | 8086 | `/complaints`, `/complaints/:id/status` | 5 | ✅ |
 
 **Итого: 58 REST эндпоинтов + 1 WebSocket соединение**
 
-**Статус реализации**: 54/58 эндпоинтов (93%)
+**Статус реализации**: 58/58 эндпоинтов (100%)
 - ✅ Auth Service: 7/7 эндпоинтов
 - ✅ User Service: 7/7 эндпоинтов
 - ✅ Workspace Service: 12/12 эндпоинтов
 - ✅ Chat Service: 15/15 эндпоинтов + WebSocket
 - ✅ Task Service: 13/13 эндпоинтов
-- ⬜ Complaint Service: 0/5 эндпоинтов (в разработке)
+- ✅ Complaint Service: 5/5 эндпоинтов
 
 ## 6. План разработки (Roadmap)
 
