@@ -718,9 +718,9 @@ CREATE TABLE messages (
 );
 ```
 
-**userInChat**:
+**userinchat**:
 ```sql
-CREATE TABLE userInChat (
+CREATE TABLE userinchat (
   id SERIAL PRIMARY KEY,
   chatsid INT4 NOT NULL REFERENCES chats(id),
   usersid INT4 NOT NULL REFERENCES users(id),

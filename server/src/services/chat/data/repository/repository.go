@@ -122,7 +122,7 @@ func (r *Repository) GetUserChats(ctx context.Context, userID int, workspaceID *
 		query = `
 			SELECT DISTINCT c.id, c.name, c.type, c.workspacesid
 			FROM chats c
-			INNER JOIN "userInChat" uic ON c.id = uic.chatsid
+			INNER JOIN "userinchat" uic ON c.id = uic.chatsid
 			WHERE uic.usersid = $1 AND c.workspacesid = $2 AND c.type = $3
 			ORDER BY c.id
 		`
@@ -131,7 +131,7 @@ func (r *Repository) GetUserChats(ctx context.Context, userID int, workspaceID *
 		query = `
 			SELECT DISTINCT c.id, c.name, c.type, c.workspacesid
 			FROM chats c
-			INNER JOIN "userInChat" uic ON c.id = uic.chatsid
+			INNER JOIN "userinchat" uic ON c.id = uic.chatsid
 			WHERE uic.usersid = $1 AND c.workspacesid = $2
 			ORDER BY c.id
 		`
@@ -140,7 +140,7 @@ func (r *Repository) GetUserChats(ctx context.Context, userID int, workspaceID *
 		query = `
 			SELECT DISTINCT c.id, c.name, c.type, c.workspacesid
 			FROM chats c
-			INNER JOIN "userInChat" uic ON c.id = uic.chatsid
+			INNER JOIN "userinchat" uic ON c.id = uic.chatsid
 			WHERE uic.usersid = $1 AND c.type = $2
 			ORDER BY c.id
 		`
@@ -149,7 +149,7 @@ func (r *Repository) GetUserChats(ctx context.Context, userID int, workspaceID *
 		query = `
 			SELECT DISTINCT c.id, c.name, c.type, c.workspacesid
 			FROM chats c
-			INNER JOIN "userInChat" uic ON c.id = uic.chatsid
+			INNER JOIN "userinchat" uic ON c.id = uic.chatsid
 			WHERE uic.usersid = $1
 			ORDER BY c.id
 		`
@@ -185,7 +185,7 @@ func (r *Repository) GetUserChats(ctx context.Context, userID int, workspaceID *
 // AddUserToChat добавляет пользователя в чат
 func (r *Repository) AddUserToChat(ctx context.Context, chatID, userID, role int) error {
 	query := `
-		INSERT INTO "userInChat" (chatsid, usersid, role, date)
+		INSERT INTO "userinchat" (chatsid, usersid, role, date)
 		VALUES ($1, $2, $3, CURRENT_DATE)
 		ON CONFLICT DO NOTHING
 	`
@@ -200,7 +200,7 @@ func (r *Repository) AddUserToChat(ctx context.Context, chatID, userID, role int
 
 // RemoveUserFromChat удаляет пользователя из чата
 func (r *Repository) RemoveUserFromChat(ctx context.Context, chatID, userID int) error {
-	query := `DELETE FROM "userInChat" WHERE chatsid = $1 AND usersid = $2`
+	query := `DELETE FROM "userinchat" WHERE chatsid = $1 AND usersid = $2`
 
 	result, err := r.db.Pool.Exec(ctx, query, chatID, userID)
 	if err != nil {
@@ -217,7 +217,7 @@ func (r *Repository) RemoveUserFromChat(ctx context.Context, chatID, userID int)
 // UpdateUserRoleInChat обновляет роль пользователя в чате
 func (r *Repository) UpdateUserRoleInChat(ctx context.Context, chatID, userID, role int) error {
 	query := `
-		UPDATE "userInChat"
+		UPDATE "userinchat"
 		SET role = $1
 		WHERE chatsid = $2 AND usersid = $3
 	`
@@ -250,7 +250,7 @@ type ChatMember struct {
 func (r *Repository) GetChatMembers(ctx context.Context, chatID int) ([]ChatMember, error) {
 	query := `
 		SELECT uic.id, u.id, u.login, u.name, u.surname, u.patronymic, u.status, uic.role, uic.date
-		FROM "userInChat" uic
+		FROM "userinchat" uic
 		INNER JOIN users u ON uic.usersid = u.id
 		WHERE uic.chatsid = $1
 		ORDER BY u.surname, u.name
@@ -293,7 +293,7 @@ func (r *Repository) GetChatMembers(ctx context.Context, chatID int) ([]ChatMemb
 func (r *Repository) IsUserInChat(ctx context.Context, userID, chatID int) (bool, error) {
 	query := `
 		SELECT COUNT(*) > 0
-		FROM "userInChat"
+		FROM "userinchat"
 		WHERE usersid = $1 AND chatsid = $2
 	`
 
@@ -310,7 +310,7 @@ func (r *Repository) IsUserInChat(ctx context.Context, userID, chatID int) (bool
 func (r *Repository) GetUserRoleInChat(ctx context.Context, userID, chatID int) (int, error) {
 	query := `
 		SELECT role
-		FROM "userInChat"
+		FROM "userinchat"
 		WHERE usersid = $1 AND chatsid = $2
 	`
 
@@ -330,7 +330,7 @@ func (r *Repository) GetUserRoleInChat(ctx context.Context, userID, chatID int) 
 func (r *Repository) CountAdminsInChat(ctx context.Context, chatID int) (int, error) {
 	query := `
 		SELECT COUNT(*)
-		FROM "userInChat"
+		FROM "userinchat"
 		WHERE chatsid = $1 AND role = 2
 	`
 
@@ -347,7 +347,7 @@ func (r *Repository) CountAdminsInChat(ctx context.Context, chatID int) (int, er
 func (r *Repository) IsUserInWorkspace(ctx context.Context, userID, workspaceID int) (bool, error) {
 	query := `
 		SELECT COUNT(*) > 0
-		FROM "userInWorkspace"
+		FROM "userinworkspace"
 		WHERE usersid = $1 AND workspacesid = $2
 	`
 

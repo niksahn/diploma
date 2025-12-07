@@ -54,7 +54,7 @@ func (r *Repository) GetWorkspaceByID(ctx context.Context, workspaceID int) (*mo
 			w.tariffsid as tariff_id,
 			t.name as tariff_name,
 			t.description as tariff_description,
-			COALESCE((SELECT COUNT(*) FROM "userInWorkspace" WHERE workspacesid = w.id), 0) as members_count,
+			COALESCE((SELECT COUNT(*) FROM "userinworkspace" WHERE workspacesid = w.id), 0) as members_count,
 			COALESCE((SELECT COUNT(*) FROM chats WHERE workspacesid = w.id), 0) as chats_count,
 			COALESCE((SELECT COUNT(*) FROM tasks WHERE workspacesid = w.id), 0) as tasks_count
 		FROM workspaces w
@@ -90,7 +90,7 @@ func (r *Repository) GetUserWorkspaces(ctx context.Context, userID int) ([]model
 	query := `
 		SELECT w.id, w.name, uiw.role, uiw.date
 		FROM workspaces w
-		INNER JOIN "userInWorkspace" uiw ON w.id = uiw.workspacesid
+		INNER JOIN "userinworkspace" uiw ON w.id = uiw.workspacesid
 		WHERE uiw.usersid = $1
 		ORDER BY uiw.date DESC
 	`
@@ -196,7 +196,7 @@ func (r *Repository) WorkspaceNameExists(ctx context.Context, name string, exclu
 // AddMember добавляет пользователя в рабочее пространство
 func (r *Repository) AddMember(ctx context.Context, workspaceID, userID, role int) error {
 	query := `
-		INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date)
+		INSERT INTO "userinworkspace" (usersid, workspacesid, role, date)
 		VALUES ($1, $2, $3, $4)
 	`
 
@@ -221,7 +221,7 @@ func (r *Repository) GetMembers(ctx context.Context, workspaceID int) ([]models.
 			u.status,
 			uiw.date as joined_at
 		FROM users u
-		INNER JOIN "userInWorkspace" uiw ON u.id = uiw.usersid
+		INNER JOIN "userinworkspace" uiw ON u.id = uiw.usersid
 		WHERE uiw.workspacesid = $1
 		ORDER BY u.surname, u.name
 	`
@@ -264,7 +264,7 @@ func (r *Repository) GetMembers(ctx context.Context, workspaceID int) ([]models.
 // UpdateMemberRole изменяет роль пользователя в рабочем пространстве
 func (r *Repository) UpdateMemberRole(ctx context.Context, workspaceID, userID, role int) error {
 	query := `
-		UPDATE "userInWorkspace"
+		UPDATE "userinworkspace"
 		SET role = $1
 		WHERE workspacesid = $2 AND usersid = $3
 	`
@@ -284,7 +284,7 @@ func (r *Repository) UpdateMemberRole(ctx context.Context, workspaceID, userID, 
 // RemoveMember удаляет пользователя из рабочего пространства
 func (r *Repository) RemoveMember(ctx context.Context, workspaceID, userID int) error {
 	query := `
-		DELETE FROM "userInWorkspace"
+		DELETE FROM "userinworkspace"
 		WHERE workspacesid = $1 AND usersid = $2
 	`
 
@@ -304,7 +304,7 @@ func (r *Repository) RemoveMember(ctx context.Context, workspaceID, userID int) 
 func (r *Repository) IsMemberOfWorkspace(ctx context.Context, userID, workspaceID int) (bool, error) {
 	query := `
 		SELECT EXISTS(
-			SELECT 1 FROM "userInWorkspace"
+			SELECT 1 FROM "userinworkspace"
 			WHERE usersid = $1 AND workspacesid = $2
 		)
 	`
@@ -321,7 +321,7 @@ func (r *Repository) IsMemberOfWorkspace(ctx context.Context, userID, workspaceI
 // GetUserRoleInWorkspace получает роль пользователя в РП
 func (r *Repository) GetUserRoleInWorkspace(ctx context.Context, userID, workspaceID int) (int, error) {
 	query := `
-		SELECT role FROM "userInWorkspace"
+		SELECT role FROM "userinworkspace"
 		WHERE usersid = $1 AND workspacesid = $2
 	`
 
@@ -348,7 +348,7 @@ func (r *Repository) ChangeLeader(ctx context.Context, workspaceID, oldLeaderID,
 
 	// Понижаем старого руководителя до участника (роль 1)
 	updateOldQuery := `
-		UPDATE "userInWorkspace"
+		UPDATE "userinworkspace"
 		SET role = 1
 		WHERE workspacesid = $1 AND usersid = $2 AND role = 2
 	`
@@ -362,7 +362,7 @@ func (r *Repository) ChangeLeader(ctx context.Context, workspaceID, oldLeaderID,
 
 	// Повышаем нового руководителя (роль 2)
 	updateNewQuery := `
-		UPDATE "userInWorkspace"
+		UPDATE "userinworkspace"
 		SET role = 2
 		WHERE workspacesid = $1 AND usersid = $2
 	`

@@ -98,9 +98,9 @@ def clean_chat_data(db_cursor):
     yield
     # Очищаем таблицы, связанные с чатами
     # Порядок важен из-за внешних ключей
-    db_cursor.execute('DELETE FROM "taskInChat"')
+    db_cursor.execute('DELETE FROM "taskinchat"')
     db_cursor.execute('DELETE FROM messages')
-    db_cursor.execute('DELETE FROM "userInChat"')
+    db_cursor.execute('DELETE FROM "userinchat"')
     db_cursor.execute('DELETE FROM chats')
 
 
@@ -214,7 +214,7 @@ def workspace_with_members(admin_auth_headers, multiple_users, workspace_service
     # Первый пользователь уже является лидером, добавляем остальных
     for user in multiple_users[1:]:
         db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
+            'INSERT INTO "userinworkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
             (user["user_id"], workspace_id, 1)
         )
     

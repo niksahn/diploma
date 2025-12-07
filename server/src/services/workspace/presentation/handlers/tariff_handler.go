@@ -64,7 +64,11 @@ func (h *TariffHandler) GetTariffs(c *gin.Context) {
 // @Security BearerAuth
 // @Router /workspaces/tariffs [post]
 func (h *TariffHandler) CreateTariff(c *gin.Context) {
-	// Проверяем, что пользователь - администратор
+	adminID, err := getUserID(c)
+	if err != nil || adminID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
 	if !isAdmin(c) {
 		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "insufficient permissions"})
 		return
@@ -111,7 +115,11 @@ func (h *TariffHandler) CreateTariff(c *gin.Context) {
 // @Security BearerAuth
 // @Router /workspaces/tariffs/{id} [put]
 func (h *TariffHandler) UpdateTariff(c *gin.Context) {
-	// Проверяем, что пользователь - администратор
+	adminID, err := getUserID(c)
+	if err != nil || adminID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
 	if !isAdmin(c) {
 		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "insufficient permissions"})
 		return
