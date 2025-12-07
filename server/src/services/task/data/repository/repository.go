@@ -73,13 +73,13 @@ func (r *Repository) GetTasksByWorkspace(ctx context.Context, workspaceID, userI
 			t.description,
 			t.date,
 			t.status,
-			COALESCE((SELECT COUNT(*) FROM "userInTask" WHERE tasksid = t.id), 0) as assignee_count,
-			COALESCE((SELECT COUNT(*) FROM "taskInChat" WHERE tasksid = t.id), 0) as chat_count,
+			COALESCE((SELECT COUNT(*) FROM "userintask" WHERE tasksid = t.id), 0) as assignee_count,
+			COALESCE((SELECT COUNT(*) FROM "taskinchat" WHERE tasksid = t.id), 0) as chat_count,
 			t.date as created_at
 		FROM tasks t
 		INNER JOIN users u ON t.creator = u.id
 		INNER JOIN workspaces w ON t.workspacesid = w.id
-		INNER JOIN "userInWorkspace" uiw ON w.id = uiw.workspacesid AND uiw.usersid = $2
+		INNER JOIN "userinworkspace" uiw ON w.id = uiw.workspacesid AND uiw.usersid = $2
 		WHERE t.workspacesid = $1
 		ORDER BY t.date DESC, t.id DESC
 	`
@@ -131,13 +131,13 @@ func (r *Repository) GetTaskByID(ctx context.Context, taskID, userID int) (*mode
 			t.description,
 			t.date,
 			t.status,
-			COALESCE((SELECT COUNT(*) FROM "userInTask" WHERE tasksid = t.id), 0) as assignee_count,
-			COALESCE((SELECT COUNT(*) FROM "taskInChat" WHERE tasksid = t.id), 0) as chat_count,
+			COALESCE((SELECT COUNT(*) FROM "userintask" WHERE tasksid = t.id), 0) as assignee_count,
+			COALESCE((SELECT COUNT(*) FROM "taskinchat" WHERE tasksid = t.id), 0) as chat_count,
 			t.date as created_at
 		FROM tasks t
 		INNER JOIN users u ON t.creator = u.id
 		INNER JOIN workspaces w ON t.workspacesid = w.id
-		INNER JOIN "userInWorkspace" uiw ON w.id = uiw.workspacesid AND uiw.usersid = $2
+		INNER JOIN "userinworkspace" uiw ON w.id = uiw.workspacesid AND uiw.usersid = $2
 		WHERE t.id = $1
 	`
 
@@ -239,7 +239,7 @@ func (r *Repository) UpdateTaskStatus(ctx context.Context, taskID, status int) e
 // AddTaskAssignee добавляет исполнителя к задаче
 func (r *Repository) AddTaskAssignee(ctx context.Context, taskID, userID int) error {
 	query := `
-		INSERT INTO "userInTask" (tasksid, usersid)
+		INSERT INTO "userintask" (tasksid, usersid)
 		VALUES ($1, $2)
 		ON CONFLICT (tasksid, usersid) DO NOTHING
 	`
@@ -272,7 +272,7 @@ func (r *Repository) GetTaskAssignees(ctx context.Context, taskID int) ([]models
 			u.surname,
 			u.patronymic,
 			uit.tasksid as assigned_at
-		FROM "userInTask" uit
+		FROM "userintask" uit
 		INNER JOIN users u ON uit.usersid = u.id
 		WHERE uit.tasksid = $1
 		ORDER BY u.surname, u.name
@@ -306,7 +306,7 @@ func (r *Repository) GetTaskAssignees(ctx context.Context, taskID int) ([]models
 
 // RemoveTaskAssignee удаляет исполнителя из задачи
 func (r *Repository) RemoveTaskAssignee(ctx context.Context, taskID, userID int) error {
-	query := `DELETE FROM "userInTask" WHERE tasksid = $1 AND usersid = $2`
+	query := `DELETE FROM "userintask" WHERE tasksid = $1 AND usersid = $2`
 
 	result, err := r.db.Pool.Exec(ctx, query, taskID, userID)
 	if err != nil {
@@ -331,7 +331,7 @@ func (r *Repository) RemoveTaskAssignee(ctx context.Context, taskID, userID int)
 // AttachTaskToChat прикрепляет задачу к чату
 func (r *Repository) AttachTaskToChat(ctx context.Context, taskID, chatID int) error {
 	query := `
-		INSERT INTO "taskInChat" (chatsid, tasksid)
+		INSERT INTO "taskinchat" (chatsid, tasksid)
 		VALUES ($1, $2)
 		ON CONFLICT (chatsid, tasksid) DO NOTHING
 	`
@@ -363,7 +363,7 @@ func (r *Repository) GetTaskChats(ctx context.Context, taskID int) ([]models.Tas
 			c.type as chat_type,
 			c.workspacesid as workspace_id,
 			tic.chatsid as attached_at
-		FROM "taskInChat" tic
+		FROM "taskinchat" tic
 		INNER JOIN chats c ON tic.chatsid = c.id
 		WHERE tic.tasksid = $1
 		ORDER BY c.name
@@ -396,7 +396,7 @@ func (r *Repository) GetTaskChats(ctx context.Context, taskID int) ([]models.Tas
 
 // DetachTaskFromChat открепляет задачу от чата
 func (r *Repository) DetachTaskFromChat(ctx context.Context, taskID, chatID int) error {
-	query := `DELETE FROM "taskInChat" WHERE chatsid = $1 AND tasksid = $2`
+	query := `DELETE FROM "taskinchat" WHERE chatsid = $1 AND tasksid = $2`
 
 	result, err := r.db.Pool.Exec(ctx, query, chatID, taskID)
 	if err != nil {
@@ -422,7 +422,7 @@ func (r *Repository) DetachTaskFromChat(ctx context.Context, taskID, chatID int)
 func (r *Repository) GetTaskHistory(ctx context.Context, taskID int) ([]models.TaskChange, error) {
 	query := `
 		SELECT id, description, tasksid
-		FROM "taskChanges"
+		FROM "taskchanges"
 		WHERE tasksid = $1
 		ORDER BY id DESC
 	`
@@ -455,7 +455,7 @@ func (r *Repository) GetTaskHistory(ctx context.Context, taskID int) ([]models.T
 // ValidateUserInWorkspace проверяет, что пользователь является участником рабочего пространства
 func (r *Repository) ValidateUserInWorkspace(ctx context.Context, userID, workspaceID int) error {
 	query := `
-		SELECT 1 FROM "userInWorkspace"
+		SELECT 1 FROM "userinworkspace"
 		WHERE usersid = $1 AND workspacesid = $2
 	`
 
@@ -514,7 +514,7 @@ func (r *Repository) ValidateChatOwnership(ctx context.Context, chatID, workspac
 // addTaskChange добавляет запись в историю изменений задачи
 func (r *Repository) addTaskChange(ctx context.Context, taskID int, description string) error {
 	query := `
-		INSERT INTO "taskChanges" (description, tasksid)
+		INSERT INTO "taskchanges" (description, tasksid)
 		VALUES ($1, $2)
 	`
 

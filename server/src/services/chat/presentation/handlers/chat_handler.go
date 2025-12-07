@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/diploma/chat-service/data/repository"
@@ -21,16 +24,39 @@ func NewChatHandler(repo *repository.Repository) *ChatHandler {
 // getUserIDFromHeader извлекает userID из заголовка
 func getUserIDFromHeader(c *gin.Context) (int, error) {
 	userIDStr := c.GetHeader("X-User-ID")
-	if userIDStr == "" {
-		return 0, gin.Error{Err: nil, Type: gin.ErrorTypePublic, Meta: "user ID not found in header"}
+	if userIDStr != "" {
+		userID, err := strconv.Atoi(userIDStr)
+		if err != nil {
+			return 0, gin.Error{Err: err, Type: gin.ErrorTypePublic, Meta: "invalid user ID format"}
+		}
+		return userID, nil
 	}
 
-	userID, err := strconv.Atoi(userIDStr)
-	if err != nil {
-		return 0, gin.Error{Err: err, Type: gin.ErrorTypePublic, Meta: "invalid user ID format"}
+	// Fallback: попытаться извлечь user_id из JWT в Authorization без проверки подписи
+	auth := c.GetHeader("Authorization")
+	const bearer = "Bearer "
+	if strings.HasPrefix(auth, bearer) {
+		token := strings.TrimPrefix(auth, bearer)
+		parts := strings.Split(token, ".")
+		if len(parts) >= 2 {
+			payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+			if err == nil {
+				var claims map[string]interface{}
+				if err := json.Unmarshal(payload, &claims); err == nil {
+					if v, ok := claims["user_id"]; ok {
+						switch id := v.(type) {
+						case float64:
+							return int(id), nil
+						case int:
+							return id, nil
+						}
+					}
+				}
+			}
+		}
 	}
 
-	return userID, nil
+	return 0, gin.Error{Err: nil, Type: gin.ErrorTypePublic, Meta: "user ID not found in header"}
 }
 
 // CreateChat создает новый чат

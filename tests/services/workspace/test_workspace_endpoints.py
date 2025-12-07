@@ -115,8 +115,8 @@ class TestWorkspaceManagement:
         assert response.status_code == 409
 
     def test_get_workspaces_list(
-        self, workspace_service_url, workspace_api_path, admin_auth_headers, 
-        user_token, workspace_data, db_cursor, clean_workspace_data
+        self, workspace_service_url, workspace_api_path, admin_auth_headers,
+        user_token, workspace_data, user_auth_headers, db_cursor, clean_workspace_data
     ):
         """Получение списка РП текущего пользователя"""
         # Создаем РП
@@ -128,10 +128,12 @@ class TestWorkspaceManagement:
         )
         workspace_id = create_response.json()["id"]
 
-        # Добавляем пользователя в РП через БД
-        db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
-            (TEST_USER_ID, workspace_id, 1)
+        # Добавляем пользователя в РП через API лидером (созданный leader_id)
+        add_member_url = f"{workspace_service_url}{workspace_api_path}/{workspace_id}/members"
+        requests.post(
+            add_member_url,
+            json={"user_id": user_token["user_id"], "role": 1},
+            headers=user_auth_headers  # user_auth_headers соответствует user_token
         )
 
         # Получаем список РП от имени пользователя
@@ -149,8 +151,8 @@ class TestWorkspaceManagement:
         assert any(ws["id"] == workspace_id for ws in data["workspaces"])
 
     def test_get_workspace_by_id(
-        self, workspace_service_url, workspace_api_path, admin_auth_headers, 
-        user_token, workspace_data, db_cursor, clean_workspace_data
+        self, workspace_service_url, workspace_api_path, admin_auth_headers,
+        user_token, workspace_data, user_auth_headers, clean_workspace_data
     ):
         """Получение информации о РП по ID"""
         # Создаем РП
@@ -162,10 +164,12 @@ class TestWorkspaceManagement:
         )
         workspace_id = create_response.json()["id"]
 
-        # Добавляем пользователя в РП
-        db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
-            (TEST_USER_ID, workspace_id, 1)
+        # Добавляем пользователя в РП через API
+        add_member_url = f"{workspace_service_url}{workspace_api_path}/{workspace_id}/members"
+        requests.post(
+            add_member_url,
+            json={"user_id": user_token["user_id"], "role": 1},
+            headers=user_auth_headers
         )
 
         # Получаем информацию о РП
@@ -185,7 +189,7 @@ class TestWorkspaceManagement:
 
     def test_get_workspace_not_member(
         self, workspace_service_url, workspace_api_path, admin_auth_headers, 
-        user_token, workspace_data, clean_workspace_data
+        user_token, workspace_data, clean_workspace_data, another_user_headers
     ):
         """Попытка получить информацию о РП, в котором пользователь не состоит"""
         # Создаем РП
@@ -201,7 +205,7 @@ class TestWorkspaceManagement:
         url = f"{workspace_service_url}{workspace_api_path}/{workspace_id}"
         response = requests.get(
             url,
-            headers=user_auth_headers
+            headers=another_user_headers
         )
 
         assert response.status_code == 403
@@ -219,8 +223,8 @@ class TestWorkspaceManagement:
         assert response.status_code == 404
 
     def test_update_workspace_success(
-        self, workspace_service_url, workspace_api_path, admin_auth_headers, 
-        user_token, workspace_data, db_cursor, clean_workspace_data, tariff_id
+        self, workspace_service_url, workspace_api_path, admin_auth_headers,
+        user_token, workspace_data, user_auth_headers, clean_workspace_data, tariff_id
     ):
         """Обновление РП руководителем"""
         # Создаем РП
@@ -232,17 +236,17 @@ class TestWorkspaceManagement:
         )
         workspace_id = create_response.json()["id"]
 
-        # Добавляем пользователя как руководителя (role = 2)
-        db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
-            (TEST_USER_ID, workspace_id, 2)
-        )
+        # Лидер уже добавлен сервисом (leader_id из workspace_data)
 
-        # Создаем новый тариф для обновления
-        db_cursor.execute(
-            "INSERT INTO tariffs (name, description) VALUES ('New Tariff', 'New Description') RETURNING id"
+        # Создаем новый тариф через API
+        new_tariff_name = f"New Tariff {workspace_id}"
+        create_tariff_url = f"{workspace_service_url}{workspace_api_path}/tariffs"
+        ct_resp = requests.post(
+            create_tariff_url,
+            json={"name": new_tariff_name, "description": "New Description"},
+            headers=admin_auth_headers
         )
-        new_tariff_id = db_cursor.fetchone()['id']
+        new_tariff_id = ct_resp.json().get("id")
 
         # Обновляем РП
         update_data = {
@@ -262,8 +266,8 @@ class TestWorkspaceManagement:
         assert data["tariff_id"] == new_tariff_id
 
     def test_update_workspace_forbidden(
-        self, workspace_service_url, workspace_api_path, admin_auth_headers, 
-        user_token, workspace_data, db_cursor, clean_workspace_data
+        self, workspace_service_url, workspace_api_path, admin_auth_headers,
+        user_token, workspace_data, user_auth_headers, clean_workspace_data
     ):
         """Попытка обновить РП обычным участником (не руководителем)"""
         # Создаем РП
@@ -275,10 +279,12 @@ class TestWorkspaceManagement:
         )
         workspace_id = create_response.json()["id"]
 
-        # Добавляем пользователя как обычного участника (role = 1)
-        db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
-            (TEST_USER_ID, workspace_id, 1)
+        # Добавляем пользователя как обычного участника (role = 1) через API
+        add_member_url = f"{workspace_service_url}{workspace_api_path}/{workspace_id}/members"
+        requests.post(
+            add_member_url,
+            json={"user_id": user_token["user_id"], "role": 1},
+            headers=user_auth_headers
         )
 
         # Пытаемся обновить РП
@@ -317,7 +323,7 @@ class TestWorkspaceManagement:
 
     def test_delete_workspace_forbidden(
         self, workspace_service_url, workspace_api_path, admin_auth_headers, 
-        user_token, workspace_data, clean_workspace_data
+        user_token, workspace_data, user_auth_headers, clean_workspace_data
     ):
         """Попытка удалить РП не администратором"""
         # Создаем РП
@@ -343,8 +349,8 @@ class TestWorkspaceMembers:
     """Тесты управления участниками РП"""
 
     def test_add_member_success(
-        self, workspace_service_url, workspace_api_path, admin_auth_headers, 
-        user_token, workspace_data, db_cursor, clean_workspace_data, 
+        self, workspace_service_url, workspace_api_path, admin_auth_headers,
+        user_token, workspace_data, user_auth_headers, clean_workspace_data,
         auth_service_url, auth_api_path, unique_timestamp
     ):
         """Добавление участника в РП"""
@@ -358,9 +364,10 @@ class TestWorkspaceMembers:
         workspace_id = create_response.json()["id"]
 
         # Добавляем пользователя как руководителя
-        db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
-            (TEST_USER_ID, workspace_id, 2)
+        requests.post(
+            f"{workspace_service_url}{workspace_api_path}/{workspace_id}/members",
+            json={"user_id": user_token["user_id"], "role": 2},
+            headers=user_auth_headers
         )
 
         # Создаем второго пользователя для добавления
@@ -396,8 +403,8 @@ class TestWorkspaceMembers:
         assert data["role"] == 1
 
     def test_add_member_forbidden(
-        self, workspace_service_url, workspace_api_path, admin_auth_headers, 
-        user_token, workspace_data, db_cursor, clean_workspace_data
+        self, workspace_service_url, workspace_api_path, admin_auth_headers,
+        user_token, workspace_data, user_auth_headers, another_user_headers, clean_workspace_data
     ):
         """Попытка добавить участника обычным участником (не руководителем)"""
         # Создаем РП
@@ -409,25 +416,27 @@ class TestWorkspaceMembers:
         )
         workspace_id = create_response.json()["id"]
 
-        # Добавляем пользователя как обычного участника (role = 1)
-        db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
-            (TEST_USER_ID, workspace_id, 1)
+        # Добавляем пользователя как обычного участника (role = 1) через API (лидер = user_token)
+        add_url = f"{workspace_service_url}{workspace_api_path}/{workspace_id}/members"
+        requests.post(
+            add_url,
+            json={"user_id": user_token["user_id"], "role": 1},
+            headers=user_auth_headers
         )
 
         # Пытаемся добавить нового участника
         url = f"{workspace_service_url}{workspace_api_path}/{workspace_id}/members"
         response = requests.post(
             url,
-            json={"user_id": 999, "role": 1},
-            headers=user_auth_headers
+            json={"user_id": another_user_headers["X-User-ID"], "role": 1},
+            headers=another_user_headers  # обычный участник пытается добавить
         )
 
         assert response.status_code == 403
 
     def test_add_member_already_exists(
-        self, workspace_service_url, workspace_api_path, admin_auth_headers, 
-        user_token, workspace_data, db_cursor, clean_workspace_data
+        self, workspace_service_url, workspace_api_path, admin_auth_headers,
+        user_token, workspace_data, user_auth_headers, clean_workspace_data
     ):
         """Попытка добавить пользователя, который уже является участником"""
         # Создаем РП
@@ -439,25 +448,19 @@ class TestWorkspaceMembers:
         )
         workspace_id = create_response.json()["id"]
 
-        # Добавляем пользователя как руководителя
-        db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
-            (TEST_USER_ID, workspace_id, 2)
-        )
-
-        # Пытаемся добавить того же пользователя снова
+        # Пользователь user_token уже руководитель (leader_id), пробуем добавить его же
         url = f"{workspace_service_url}{workspace_api_path}/{workspace_id}/members"
         response = requests.post(
             url,
-            json={"user_id": TEST_USER_ID, "role": 1},
+            json={"user_id": user_token["user_id"], "role": 1},
             headers=user_auth_headers
         )
 
         assert response.status_code == 409
 
     def test_get_members_list(
-        self, workspace_service_url, workspace_api_path, admin_auth_headers, 
-        user_token, workspace_data, db_cursor, clean_workspace_data
+        self, workspace_service_url, workspace_api_path, admin_auth_headers,
+        user_token, workspace_data, user_auth_headers, clean_workspace_data
     ):
         """Получение списка участников РП"""
         # Создаем РП
@@ -470,9 +473,10 @@ class TestWorkspaceMembers:
         workspace_id = create_response.json()["id"]
 
         # Добавляем пользователя в РП
-        db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
-            (TEST_USER_ID, workspace_id, 1)
+        requests.post(
+            f"{workspace_service_url}{workspace_api_path}/{workspace_id}/members",
+            json={"user_id": user_token["user_id"], "role": 1},
+            headers=user_auth_headers
         )
 
         # Получаем список участников
@@ -487,7 +491,7 @@ class TestWorkspaceMembers:
         assert "members" in data
         assert "total" in data
         assert data["total"] >= 1
-        assert any(member["user_id"] == TEST_USER_ID for member in data["members"])
+        assert any(member["user_id"] == user_token["user_id"] for member in data["members"])
 
     def test_get_members_forbidden(
         self, workspace_service_url, workspace_api_path, admin_auth_headers, 
@@ -514,8 +518,8 @@ class TestWorkspaceMembers:
 
     def test_update_member_role(
         self, workspace_service_url, workspace_api_path, admin_auth_headers, 
-        user_token, workspace_data, db_cursor, clean_workspace_data,
-        auth_service_url, auth_api_path, unique_timestamp
+        user_token, workspace_data, user_auth_headers, another_user_headers,
+        auth_service_url, auth_api_path, unique_timestamp, clean_workspace_data
     ):
         """Изменение роли участника РП"""
         # Создаем РП
@@ -529,7 +533,7 @@ class TestWorkspaceMembers:
 
         # Добавляем пользователя как руководителя
         db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
+            'INSERT INTO "userinworkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
             (TEST_USER_ID, workspace_id, 2)
         )
 
@@ -552,9 +556,11 @@ class TestWorkspaceMembers:
         new_user_id = login_response.json()["user"]["id"]
 
         # Добавляем второго пользователя как обычного участника
-        db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
-            (new_user_id, workspace_id, 1)
+        add_url = f"{workspace_service_url}{workspace_api_path}/{workspace_id}/members"
+        requests.post(
+            add_url,
+            json={"user_id": new_user_id, "role": 1},
+            headers=user_auth_headers
         )
 
         # Изменяем роль на руководителя
@@ -571,7 +577,7 @@ class TestWorkspaceMembers:
 
     def test_update_member_role_forbidden(
         self, workspace_service_url, workspace_api_path, admin_auth_headers, 
-        user_token, workspace_data, db_cursor, clean_workspace_data
+        user_token, workspace_data, user_auth_headers, another_user_headers, clean_workspace_data
     ):
         """Попытка изменить роль участника обычным участником"""
         # Создаем РП
@@ -583,14 +589,15 @@ class TestWorkspaceMembers:
         )
         workspace_id = create_response.json()["id"]
 
-        # Добавляем пользователя как обычного участника (role = 1)
-        db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
-            (TEST_USER_ID, workspace_id, 1)
+        add_url = f"{workspace_service_url}{workspace_api_path}/{workspace_id}/members"
+        requests.post(
+            add_url,
+            json={"user_id": user_token["user_id"], "role": 1},
+            headers=user_auth_headers
         )
 
-        # Пытаемся изменить роль
-        url = f"{workspace_service_url}{workspace_api_path}/{workspace_id}/members/999"
+        # Пытаемся изменить роль другого участника (id другого пользователя)
+        url = f"{workspace_service_url}{workspace_api_path}/{workspace_id}/members/{another_user_headers['X-User-ID']}"
         response = requests.put(
             url,
             json={"role": 2},
@@ -601,8 +608,8 @@ class TestWorkspaceMembers:
 
     def test_remove_member_success(
         self, workspace_service_url, workspace_api_path, admin_auth_headers, 
-        user_token, workspace_data, db_cursor, clean_workspace_data,
-        auth_service_url, auth_api_path, unique_timestamp
+        user_token, workspace_data, user_auth_headers,
+        auth_service_url, auth_api_path, unique_timestamp, clean_workspace_data
     ):
         """Удаление участника из РП"""
         # Создаем РП
@@ -613,12 +620,6 @@ class TestWorkspaceMembers:
             headers=admin_auth_headers
         )
         workspace_id = create_response.json()["id"]
-
-        # Добавляем пользователя как руководителя
-        db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
-            (TEST_USER_ID, workspace_id, 2)
-        )
 
         # Создаем второго пользователя
         new_user_data = {
@@ -639,9 +640,10 @@ class TestWorkspaceMembers:
         new_user_id = login_response.json()["user"]["id"]
 
         # Добавляем второго пользователя в РП
-        db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
-            (new_user_id, workspace_id, 1)
+        requests.post(
+            f"{workspace_service_url}{workspace_api_path}/{workspace_id}/members",
+            json={"user_id": new_user_id, "role": 1},
+            headers=user_auth_headers
         )
 
         # Удаляем второго пользователя из РП
@@ -655,7 +657,7 @@ class TestWorkspaceMembers:
 
     def test_remove_member_forbidden(
         self, workspace_service_url, workspace_api_path, admin_auth_headers, 
-        user_token, workspace_data, db_cursor, clean_workspace_data
+        user_token, workspace_data, user_auth_headers, clean_workspace_data
     ):
         """Попытка удалить участника обычным участником"""
         # Создаем РП
@@ -667,10 +669,10 @@ class TestWorkspaceMembers:
         )
         workspace_id = create_response.json()["id"]
 
-        # Добавляем пользователя как обычного участника (role = 1)
-        db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
-            (TEST_USER_ID, workspace_id, 1)
+        requests.post(
+            f"{workspace_service_url}{workspace_api_path}/{workspace_id}/members",
+            json={"user_id": user_token["user_id"], "role": 1},
+            headers=user_auth_headers
         )
 
         # Пытаемся удалить участника
@@ -703,7 +705,7 @@ class TestWorkspaceLeader:
 
         # Добавляем пользователя как руководителя
         db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
+            'INSERT INTO "userinworkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
             (TEST_USER_ID, workspace_id, 2)
         )
 
@@ -727,7 +729,7 @@ class TestWorkspaceLeader:
 
         # Добавляем второго пользователя как обычного участника
         db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
+            'INSERT INTO "userinworkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
             (new_user_id, workspace_id, 1)
         )
 
@@ -761,7 +763,7 @@ class TestWorkspaceLeader:
 
         # Добавляем пользователя как обычного участника (role = 1)
         db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
+            'INSERT INTO "userinworkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
             (TEST_USER_ID, workspace_id, 1)
         )
 
@@ -791,7 +793,7 @@ class TestWorkspaceLeader:
 
         # Добавляем пользователя как руководителя
         db_cursor.execute(
-            'INSERT INTO "userInWorkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
+            'INSERT INTO "userinworkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
             (TEST_USER_ID, workspace_id, 2)
         )
 

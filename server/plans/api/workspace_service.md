@@ -479,9 +479,9 @@ CREATE TABLE workspaces (
 );
 ```
 
-**userInWorkspace**:
+**userinworkspace**:
 ```sql
-CREATE TABLE userInWorkspace (
+CREATE TABLE userinworkspace (
   usersid INT4 NOT NULL REFERENCES users(id),
   workspacesid INT4 NOT NULL REFERENCES workspaces(id),
   role INT4 NOT NULL,

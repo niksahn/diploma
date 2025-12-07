@@ -28,14 +28,30 @@ func getUserID(c *gin.Context) (int, error) {
 	return strconv.Atoi(userIDStr)
 }
 
-// getUserRole извлекает роль пользователя из заголовка X-User-Role
-func getUserRole(c *gin.Context) string {
-	return c.GetHeader("X-User-Role")
+// getRoles извлекает роли из заголовков X-User-Role или X-User-Roles (через запятую)
+func getRoles(c *gin.Context) []string {
+	role := c.GetHeader("X-User-Role")
+	if role == "" {
+		role = c.GetHeader("X-User-Roles")
+	}
+	if role == "" {
+		return nil
+	}
+	parts := strings.Split(role, ",")
+	for i := range parts {
+		parts[i] = strings.TrimSpace(strings.ToLower(parts[i]))
+	}
+	return parts
 }
 
 // isAdmin проверяет, является ли пользователь администратором
 func isAdmin(c *gin.Context) bool {
-	return getUserRole(c) == "admin"
+	for _, r := range getRoles(c) {
+		if r == "admin" {
+			return true
+		}
+	}
+	return false
 }
 
 // CreateWorkspace godoc
@@ -53,7 +69,11 @@ func isAdmin(c *gin.Context) bool {
 // @Security BearerAuth
 // @Router /workspaces [post]
 func (h *WorkspaceHandler) CreateWorkspace(c *gin.Context) {
-	// Проверяем, что пользователь - администратор
+	adminID, err := getUserID(c)
+	if err != nil || adminID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
 	if !isAdmin(c) {
 		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "insufficient permissions"})
 		return
@@ -97,13 +117,6 @@ func (h *WorkspaceHandler) CreateWorkspace(c *gin.Context) {
 	}
 	if nameExists {
 		c.JSON(http.StatusConflict, models.ErrorResponse{Error: "workspace with this name already exists"})
-		return
-	}
-
-	// Получаем ID администратора
-	adminID, err := getUserID(c)
-	if err != nil || adminID == 0 {
-		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
 		return
 	}
 
@@ -202,6 +215,17 @@ func (h *WorkspaceHandler) GetWorkspace(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
+	// Сначала проверяем существование РП
+	exists, err := h.repo.WorkspaceExists(ctx, workspaceID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to check workspace"})
+		return
+	}
+	if !exists {
+		c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "workspace not found"})
+		return
+	}
+
 	// Проверяем, что пользователь является участником РП
 	isMember, err := h.repo.IsMemberOfWorkspace(ctx, userID, workspaceID)
 	if err != nil {
@@ -228,6 +252,7 @@ func (h *WorkspaceHandler) GetWorkspace(c *gin.Context) {
 		ID:      workspace.ID,
 		Name:    workspace.Name,
 		Creator: workspace.Creator,
+		CreatedAt: time.Now().UTC().Format(time.RFC3339),
 		Tariff: models.TariffInfo{
 			ID:          workspace.TariffID,
 			Name:        workspace.TariffName,
@@ -347,7 +372,11 @@ func (h *WorkspaceHandler) UpdateWorkspace(c *gin.Context) {
 // @Security BearerAuth
 // @Router /workspaces/{id} [delete]
 func (h *WorkspaceHandler) DeleteWorkspace(c *gin.Context) {
-	// Проверяем, что пользователь - администратор
+	adminID, err := getUserID(c)
+	if err != nil || adminID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
 	if !isAdmin(c) {
 		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "insufficient permissions"})
 		return

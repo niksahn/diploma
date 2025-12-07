@@ -61,7 +61,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Surname:    req.Surname,
 		Name:       req.Name,
 		Patronymic: req.Patronymic,
-		Status:     0, // По умолчанию офлайн
+		Status:     1, // По умолчанию онлайн
 	}
 
 	if err := h.repo.CreateUser(c.Request.Context(), user); err != nil {
@@ -167,6 +167,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	user.Status = 1
 	c.JSON(http.StatusOK, models.LoginResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -433,6 +434,15 @@ func (h *AuthHandler) AdminRegister(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "validation_error",
 			Message: err.Error(),
+		})
+		return
+	}
+
+	// Простая валидация пароля (минимум 8 символов)
+	if len(req.Password) < 8 {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "validation_error",
+			Message: "password must be at least 8 characters",
 		})
 		return
 	}

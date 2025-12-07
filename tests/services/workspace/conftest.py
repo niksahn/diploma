@@ -83,28 +83,28 @@ def clean_workspace_data(db_cursor):
     yield
     # Очищаем таблицы, связанные с workspaces
     # Порядок важен из-за внешних ключей
-    db_cursor.execute('DELETE FROM "userInWorkspace"')
+    db_cursor.execute('DELETE FROM "userinworkspace"')
     db_cursor.execute('DELETE FROM workspaces')
 
 
 @pytest.fixture
-def admin_token(auth_service_url, auth_api_path, unique_timestamp, db_cursor):
+def admin_token(auth_service_url, auth_api_path, unique_timestamp):
     """Получить токен администратора"""
-    # Создаем администратора
     admin_data = {
         "login": f"admin{unique_timestamp}@example.com",
         "password": "AdminPassword123"
     }
-    
     # Регистрируем администратора
-    register_url = f"{auth_service_url}{auth_api_path}/register/admin"
+    register_url = f"{auth_service_url}{auth_api_path}/admin/register"
     requests.post(register_url, json=admin_data)
-    
     # Входим
-    login_url = f"{auth_service_url}{auth_api_path}/login/admin"
+    login_url = f"{auth_service_url}{auth_api_path}/admin/login"
     login_response = requests.post(login_url, json=admin_data)
-    
-    return login_response.json()["access_token"]
+    body = login_response.json()
+    return {
+        "token": body["access_token"],
+        "admin_id": body.get("admin", {}).get("id", TEST_ADMIN_ID)
+    }
 
 
 @pytest.fixture
@@ -134,11 +134,24 @@ def user_token(auth_service_url, auth_api_path, unique_timestamp):
 
 
 @pytest.fixture
-def tariff_id(db_cursor):
-    """Создать тестовый тариф и вернуть его ID"""
+def tariff_id(db_cursor, unique_timestamp):
+    """Создать тестовый тариф и вернуть его ID (уникальные имя/описание, без конфликтов)"""
+    name = f"Test Tariff {unique_timestamp}"
+    desc = f"Test Description {unique_timestamp}"
     db_cursor.execute(
-        "INSERT INTO tariffs (name, description) VALUES ('Test Tariff', 'Test Description') RETURNING id"
+        """
+        INSERT INTO tariffs (name, description)
+        VALUES (%s, %s)
+        ON CONFLICT (name) DO NOTHING
+        RETURNING id
+        """,
+        (name, desc)
     )
+    row = db_cursor.fetchone()
+    if row and 'id' in row:
+        return row['id']
+    # если запись уже есть (по имени), выбираем существующую
+    db_cursor.execute("SELECT id FROM tariffs WHERE name = %s", (name,))
     return db_cursor.fetchone()['id']
 
 
@@ -153,18 +166,52 @@ def workspace_data(tariff_id, user_token):
 
 
 @pytest.fixture
-def user_auth_headers():
-    """Заголовки для аутентификации обычного пользователя"""
+def user_auth_headers(user_token):
+    """Заголовки для аутентификации обычного пользователя (совпадают с созданным юзером)"""
     return {
-        "X-User-ID": str(TEST_USER_ID),
+        "X-User-ID": str(user_token["user_id"]),
         "X-User-Role": ROLE_USER
     }
 
 
 @pytest.fixture
-def admin_auth_headers():
+def admin_auth_headers(admin_token):
     """Заголовки для аутентификации администратора"""
     return {
-        "X-User-ID": str(TEST_ADMIN_ID),
+        "X-User-ID": str(admin_token["admin_id"]),
         "X-User-Role": ROLE_ADMIN
+    }
+
+@pytest.fixture
+def leader_headers(user_token):
+    """Заголовки для лидера РП (созданного пользователя)"""
+    return {
+        "X-User-ID": str(user_token["user_id"]),
+        "X-User-Role": ROLE_USER
+    }
+
+@pytest.fixture
+def another_user_token(auth_service_url, auth_api_path, unique_timestamp):
+    """Второй пользователь для сценариев non-member"""
+    user_data = {
+        "login": f"other{unique_timestamp}@example.com",
+        "password": "UserPassword123",
+        "surname": "Smith",
+        "name": "John",
+        "patronymic": "P"
+    }
+    register_url = f"{auth_service_url}{auth_api_path}/register"
+    requests.post(register_url, json=user_data)
+    login_url = f"{auth_service_url}{auth_api_path}/login"
+    login_response = requests.post(login_url, json=user_data)
+    return {
+        "token": login_response.json()["access_token"],
+        "user_id": login_response.json()["user"]["id"]
+    }
+
+@pytest.fixture
+def another_user_headers(another_user_token):
+    return {
+        "X-User-ID": str(another_user_token["user_id"]),
+        "X-User-Role": ROLE_USER
     }

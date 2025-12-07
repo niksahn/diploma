@@ -220,7 +220,7 @@ Task Service управляет задачами, их статусами, ис�
 - `403` - Недостаточно прав (не создатель и не назначенный исполнитель)
 - `404` - Задача не найдена
 
-**Note**: Любое изменение записывается в историю (taskChanges).
+**Note**: Любое изменение записывается в историю (taskchanges).
 
 ---
 
@@ -559,27 +559,27 @@ CREATE TABLE tasks (
 );
 ```
 
-**userInTask**:
+**userintask**:
 ```sql
-CREATE TABLE userInTask (
+CREATE TABLE userintask (
   id SERIAL PRIMARY KEY,
   tasksid INT4 NOT NULL REFERENCES tasks(id),
   usersid INT4 NOT NULL REFERENCES users(id)
 );
 ```
 
-**taskInChat**:
+**taskinchat**:
 ```sql
-CREATE TABLE taskInChat (
+CREATE TABLE taskinchat (
   id SERIAL PRIMARY KEY,
   chatsid INT4 NOT NULL REFERENCES chats(id),
   tasksid INT4 NOT NULL REFERENCES tasks(id)
 );
 ```
 
-**taskChanges**:
+**taskchanges**:
 ```sql
-CREATE TABLE taskChanges (
+CREATE TABLE taskchanges (
   id SERIAL PRIMARY KEY,
   description VARCHAR(1000) NOT NULL,
   tasksid INT4 NOT NULL REFERENCES tasks(id)
