@@ -22,7 +22,7 @@ func Load() (*Config, error) {
 
 	return &Config{
 		Port:       getEnv("PORT", "8086"),
-		DBHost:     getEnv("DB_HOST", "postgres"),
+		DBHost:     getEnv("DB_HOST", "localhost"),
 		DBPort:     getEnv("DB_PORT", "5432"),
 		DBName:     getEnv("DB_NAME", "messenger_db"),
 		DBUser:     getEnv("DB_USER", "user"),

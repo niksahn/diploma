@@ -31,7 +31,12 @@ class WebSocketClient:
     """Вспомогательный класс для работы с WebSocket"""
     
     def __init__(self, url, token):
-        self.url = f"{url}?token={token}"
+        normalized_url = url
+        if url.startswith("http://"):
+            normalized_url = f"ws://{url[len('http://'):]}"
+        elif url.startswith("https://"):
+            normalized_url = f"wss://{url[len('https://'):]}"
+        self.url = f"{normalized_url}?token={token}"
         self.ws = None
         self.messages = queue.Queue()
         self.connected = False

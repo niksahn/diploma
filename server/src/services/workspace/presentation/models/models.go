@@ -43,11 +43,13 @@ type UpdateTariffRequest struct {
 
 // WorkspaceResponse ответ с информацией о РП
 type WorkspaceResponse struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name"`
-	Creator   int    `json:"creator"`
-	TariffsID int    `json:"tariffs_id"`
-	CreatedAt string `json:"created_at,omitempty"`
+	ID        int         `json:"id"`
+	Name      string      `json:"name"`
+	Creator   int         `json:"creator"`
+	TariffsID int         `json:"tariffs_id"`
+	TariffID  int         `json:"tariff_id,omitempty"`
+	Tariff    *TariffInfo `json:"tariff,omitempty"`
+	CreatedAt string      `json:"created_at,omitempty"`
 }
 
 // WorkspaceDetailsResponse детальная информация о РП

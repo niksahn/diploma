@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -376,7 +377,20 @@ func (h *UserHandler) GetUsersByWorkspace(c *gin.Context) {
 
 	fmt.Printf("GetUsersByWorkspace: workspaceID=%d\n", workspaceID)
 
-	// Проверяем, является ли пользователь участником этого РП
+	creatorID, err := h.repo.GetWorkspaceCreator(c.Request.Context(), workspaceID)
+	if err != nil {
+		if errors.Is(err, repository.ErrWorkspaceNotFound) {
+			fmt.Printf("GetUsersByWorkspace: workspace not found\n")
+			c.JSON(http.StatusNotFound, gin.H{"error": "workspace not found"})
+			return
+		}
+
+		fmt.Printf("GetUsersByWorkspace: failed to load workspace: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load workspace"})
+		return
+	}
+
+	// Проверяем, является ли пользователь участником этого РП или его создателем
 	isMember, err := h.repo.IsUserInWorkspace(c.Request.Context(), userID, workspaceID)
 	if err != nil {
 		fmt.Printf("GetUsersByWorkspace: failed to check workspace membership: %v\n", err)
@@ -386,13 +400,13 @@ func (h *UserHandler) GetUsersByWorkspace(c *gin.Context) {
 
 	fmt.Printf("GetUsersByWorkspace: isMember=%v\n", isMember)
 
-	if !isMember {
+	if !isMember && userID != creatorID {
 		fmt.Printf("GetUsersByWorkspace: user is not a member\n")
 		c.JSON(http.StatusForbidden, gin.H{"error": "user is not a member of this workspace"})
 		return
 	}
 
-	workspaceUsers, err := h.repo.GetUsersByWorkspace(c.Request.Context(), workspaceID)
+	workspaceUsers, err := h.repo.GetUsersByWorkspace(c.Request.Context(), workspaceID, creatorID)
 	if err != nil {
 		fmt.Printf("GetUsersByWorkspace: failed to get users by workspace: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

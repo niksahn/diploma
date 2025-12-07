@@ -138,12 +138,27 @@ func (h *WorkspaceHandler) CreateWorkspace(c *gin.Context) {
 		return
 	}
 
+	// Получаем информацию о тарифе для ответа
+	tariff, err := h.repo.GetTariffByID(ctx, req.TariffID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to load tariff"})
+		return
+	}
+
+	createdAt := time.Now().UTC()
+
 	c.JSON(http.StatusCreated, models.WorkspaceResponse{
 		ID:        workspace.ID,
 		Name:      workspace.Name,
 		Creator:   workspace.Creator,
 		TariffsID: workspace.TariffsID,
-		CreatedAt: time.Now().Format(time.RFC3339),
+		TariffID:  workspace.TariffsID,
+		Tariff: &models.TariffInfo{
+			ID:          tariff.ID,
+			Name:        tariff.Name,
+			Description: tariff.Description,
+		},
+		CreatedAt: createdAt.Format(time.RFC3339),
 	})
 }
 
@@ -249,10 +264,10 @@ func (h *WorkspaceHandler) GetWorkspace(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, models.WorkspaceDetailsResponse{
-		ID:      workspace.ID,
-		Name:    workspace.Name,
-		Creator: workspace.Creator,
-		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+		ID:        workspace.ID,
+		Name:      workspace.Name,
+		Creator:   workspace.Creator,
+		CreatedAt: workspace.CreatedAt.UTC().Format(time.RFC3339),
 		Tariff: models.TariffInfo{
 			ID:          workspace.TariffID,
 			Name:        workspace.TariffName,
@@ -293,12 +308,6 @@ func (h *WorkspaceHandler) UpdateWorkspace(c *gin.Context) {
 		return
 	}
 
-	var req models.UpdateWorkspaceRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
-		return
-	}
-
 	ctx := c.Request.Context()
 
 	// Проверяем, что пользователь - руководитель РП
@@ -313,6 +322,12 @@ func (h *WorkspaceHandler) UpdateWorkspace(c *gin.Context) {
 	}
 	if role != 2 {
 		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "insufficient permissions"})
+		return
+	}
+
+	var req models.UpdateWorkspaceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -353,10 +368,22 @@ func (h *WorkspaceHandler) UpdateWorkspace(c *gin.Context) {
 		return
 	}
 
+	tariff, err := h.repo.GetTariffByID(ctx, req.TariffID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to load tariff"})
+		return
+	}
+
 	c.JSON(http.StatusOK, models.WorkspaceResponse{
 		ID:        workspaceID,
 		Name:      req.Name,
 		TariffsID: req.TariffID,
+		TariffID:  req.TariffID,
+		Tariff: &models.TariffInfo{
+			ID:          tariff.ID,
+			Name:        tariff.Name,
+			Description: tariff.Description,
+		},
 	})
 }
 
@@ -432,12 +459,6 @@ func (h *WorkspaceHandler) AddMember(c *gin.Context) {
 		return
 	}
 
-	var req models.AddMemberRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
-		return
-	}
-
 	ctx := c.Request.Context()
 
 	// Проверяем, что пользователь - руководитель РП
@@ -452,6 +473,12 @@ func (h *WorkspaceHandler) AddMember(c *gin.Context) {
 	}
 	if role != 2 {
 		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "insufficient permissions"})
+		return
+	}
+
+	var req models.AddMemberRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -551,7 +578,7 @@ func (h *WorkspaceHandler) GetMembers(c *gin.Context) {
 			Patronymic: member.Patronymic,
 			Role:       member.Role,
 			Status:     member.Status,
-			JoinedAt:   member.JoinedAt,
+			JoinedAt:   member.JoinedAt.UTC().Format(time.RFC3339),
 		})
 	}
 
@@ -593,12 +620,6 @@ func (h *WorkspaceHandler) UpdateMemberRole(c *gin.Context) {
 		return
 	}
 
-	var req models.UpdateMemberRoleRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
-		return
-	}
-
 	ctx := c.Request.Context()
 
 	// Проверяем, что пользователь - руководитель РП
@@ -613,6 +634,12 @@ func (h *WorkspaceHandler) UpdateMemberRole(c *gin.Context) {
 	}
 	if role != 2 {
 		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "insufficient permissions"})
+		return
+	}
+
+	var req models.UpdateMemberRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -725,12 +752,6 @@ func (h *WorkspaceHandler) ChangeLeader(c *gin.Context) {
 		return
 	}
 
-	var req models.ChangeLeaderRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
-		return
-	}
-
 	ctx := c.Request.Context()
 
 	// Проверяем, что текущий пользователь - руководитель РП
@@ -745,6 +766,12 @@ func (h *WorkspaceHandler) ChangeLeader(c *gin.Context) {
 	}
 	if role != 2 {
 		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "insufficient permissions"})
+		return
+	}
+
+	var req models.ChangeLeaderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
 		return
 	}
 

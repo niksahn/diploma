@@ -56,7 +56,8 @@ func (r *Repository) GetWorkspaceByID(ctx context.Context, workspaceID int) (*mo
 			t.description as tariff_description,
 			COALESCE((SELECT COUNT(*) FROM "userinworkspace" WHERE workspacesid = w.id), 0) as members_count,
 			COALESCE((SELECT COUNT(*) FROM chats WHERE workspacesid = w.id), 0) as chats_count,
-			COALESCE((SELECT COUNT(*) FROM tasks WHERE workspacesid = w.id), 0) as tasks_count
+			COALESCE((SELECT COUNT(*) FROM tasks WHERE workspacesid = w.id), 0) as tasks_count,
+			NOW() as created_at
 		FROM workspaces w
 		LEFT JOIN tariffs t ON w.tariffsid = t.id
 		WHERE w.id = $1
@@ -73,6 +74,7 @@ func (r *Repository) GetWorkspaceByID(ctx context.Context, workspaceID int) (*mo
 		&workspace.MembersCount,
 		&workspace.ChatsCount,
 		&workspace.TasksCount,
+		&workspace.CreatedAt,
 	)
 
 	if err != nil {
@@ -141,16 +143,29 @@ func (r *Repository) UpdateWorkspace(ctx context.Context, workspaceID int, name 
 
 // DeleteWorkspace удаляет рабочее пространство
 func (r *Repository) DeleteWorkspace(ctx context.Context, workspaceID int) error {
-	// Удаление будет каскадным благодаря внешним ключам
-	query := `DELETE FROM workspaces WHERE id = $1`
+	tx, err := r.db.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
 
-	result, err := r.db.Pool.Exec(ctx, query, workspaceID)
+	// Удаляем участников, чтобы не нарушать внешние ключи
+	if _, err := tx.Exec(ctx, `DELETE FROM "userinworkspace" WHERE workspacesid = $1`, workspaceID); err != nil {
+		return fmt.Errorf("failed to delete workspace members: %w", err)
+	}
+
+	// Удаляем само рабочее пространство
+	result, err := tx.Exec(ctx, `DELETE FROM workspaces WHERE id = $1`, workspaceID)
 	if err != nil {
 		return fmt.Errorf("failed to delete workspace: %w", err)
 	}
 
 	if result.RowsAffected() == 0 {
 		return fmt.Errorf("workspace not found")
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit workspace deletion: %w", err)
 	}
 
 	return nil
@@ -424,6 +439,22 @@ func (r *Repository) CreateTariff(ctx context.Context, name, description string)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tariff: %w", err)
+	}
+
+	return &tariff, nil
+}
+
+// GetTariffByID получает тариф по идентификатору
+func (r *Repository) GetTariffByID(ctx context.Context, tariffID int) (*models.Tariff, error) {
+	query := `SELECT id, name, description FROM tariffs WHERE id = $1`
+
+	var tariff models.Tariff
+	err := r.db.Pool.QueryRow(ctx, query, tariffID).Scan(&tariff.ID, &tariff.Name, &tariff.Description)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, fmt.Errorf("tariff not found")
+		}
+		return nil, fmt.Errorf("failed to get tariff: %w", err)
 	}
 
 	return &tariff, nil

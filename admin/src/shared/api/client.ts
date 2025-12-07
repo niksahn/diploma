@@ -2,7 +2,7 @@ import { useAuthStore } from "../state/auth";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
-type ApiOptions = RequestInit & { skipAuth?: boolean };
+type ApiOptions = Omit<RequestInit, "body"> & { body?: unknown; skipAuth?: boolean };
 
 async function handleResponse<T>(response: Response, logout: () => void): Promise<T> {
   if (response.status === 401) {
@@ -31,18 +31,19 @@ async function handleResponse<T>(response: Response, logout: () => void): Promis
 
 export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
   const { accessToken, logout } = useAuthStore.getState();
-  const headers = new Headers(options.headers || {});
+  const { skipAuth, ...rest } = options;
+  const headers = new Headers(rest.headers || {});
   const init: RequestInit = {
-    ...options,
+    ...rest,
     headers
-  };
+  } as RequestInit;
 
-  if (options.body && typeof options.body === "object" && !(options.body instanceof FormData)) {
+  if (rest.body && typeof rest.body === "object" && !(rest.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
-    init.body = JSON.stringify(options.body);
+    init.body = JSON.stringify(rest.body as Record<string, unknown>);
   }
 
-  if (!options.skipAuth && accessToken) {
+  if (!skipAuth && accessToken) {
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
 

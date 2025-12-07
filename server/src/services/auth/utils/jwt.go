@@ -17,13 +17,15 @@ type Claims struct {
 }
 
 func GenerateAccessToken(cfg *config.Config, userID int, role string) (string, error) {
+	now := time.Now()
 	claims := Claims{
 		UserID: userID,
 		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "messenger-auth-service",
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(cfg.JWTAccessExpiration) * time.Second)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(cfg.JWTAccessExpiration) * time.Second)),
+			IssuedAt:  jwt.NewNumericDate(now),
+			ID:        fmt.Sprintf("access-%d-%d", userID, now.UnixNano()), // ensure uniqueness per token
 		},
 	}
 
@@ -32,7 +34,8 @@ func GenerateAccessToken(cfg *config.Config, userID int, role string) (string, e
 }
 
 func GenerateRefreshToken(cfg *config.Config, userID int, role string) (string, time.Time, error) {
-	expiresAt := time.Now().Add(time.Duration(cfg.JWTRefreshExpiration) * time.Second)
+	now := time.Now()
+	expiresAt := now.Add(time.Duration(cfg.JWTRefreshExpiration) * time.Second)
 
 	claims := Claims{
 		UserID: userID,
@@ -41,8 +44,8 @@ func GenerateRefreshToken(cfg *config.Config, userID int, role string) (string, 
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "messenger-auth-service",
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ID:        fmt.Sprintf("%d-%d", userID, time.Now().UnixNano()), // ensure uniqueness for refresh tokens
+			IssuedAt:  jwt.NewNumericDate(now),
+			ID:        fmt.Sprintf("refresh-%d-%d", userID, now.UnixNano()), // ensure uniqueness for refresh tokens
 		},
 	}
 

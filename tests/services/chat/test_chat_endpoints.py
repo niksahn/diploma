@@ -131,7 +131,7 @@ class TestChatCreation:
         assert response.status_code == 401
 
     def test_create_chat_invalid_workspace(
-        self, chat_service_url, chat_api_path, user_token
+        self, chat_service_url, chat_api_path, user_token, user_auth_headers
     ):
         """Создание чата с несуществующим РП"""
         url = f"{chat_service_url}{chat_api_path}"
@@ -379,7 +379,7 @@ class TestChatInfo:
         assert response.status_code == 403
 
     def test_get_chat_info_not_found(
-        self, chat_service_url, chat_api_path, user_token
+        self, chat_service_url, chat_api_path, user_token, user_auth_headers
     ):
         """Получение информации о несуществующем чате"""
         url = f"{chat_service_url}{chat_api_path}/99999"
