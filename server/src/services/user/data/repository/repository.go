@@ -3,14 +3,18 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 
 	"github.com/diploma/user-service/data/database"
 	"github.com/diploma/user-service/data/models"
 	"github.com/jackc/pgx/v5"
 )
+
+var ErrWorkspaceNotFound = errors.New("workspace not found")
 
 type Repository struct {
 	db *database.DB
@@ -256,6 +260,26 @@ func (r *Repository) SearchUsers(ctx context.Context, search string, workspaceID
 	return users, total, nil
 }
 
+// GetWorkspaceCreator возвращает ID создателя рабочего пространства
+func (r *Repository) GetWorkspaceCreator(ctx context.Context, workspaceID int) (int, error) {
+	query := `
+		SELECT creator
+		FROM workspaces
+		WHERE id = $1
+	`
+
+	var creatorID int
+	err := r.db.Pool.QueryRow(ctx, query, workspaceID).Scan(&creatorID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, ErrWorkspaceNotFound
+		}
+		return 0, fmt.Errorf("failed to get workspace creator: %w", err)
+	}
+
+	return creatorID, nil
+}
+
 // WorkspaceUser представляет пользователя в рабочем пространстве с дополнительной информацией
 type WorkspaceUser struct {
 	User     models.User
@@ -264,7 +288,7 @@ type WorkspaceUser struct {
 }
 
 // GetUsersByWorkspace получает всех пользователей рабочего пространства
-func (r *Repository) GetUsersByWorkspace(ctx context.Context, workspaceID int) ([]WorkspaceUser, error) {
+func (r *Repository) GetUsersByWorkspace(ctx context.Context, workspaceID int, workspaceCreatorID int) ([]WorkspaceUser, error) {
 	log.Printf("GetUsersByWorkspace: workspaceID=%d", workspaceID)
 
 	query := `
@@ -286,7 +310,10 @@ func (r *Repository) GetUsersByWorkspace(ctx context.Context, workspaceID int) (
 
 	log.Printf("GetUsersByWorkspace: query executed successfully")
 
-	var result []WorkspaceUser
+	var (
+		result       []WorkspaceUser
+		usersInSpace = make(map[int]struct{})
+	)
 	for rows.Next() {
 		var user models.User
 		var patronymic sql.NullString
@@ -316,8 +343,30 @@ func (r *Repository) GetUsersByWorkspace(ctx context.Context, workspaceID int) (
 		}
 
 		wu.User = user
+		usersInSpace[user.ID] = struct{}{}
 		result = append(result, wu)
 	}
+
+	// Добавляем создателя РП, если он не числится в userinworkspace
+	if workspaceCreatorID != 0 {
+		if _, exists := usersInSpace[workspaceCreatorID]; !exists {
+			creator, err := r.GetUserByID(ctx, workspaceCreatorID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load workspace creator: %w", err)
+			}
+
+			result = append(result, WorkspaceUser{
+				User:     *creator,
+				Role:     2,      // руководитель по умолчанию
+				JoinedAt: "",     // нет записи в userinworkspace
+			})
+		}
+	}
+
+	// Стабильный порядок для предсказуемых ответов
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].User.ID < result[j].User.ID
+	})
 
 	log.Printf("GetUsersByWorkspace: returning %d users", len(result))
 

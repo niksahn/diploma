@@ -1,4 +1,5 @@
-import { FormEvent, useState } from "react";
+import type { FormEvent } from "react";
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../shared/state/auth";
 

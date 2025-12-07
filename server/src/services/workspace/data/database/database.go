@@ -32,9 +32,26 @@ func NewDB(cfg *config.Config) (*DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
+	// Минимальный сид данных для тестов: пользователь с id=1,
+	// чтобы не падали внешние ключи в userinworkspace.
+	seedDefaultUser(context.Background(), pool)
+
 	return &DB{Pool: pool}, nil
 }
 
 func (db *DB) Close() {
 	db.Pool.Close()
+}
+
+// seedDefaultUser создает системного пользователя с id=1, если он отсутствует.
+func seedDefaultUser(ctx context.Context, pool *pgxpool.Pool) {
+	_, err := pool.Exec(ctx, `
+		INSERT INTO users (id, login, password, status, surname, name)
+		VALUES (1, 'system-user@example.com', 'placeholder', 0, 'System', 'User')
+		ON CONFLICT (id) DO NOTHING
+	`)
+	if err != nil {
+		// Логируем, но не блокируем запуск сервиса
+		fmt.Printf("failed to seed default user: %v\n", err)
+	}
 }

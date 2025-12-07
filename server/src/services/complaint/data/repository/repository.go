@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/diploma/complaint-service/data/database"
@@ -45,7 +46,8 @@ func (r *Repository) CreateComplaint(ctx context.Context, authorID int, text, de
 
 	authorName, authorLogin, err := r.fetchAuthor(ctx, authorID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch author info: %w", err)
+		// Не блокируем создание жалобы, если профиль пользователя недоступен
+		log.Printf("fetch author %d failed: %v", authorID, err)
 	}
 
 	return &models.ComplaintWithUser{
@@ -62,7 +64,7 @@ func (r *Repository) GetComplaint(ctx context.Context, id int) (*models.Complain
 		       u.surname, u.name, u.login,
 		       la.login AS assigned_to
 		FROM complaints c
-		JOIN users u ON u.id = c.author
+		LEFT JOIN users u ON u.id = c.author
 		LEFT JOIN (
 			SELECT DISTINCT ON (complaint_id) complaint_id, a.login
 			FROM complaint_status_history h
@@ -73,7 +75,7 @@ func (r *Repository) GetComplaint(ctx context.Context, id int) (*models.Complain
 	`
 
 	var complaint models.Complaint
-	var surname, name, login string
+	var surname, name, login sql.NullString
 	var assigned sql.NullString
 
 	if err := r.db.Pool.QueryRow(ctx, query, id).Scan(
@@ -103,8 +105,8 @@ func (r *Repository) GetComplaint(ctx context.Context, id int) (*models.Complain
 
 	return &models.ComplaintWithUser{
 		Complaint:   complaint,
-		AuthorName:  strings.TrimSpace(fmt.Sprintf("%s %s", surname, name)),
-		AuthorLogin: login,
+		AuthorName:  strings.TrimSpace(fmt.Sprintf("%s %s", surname.String, name.String)),
+		AuthorLogin: login.String,
 		AssignedTo:  assignedTo,
 	}, nil
 }
@@ -201,7 +203,7 @@ func (r *Repository) ListComplaints(ctx context.Context, filter models.Complaint
 		       u.surname, u.name, u.login,
 		       la.login AS assigned_to
 		FROM complaints c
-		JOIN users u ON u.id = c.author
+		LEFT JOIN users u ON u.id = c.author
 		LEFT JOIN (
 			SELECT DISTINCT ON (complaint_id) complaint_id, a.login
 			FROM complaint_status_history h
@@ -225,7 +227,7 @@ func (r *Repository) ListComplaints(ctx context.Context, filter models.Complaint
 	var result []models.ComplaintWithUser
 	for rows.Next() {
 		var complaint models.Complaint
-		var surname, name, login string
+		var surname, name, login sql.NullString
 		var assigned sql.NullString
 
 		if err := rows.Scan(
@@ -252,8 +254,8 @@ func (r *Repository) ListComplaints(ctx context.Context, filter models.Complaint
 
 		result = append(result, models.ComplaintWithUser{
 			Complaint:   complaint,
-			AuthorName:  strings.TrimSpace(fmt.Sprintf("%s %s", surname, name)),
-			AuthorLogin: login,
+			AuthorName:  strings.TrimSpace(fmt.Sprintf("%s %s", surname.String, name.String)),
+			AuthorLogin: login.String,
 			AssignedTo:  assignedTo,
 		})
 	}
@@ -331,9 +333,10 @@ func (r *Repository) DeleteComplaint(ctx context.Context, id int) error {
 
 // fetchAuthor получает ФИО и логин автора.
 func (r *Repository) fetchAuthor(ctx context.Context, authorID int) (string, string, error) {
-	var surname, name, login string
+	var surname, name, login sql.NullString
 	if err := r.db.Pool.QueryRow(ctx, `SELECT surname, name, login FROM users WHERE id = $1`, authorID).Scan(&surname, &name, &login); err != nil {
 		return "", "", err
 	}
-	return strings.TrimSpace(fmt.Sprintf("%s %s", surname, name)), login, nil
+
+	return strings.TrimSpace(fmt.Sprintf("%s %s", surname.String, name.String)), login.String, nil
 }

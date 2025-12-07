@@ -12,15 +12,16 @@ type Workspace struct {
 
 // WorkspaceWithDetails представляет РП с дополнительной информацией
 type WorkspaceWithDetails struct {
-	ID           int    `db:"id"`
-	Name         string `db:"name"`
-	Creator      int    `db:"creator"`
-	TariffID     int    `db:"tariff_id"`
-	TariffName   string `db:"tariff_name"`
-	TariffDesc   string `db:"tariff_description"`
-	MembersCount int    `db:"members_count"`
-	ChatsCount   int    `db:"chats_count"`
-	TasksCount   int    `db:"tasks_count"`
+	ID           int       `db:"id"`
+	Name         string    `db:"name"`
+	Creator      int       `db:"creator"`
+	TariffID     int       `db:"tariff_id"`
+	TariffName   string    `db:"tariff_name"`
+	TariffDesc   string    `db:"tariff_description"`
+	MembersCount int       `db:"members_count"`
+	ChatsCount   int       `db:"chats_count"`
+	TasksCount   int       `db:"tasks_count"`
+	CreatedAt    time.Time `db:"created_at"`
 }
 
 // UserWorkspace представляет РП пользователя с его ролью
@@ -41,14 +42,14 @@ type UserInWorkspace struct {
 
 // WorkspaceMember представляет участника РП с полной информацией
 type WorkspaceMember struct {
-	UserID     int     `db:"user_id"`
-	Login      string  `db:"login"`
-	Name       string  `db:"name"`
-	Surname    string  `db:"surname"`
-	Patronymic *string `db:"patronymic"`
-	Role       int     `db:"role"`
-	Status     int     `db:"status"`
-	JoinedAt   string  `db:"joined_at"`
+	UserID     int       `db:"user_id"`
+	Login      string    `db:"login"`
+	Name       string    `db:"name"`
+	Surname    string    `db:"surname"`
+	Patronymic *string   `db:"patronymic"`
+	Role       int       `db:"role"`
+	Status     int       `db:"status"`
+	JoinedAt   time.Time `db:"joined_at"`
 }
 
 // Tariff представляет тарифный план

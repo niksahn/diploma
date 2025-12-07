@@ -43,6 +43,12 @@ Workspace Service управляет рабочими пространствам
   "name": "Development Team",
   "creator": 1,
   "tariffs_id": 1,
+  "tariff_id": 1,
+  "tariff": {
+    "id": 1,
+    "name": "Basic",
+    "description": "Basic plan features"
+  },
   "created_at": "2024-01-01T00:00:00Z"
 }
 ```
@@ -145,8 +151,13 @@ Workspace Service управляет рабочими пространствам
 {
   "id": 1,
   "name": "Development Team Updated",
+  "tariffs_id": 2,
   "tariff_id": 2,
-  "updated_at": "2024-01-02T00:00:00Z"
+  "tariff": {
+    "id": 2,
+    "name": "Pro",
+    "description": "Pro plan features"
+  }
 }
 ```
 

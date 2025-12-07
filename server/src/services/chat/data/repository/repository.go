@@ -360,6 +360,22 @@ func (r *Repository) IsUserInWorkspace(ctx context.Context, userID, workspaceID 
 	return isMember, nil
 }
 
+// WorkspaceExists проверяет наличие рабочего пространства
+func (r *Repository) WorkspaceExists(ctx context.Context, workspaceID int) (bool, error) {
+	query := `
+		SELECT COUNT(*) > 0
+		FROM workspaces
+		WHERE id = $1
+	`
+
+	var exists bool
+	if err := r.db.Pool.QueryRow(ctx, query, workspaceID).Scan(&exists); err != nil {
+		return false, fmt.Errorf("failed to check workspace existence: %w", err)
+	}
+
+	return exists, nil
+}
+
 // Message operations
 
 // CreateMessage создает новое сообщение

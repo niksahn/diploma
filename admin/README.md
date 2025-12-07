@@ -1,3 +1,51 @@
+# Admin Frontend (Vite + React + TS)
+
+Админ‑панель корпоративного мессенджера, работает **только через API Gateway** (`http://localhost:8080`), все вызовы идут на префикс `/api/v1` (например, `/api/v1/auth/admin/login`).
+
+## Требования
+- Node.js ≥ 20.19 (Vite предупреждает на 20.15, но сборка проходит).
+- npm.
+
+## Установка
+```bash
+cd admin
+npm install
+```
+
+## Запуск разработки
+```bash
+# по умолчанию Vite на :5173
+npm run dev
+# при необходимости указать хост/порт
+npm run dev -- --host 0.0.0.0 --port 5173
+```
+Открыть в браузере: `http://localhost:5173`.
+
+## Сборка
+```bash
+npm run build
+```
+Готовый билд: `admin/dist`.
+
+## Переменные окружения
+- `VITE_API_BASE_URL` — база для API Gateway (по умолчанию `http://localhost:8080`).
+
+## Основные страницы и маршруты
+- `/login` — вход администратора (`/api/v1/auth/admin/login`).
+- `/` — Dashboard (health `/health`, быстрые метрики workspaces/complaints, последние 5 жалоб).
+- `/workspaces` — список РП.
+- `/workspaces/new` — создание РП (name, leader_id, tariff_id).
+- `/workspaces/:id` — детали РП: изменение названия/тарифа, смена лидера, управление участниками.
+- `/complaints` — жалобы: фильтр по статусу, детали, смена статуса, удаление.
+- `/settings` — заглушка health/настроек.
+
+## Быстрый чек лист для проверки
+1) `npm run dev` → зайти на `http://localhost:5173`.
+2) Login админа → редирект на `/`.
+3) `/workspaces` — виден список, работают Refresh/Create/Open.
+4) `/workspaces/new` — подтягиваются тарифы, создаётся РП, редирект на детали.
+5) `/workspaces/:id` — меняются тариф/имя, лидер; добавление/удаление/смена ролей участников.
+6) `/complaints` — фильтрация, просмотр детали, смена статуса, удаление.
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

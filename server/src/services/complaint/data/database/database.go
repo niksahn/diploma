@@ -47,6 +47,20 @@ func (db *DB) Close() {
 // ensureSchema приводит структуру БД к ожидаемой тестами
 func ensureSchema(pool *pgxpool.Pool) error {
 	schemaSQL := `
+CREATE TABLE IF NOT EXISTS users (
+	id SERIAL PRIMARY KEY,
+	login VARCHAR(255) NOT NULL,
+	surname VARCHAR(255) DEFAULT '',
+	name VARCHAR(255) DEFAULT '',
+	patronymic VARCHAR(255) DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS administrators (
+	id SERIAL PRIMARY KEY,
+	login VARCHAR(255) NOT NULL,
+	password VARCHAR(255) DEFAULT ''
+);
+
 CREATE TABLE IF NOT EXISTS complaints (
 	id SERIAL PRIMARY KEY,
 	text VARCHAR(255) NOT NULL,
@@ -71,6 +85,15 @@ CREATE TABLE IF NOT EXISTS complaint_status_history (
 ALTER TABLE complaints ADD COLUMN IF NOT EXISTS status VARCHAR(50) NOT NULL DEFAULT 'pending';
 ALTER TABLE complaints ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW();
 ALTER TABLE complaints ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
+
+-- Убираем жесткие внешние ключи на внешние сервисы, чтобы жалобы
+-- могли создаваться без предварительного наличия пользователей/админов
+ALTER TABLE IF EXISTS complaints
+  DROP CONSTRAINT IF EXISTS complaints_author_fkey;
+ALTER TABLE IF EXISTS complaints
+  ALTER COLUMN author SET NOT NULL;
+ALTER TABLE IF EXISTS complaint_status_history
+  DROP CONSTRAINT IF EXISTS complaint_status_history_changed_by_fkey;
 
 CREATE INDEX IF NOT EXISTS idx_complaints_author ON complaints(author);
 CREATE INDEX IF NOT EXISTS idx_complaints_status ON complaints(status);

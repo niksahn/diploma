@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS complaints (
   text VARCHAR(255) NOT NULL,
   date DATE NOT NULL DEFAULT CURRENT_DATE,
   devicedescription VARCHAR(255) NOT NULL,
-  author INT4 NOT NULL REFERENCES users(id),
+  author INT4 NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'resolved', 'rejected')),
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS complaint_status_history (
   complaint_id INT4 NOT NULL REFERENCES complaints(id) ON DELETE CASCADE,
   status VARCHAR(20) NOT NULL CHECK (status IN ('pending', 'in_progress', 'resolved', 'rejected')),
   comment VARCHAR(500),
-  changed_by INT4 REFERENCES administrators(id),
+  changed_by INT4,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 

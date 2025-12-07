@@ -36,7 +36,7 @@ func Load() (*Config, error) {
 		SwaggerUIServiceURL:  getenv("SWAGGER_UI_SERVICE_URL", "http://swagger-ui:8080"),
 		RequestTimeout:       durationEnv("REQUEST_TIMEOUT", 10*time.Second),
 		AuthValidateEndpoint: getenv("AUTH_VALIDATE_ENDPOINT", "/api/v1/auth/validate"),
-		PublicRoutes:         listEnv("PUBLIC_ROUTES", "/health,/api/v1/auth,/swagger"),
+		PublicRoutes:         listEnv("PUBLIC_ROUTES", "/health,/api/v1/auth,/api/v1/auth/admin/login,/api/v1/auth/admin/register,/swagger"),
 	}, nil
 }
 

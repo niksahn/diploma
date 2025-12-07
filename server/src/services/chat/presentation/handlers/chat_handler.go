@@ -88,6 +88,17 @@ func (h *ChatHandler) CreateChat(c *gin.Context) {
 
 	req.Name = strings.TrimSpace(req.Name)
 
+	// Проверяем существование рабочего пространства
+	exists, err := h.repo.WorkspaceExists(c.Request.Context(), req.WorkspaceID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check workspace"})
+		return
+	}
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "workspace not found"})
+		return
+	}
+
 	// Валидация типа чата
 	if req.Type < 1 || req.Type > 3 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid chat type (must be 1, 2, or 3)"})
