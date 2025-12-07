@@ -240,8 +240,10 @@ func (r *Repository) UpdateTaskStatus(ctx context.Context, taskID, status int) e
 func (r *Repository) AddTaskAssignee(ctx context.Context, taskID, userID int) error {
 	query := `
 		INSERT INTO "userintask" (tasksid, usersid)
-		VALUES ($1, $2)
-		ON CONFLICT (tasksid, usersid) DO NOTHING
+		SELECT $1, $2
+		WHERE NOT EXISTS (
+			SELECT 1 FROM "userintask" WHERE tasksid = $1 AND usersid = $2
+		)
 	`
 
 	result, err := r.db.Pool.Exec(ctx, query, taskID, userID)
@@ -332,8 +334,10 @@ func (r *Repository) RemoveTaskAssignee(ctx context.Context, taskID, userID int)
 func (r *Repository) AttachTaskToChat(ctx context.Context, taskID, chatID int) error {
 	query := `
 		INSERT INTO "taskinchat" (chatsid, tasksid)
-		VALUES ($1, $2)
-		ON CONFLICT (chatsid, tasksid) DO NOTHING
+		SELECT $1, $2
+		WHERE NOT EXISTS (
+			SELECT 1 FROM "taskinchat" WHERE chatsid = $1 AND tasksid = $2
+		)
 	`
 
 	result, err := r.db.Pool.Exec(ctx, query, chatID, taskID)
@@ -525,7 +529,3 @@ func (r *Repository) addTaskChange(ctx context.Context, taskID int, description 
 
 	return nil
 }
-
-
-
-

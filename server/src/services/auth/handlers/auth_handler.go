@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -196,6 +197,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req models.RefreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("refresh: bind error: %v", err)
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Error:   "validation_error",
 			Message: "Refresh token is required",
@@ -206,6 +208,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	// Валидируем токен
 	claims, err := utils.ValidateToken(h.cfg, req.RefreshToken)
 	if err != nil {
+		log.Printf("refresh: validate token error: %v", err)
 		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "Invalid or expired refresh token",
@@ -215,6 +218,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 
 	// Проверяем, что это refresh токен
 	if claims.Type != "refresh" {
+		log.Printf("refresh: token type is %s, expected refresh", claims.Type)
 		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "Invalid token type",
@@ -225,6 +229,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	// Проверяем токен в БД
 	dbToken, err := h.repo.GetRefreshToken(c.Request.Context(), req.RefreshToken)
 	if err != nil || dbToken.Revoked {
+		log.Printf("refresh: db token fetch error or revoked: %v revoked=%v", err, dbToken != nil && dbToken.Revoked)
 		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "Refresh token is revoked or not found",
@@ -234,6 +239,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 
 	// Проверяем срок действия
 	if time.Now().After(dbToken.ExpiresAt) {
+		log.Printf("refresh: token expired at %v", dbToken.ExpiresAt)
 		c.JSON(http.StatusUnauthorized, models.ErrorResponse{
 			Error:   "unauthorized",
 			Message: "Refresh token expired",
@@ -247,6 +253,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	// Генерируем новый access токен
 	accessToken, err := utils.GenerateAccessToken(h.cfg, claims.UserID, claims.Role)
 	if err != nil {
+		log.Printf("refresh: generate access error: %v", err)
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
 			Message: "Failed to generate access token",
@@ -257,6 +264,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	// Генерируем новый refresh токен (одноразовые токены)
 	newRefreshToken, expiresAt, err := utils.GenerateRefreshToken(h.cfg, claims.UserID, claims.Role)
 	if err != nil {
+		log.Printf("refresh: generate refresh error: %v", err)
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
 			Message: "Failed to generate refresh token",
@@ -273,6 +281,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		Role:      claims.Role,
 	}
 	if err := h.repo.CreateRefreshToken(c.Request.Context(), newRefreshTokenModel); err != nil {
+		log.Printf("refresh: save new refresh error: %v", err)
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "internal_error",
 			Message: "Failed to save refresh token",

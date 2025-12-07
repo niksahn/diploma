@@ -24,8 +24,8 @@ func NewRepository(db *database.DB) *Repository {
 // CreateComplaint создает новую жалобу со статусом pending.
 func (r *Repository) CreateComplaint(ctx context.Context, authorID int, text, deviceDescription string) (*models.ComplaintWithUser, error) {
 	query := `
-		INSERT INTO complaints (text, devicedescription, author, status)
-		VALUES ($1, $2, $3, 'pending')
+		INSERT INTO complaints (text, devicedescription, author, status, date)
+		VALUES ($1, $2, $3, 'pending', CURRENT_DATE)
 		RETURNING id, text, date, devicedescription, author, status, created_at, updated_at
 	`
 

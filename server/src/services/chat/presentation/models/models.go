@@ -15,7 +15,7 @@ type ChatResponse struct {
 // CreateChatRequest представляет запрос на создание чата
 // @Description Данные для создания нового чата
 type CreateChatRequest struct {
-	Name        string `json:"name" binding:"required,min=3,max=100" example:"Project Discussion"`
+	Name        string `json:"name" binding:"omitempty,min=3,max=100" example:"Project Discussion"`
 	Type        int    `json:"type" binding:"required,min=1,max=3" example:"2"`
 	WorkspaceID int    `json:"workspace_id" binding:"required" example:"1"`
 	Members     []int  `json:"members" binding:"required,min=1" example:"1,2,3,5"`

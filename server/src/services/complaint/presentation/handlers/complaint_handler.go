@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -40,7 +41,15 @@ func getUserID(c *gin.Context) (int, error) {
 
 // getUserRole извлекает роль пользователя.
 func getUserRole(c *gin.Context) string {
-	return c.GetHeader("X-User-Role")
+	role := c.GetHeader("X-User-Role")
+	if role == "" {
+		role = c.GetHeader("X-User-Roles")
+	}
+	if role == "" {
+		return ""
+	}
+	parts := strings.Split(role, ",")
+	return strings.TrimSpace(parts[0])
 }
 
 // isAdmin проверяет роль admin.
@@ -75,6 +84,7 @@ func (h *ComplaintHandler) CreateComplaint(c *gin.Context) {
 
 	complaint, err := h.repo.CreateComplaint(c.Request.Context(), userID, req.Text, req.DeviceDescription)
 	if err != nil {
+		log.Printf("create complaint user %d failed: %v", userID, err)
 		c.JSON(http.StatusInternalServerError, apiModels.ErrorResponse{Error: "failed to create complaint"})
 		return
 	}

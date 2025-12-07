@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -56,6 +57,12 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		return
 	}
 
+	parsedDate, err := parseDate(req.Date)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid date format, expected YYYY-MM-DD"})
+		return
+	}
+
 	ctx := c.Request.Context()
 
 	// Проверяем, что пользователь является участником РП
@@ -81,7 +88,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		WorkspaceID: req.WorkspaceID,
 		Title:       req.Title,
 		Description: req.Description,
-		Date:        req.Date,
+		Date:        parsedDate,
 		Status:      req.Status,
 	}
 
@@ -253,6 +260,16 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		return
 	}
 
+	var parsedDate *time.Time
+	if req.Date != nil && *req.Date != "" {
+		dt, err := parseDate(*req.Date)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid date format, expected YYYY-MM-DD"})
+			return
+		}
+		parsedDate = &dt
+	}
+
 	ctx := c.Request.Context()
 
 	// Проверяем существование задачи и права доступа
@@ -273,7 +290,7 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	}
 
 	// Обновляем задачу
-	err = h.repo.UpdateTask(ctx, taskID, req.Title, req.Description, req.Date)
+	err = h.repo.UpdateTask(ctx, taskID, req.Title, req.Description, parsedDate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update task"})
 		return
@@ -457,15 +474,22 @@ func (h *TaskHandler) AddTaskAssignees(c *gin.Context) {
 	for _, assigneeID := range req.UserIDs {
 		// Проверяем, что исполнитель является участником РП
 		if err := h.repo.ValidateUserInWorkspace(ctx, assigneeID, task.WorkspaceID); err != nil {
+			log.Printf("add assignee task %d: user %d not in workspace %d: %v", taskID, assigneeID, task.WorkspaceID, err)
 			continue // Пропускаем, если пользователь не в РП
 		}
 
 		if err := h.repo.AddTaskAssignee(ctx, taskID, assigneeID); err == nil {
 			addedCount++
+		} else {
+			log.Printf("add assignee task %d user %d failed: %v", taskID, assigneeID, err)
 		}
 	}
 
-	c.JSON(http.StatusOK, models.SuccessResponse{
+	status := http.StatusCreated
+	if addedCount == 0 {
+		status = http.StatusBadRequest
+	}
+	c.JSON(status, models.SuccessResponse{
 		Message: "assignees added successfully",
 		Data:    map[string]int{"added_count": addedCount},
 	})
@@ -597,9 +621,7 @@ func (h *TaskHandler) RemoveTaskAssignee(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.SuccessResponse{
-		Message: "assignee removed successfully",
-	})
+	c.Status(http.StatusNoContent)
 }
 
 // ========== Chat Operations ==========
@@ -659,6 +681,7 @@ func (h *TaskHandler) AttachTaskToChat(c *gin.Context) {
 
 	// Проверяем, что чат принадлежит тому же РП
 	if err := h.repo.ValidateChatOwnership(ctx, req.ChatID, task.WorkspaceID); err != nil {
+		log.Printf("attach task %d to chat %d: validation failed: %v", taskID, req.ChatID, err)
 		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "chat not found in task workspace"})
 		return
 	}
@@ -666,6 +689,7 @@ func (h *TaskHandler) AttachTaskToChat(c *gin.Context) {
 	// Прикрепляем задачу к чату
 	err = h.repo.AttachTaskToChat(ctx, taskID, req.ChatID)
 	if err != nil {
+		log.Printf("attach task %d to chat %d: repo error: %v", taskID, req.ChatID, err)
 		if err.Error() == "task already attached to chat or invalid chat/task" {
 			c.JSON(http.StatusConflict, models.ErrorResponse{Error: "task already attached to this chat"})
 			return
@@ -674,7 +698,7 @@ func (h *TaskHandler) AttachTaskToChat(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.SuccessResponse{
+	c.JSON(http.StatusCreated, models.SuccessResponse{
 		Message: "task attached to chat successfully",
 	})
 }
@@ -804,9 +828,7 @@ func (h *TaskHandler) DetachTaskFromChat(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.SuccessResponse{
-		Message: "task detached from chat successfully",
-	})
+	c.Status(http.StatusNoContent)
 }
 
 // ========== History Operations ==========
@@ -874,6 +896,10 @@ func (h *TaskHandler) GetTaskHistory(c *gin.Context) {
 }
 
 // ========== Helper Methods ==========
+
+func parseDate(dateStr string) (time.Time, error) {
+	return time.Parse("2006-01-02", dateStr)
+}
 
 // convertToTaskResponse преобразует модель данных в ответ API
 func (h *TaskHandler) convertToTaskResponse(task *dm.TaskWithDetails) models.TaskResponse {

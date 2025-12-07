@@ -28,7 +28,7 @@ type workspacesResponse struct {
 
 type aggregatedProfile struct {
 	User       *userMeResponse  `json:"user"`
-	Workspaces []map[string]any `json:"workspaces,omitempty"`
+	Workspaces []map[string]any `json:"workspaces"`
 }
 
 // Me returns current user profile + workspaces (fan-out example).
@@ -43,6 +43,11 @@ func (h *AggregateHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uid := r.Header.Get("X-User-ID")
+	roles := r.Header.Get("X-User-Roles")
+	ctx = context.WithValue(ctx, "x-user-id", uid)
+	ctx = context.WithValue(ctx, "x-user-roles", roles)
+
 	user, err := h.fetchUser(ctx, authHeader)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("user fetch failed: %v", err), http.StatusBadGateway)
@@ -53,6 +58,9 @@ func (h *AggregateHandler) Me(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, fmt.Sprintf("workspaces fetch failed: %v", err), http.StatusBadGateway)
 		return
+	}
+	if workspaces == nil {
+		workspaces = []map[string]any{}
 	}
 
 	resp := aggregatedProfile{
@@ -70,6 +78,17 @@ func (h *AggregateHandler) fetchUser(ctx context.Context, authHeader string) (*u
 		return nil, err
 	}
 	req.Header.Set("Authorization", authHeader)
+	if uid := ctx.Value("x-user-id"); uid != nil {
+		if v, ok := uid.(string); ok && v != "" {
+			req.Header.Set("X-User-ID", v)
+		}
+	}
+	if roles := ctx.Value("x-user-roles"); roles != nil {
+		if v, ok := roles.(string); ok && v != "" {
+			req.Header.Set("X-User-Roles", v)
+			req.Header.Set("X-User-Role", v)
+		}
+	}
 
 	res, err := h.Client.Do(req)
 	if err != nil {
@@ -94,6 +113,17 @@ func (h *AggregateHandler) fetchWorkspaces(ctx context.Context, authHeader strin
 		return nil, err
 	}
 	req.Header.Set("Authorization", authHeader)
+	if uid := ctx.Value("x-user-id"); uid != nil {
+		if v, ok := uid.(string); ok && v != "" {
+			req.Header.Set("X-User-ID", v)
+		}
+	}
+	if roles := ctx.Value("x-user-roles"); roles != nil {
+		if v, ok := roles.(string); ok && v != "" {
+			req.Header.Set("X-User-Roles", v)
+			req.Header.Set("X-User-Role", v)
+		}
+	}
 
 	res, err := h.Client.Do(req)
 	if err != nil {
