@@ -23,7 +23,7 @@ func GenerateAccessToken(cfg *config.Config, userID int, role string) (string, e
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "messenger-auth-service",
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(cfg.JWTAccessExpiration) * time.Second)),
-			IssuedAt:   jwt.NewNumericDate(time.Now()),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
 
@@ -33,7 +33,7 @@ func GenerateAccessToken(cfg *config.Config, userID int, role string) (string, e
 
 func GenerateRefreshToken(cfg *config.Config, userID int, role string) (string, time.Time, error) {
 	expiresAt := time.Now().Add(time.Duration(cfg.JWTRefreshExpiration) * time.Second)
-	
+
 	claims := Claims{
 		UserID: userID,
 		Role:   role,
@@ -42,6 +42,7 @@ func GenerateRefreshToken(cfg *config.Config, userID int, role string) (string, 
 			Issuer:    "messenger-auth-service",
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ID:        fmt.Sprintf("%d-%d", userID, time.Now().UnixNano()), // ensure uniqueness for refresh tokens
 		},
 	}
 
@@ -85,4 +86,3 @@ func ExtractTokenFromHeader(authHeader string) (string, error) {
 
 	return authHeader[len(bearerPrefix):], nil
 }
-

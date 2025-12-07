@@ -6,20 +6,20 @@ import (
 
 // CreateTaskRequest запрос на создание задачи
 type CreateTaskRequest struct {
-	WorkspaceID int       `json:"workspace_id" binding:"required"`
-	Title       string    `json:"title" binding:"required,min=3,max=100"`
-	Description *string   `json:"description,omitempty"`
-	Date        time.Time `json:"date" binding:"required"`
-	Status      int       `json:"status,omitempty"`
+	WorkspaceID   int     `json:"workspace_id" binding:"required"`
+	Title         string  `json:"title" binding:"required,min=3,max=100"`
+	Description   *string `json:"description,omitempty"`
+	Date          string  `json:"date" binding:"required"` // ожидаем YYYY-MM-DD
+	Status        int     `json:"status,omitempty"`
 	AssignedUsers []int   `json:"assigned_users,omitempty"`
-	ChatID      *int      `json:"chat_id,omitempty"`
+	ChatID        *int    `json:"chat_id,omitempty"`
 }
 
 // UpdateTaskRequest запрос на обновление задачи
 type UpdateTaskRequest struct {
-	Title       *string    `json:"title,omitempty"`
-	Description *string    `json:"description,omitempty"`
-	Date        *time.Time `json:"date,omitempty"`
+	Title       *string `json:"title,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Date        *string `json:"date,omitempty"` // YYYY-MM-DD
 }
 
 // UpdateTaskStatusRequest запрос на изменение статуса задачи
@@ -62,11 +62,11 @@ type TaskListResponse struct {
 
 // TaskAssigneeResponse ответ с информацией об исполнителе
 type TaskAssigneeResponse struct {
-	UserID     int     `json:"user_id"`
-	Login      string  `json:"login"`
-	Name       string  `json:"name"`
-	Surname    string  `json:"surname"`
-	Patronymic *string `json:"patronymic,omitempty"`
+	UserID     int       `json:"user_id"`
+	Login      string    `json:"login"`
+	Name       string    `json:"name"`
+	Surname    string    `json:"surname"`
+	Patronymic *string   `json:"patronymic,omitempty"`
 	AssignedAt time.Time `json:"assigned_at"`
 }
 
@@ -78,10 +78,10 @@ type TaskAssigneesResponse struct {
 
 // TaskChatResponse ответ с информацией о чате задачи
 type TaskChatResponse struct {
-	ChatID      int    `json:"chat_id"`
-	ChatName    string `json:"chat_name"`
-	ChatType    int    `json:"chat_type"`
-	WorkspaceID int    `json:"workspace_id"`
+	ChatID      int       `json:"chat_id"`
+	ChatName    string    `json:"chat_name"`
+	ChatType    int       `json:"chat_type"`
+	WorkspaceID int       `json:"workspace_id"`
 	AttachedAt  time.Time `json:"attached_at"`
 }
 
@@ -93,9 +93,9 @@ type TaskChatsResponse struct {
 
 // TaskChangeResponse ответ с информацией об изменении задачи
 type TaskChangeResponse struct {
-	ID          int    `json:"id"`
-	Description string `json:"description"`
-	TaskID      int    `json:"task_id"`
+	ID          int       `json:"id"`
+	Description string    `json:"description"`
+	TaskID      int       `json:"task_id"`
 	ChangedAt   time.Time `json:"changed_at"`
 }
 
@@ -115,4 +115,3 @@ type SuccessResponse struct {
 	Message string      `json:"message"`
 	Data    interface{} `json:"data,omitempty"`
 }
-

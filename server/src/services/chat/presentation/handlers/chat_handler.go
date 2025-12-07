@@ -86,10 +86,22 @@ func (h *ChatHandler) CreateChat(c *gin.Context) {
 		return
 	}
 
+	req.Name = strings.TrimSpace(req.Name)
+
 	// Валидация типа чата
 	if req.Type < 1 || req.Type > 3 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid chat type (must be 1, 2, or 3)"})
 		return
+	}
+
+	// Для личного чата имя опционально, для остальных — обязательно
+	if req.Type == 1 && req.Name == "" {
+		req.Name = "Personal chat"
+	} else if req.Type != 1 {
+		if req.Name == "" || len(req.Name) < 3 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "name is required for non-personal chats"})
+			return
+		}
 	}
 
 	// Для личного чата должно быть ровно 2 участника
@@ -412,13 +424,3 @@ func (h *ChatHandler) DeleteChat(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
-
-
-
-
-
-
-
-
-
-

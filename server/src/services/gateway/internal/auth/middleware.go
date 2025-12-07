@@ -63,6 +63,7 @@ func (v *Validator) Middleware(skipPaths []string) func(http.Handler) http.Handl
 			// propagate identity downstream
 			r.Header.Set("X-User-ID", userID)
 			r.Header.Set("X-User-Roles", roles)
+			r.Header.Set("X-User-Role", roles)
 
 			next.ServeHTTP(w, r)
 		})
