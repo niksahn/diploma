@@ -31,6 +31,7 @@ import (
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 
 // @host localhost:8084
+// Build timestamp: 2025-12-09 23:11
 // @BasePath /api/v1/chats
 
 // @securityDefinitions.apikey BearerAuth
@@ -39,6 +40,7 @@ import (
 // @description JWT токен в формате: Bearer {token}. Gateway проверяет токен и добавляет X-User-ID в заголовок
 
 func main() {
+	log.Printf("=== STARTING CHAT SERVICE WITH WEBSOCKET FIX ===")
 	// Загружаем конфигурацию
 	cfg, err := config.Load()
 	if err != nil {
@@ -66,6 +68,12 @@ func main() {
 
 	// Настраиваем роутер
 	router := setupRouter(chatHandler, memberHandler, messageHandler, wsHub)
+
+	// Выводим все маршруты для отладки
+	log.Printf("Registered routes:")
+	for _, route := range router.Routes() {
+		log.Printf("  %s %s", route.Method, route.Path)
+	}
 
 	// Создаем HTTP сервер
 	srv := &http.Server{
@@ -110,12 +118,13 @@ func setupRouter(chatHandler *handlers.ChatHandler, memberHandler *handlers.Memb
 	router.Use(gin.Recovery())
 	router.Use(corsMiddleware())
 
+	// WebSocket endpoint (на корневом уровне, до API routes)
+	router.GET("/ws/chats/ws", handlers.HandleWebSocket(wsHub))
+	log.Printf("WebSocket endpoint registered: /ws/chats/ws")
+
 	// API routes - регистрируем в правильном порядке: от более специфичных к менее специфичным
 	api := router.Group("/api/v1/chats")
 	{
-		// WebSocket (статический путь - регистрируем первым)
-		api.GET("/ws", handlers.HandleWebSocket(wsHub))
-
 		// Чаты (общие маршруты без параметров)
 		api.POST("", chatHandler.CreateChat)
 		api.GET("", chatHandler.GetChats)

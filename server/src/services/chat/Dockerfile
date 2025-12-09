@@ -7,6 +7,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # Копируем исходный код
+RUN echo "Build timestamp: $(date)" > /tmp/build_time
 COPY . .
 
 # Собираем приложение
@@ -27,6 +28,8 @@ EXPOSE 8084
 
 # Запускаем приложение
 CMD ["./chat-service"]
+
+
 
 
 

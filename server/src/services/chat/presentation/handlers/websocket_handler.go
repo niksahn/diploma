@@ -57,17 +57,19 @@ func (h *WSHub) Run() {
 		select {
 		case client := <-h.register:
 			h.clients[client] = true
-			log.Printf("Client connected: UserID=%d, Total clients: %d", client.UserID, len(h.clients))
+			log.Printf("WebSocket client connected: UserID=%d, Total clients: %d", client.UserID, len(h.clients))
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.Send)
-				log.Printf("Client disconnected: UserID=%d, Total clients: %d", client.UserID, len(h.clients))
+				log.Printf("WebSocket client disconnected: UserID=%d, Total clients: %d", client.UserID, len(h.clients))
 			}
 
 		case message := <-h.broadcast:
+			log.Printf("WebSocket broadcasting message: type=%s, chatID=%d", message.Type, message.ChatID)
 			// Отправляем сообщение всем клиентам в указанном чате
+			sentCount := 0
 			for client := range h.clients {
 				client.mu.RLock()
 				isInChat := client.Chats[message.ChatID]
@@ -76,12 +78,14 @@ func (h *WSHub) Run() {
 				if isInChat {
 					select {
 					case client.Send <- message:
+						sentCount++
 					default:
 						close(client.Send)
 						delete(h.clients, client)
 					}
 				}
 			}
+			log.Printf("WebSocket message sent to %d clients", sentCount)
 		}
 	}
 }
@@ -170,6 +174,8 @@ func (c *WSClient) writePump() {
 }
 
 func (c *WSClient) handleMessage(msg models.WSClientMessage) {
+	log.Printf("WebSocket client %d received message: type=%s, chatID=%d", c.UserID, msg.Type, msg.ChatID)
+
 	switch msg.Type {
 	case "join_chat":
 		c.handleJoinChat(msg.ChatID)
@@ -182,6 +188,7 @@ func (c *WSClient) handleMessage(msg models.WSClientMessage) {
 	case "stop_typing":
 		c.handleStopTyping(msg.ChatID)
 	default:
+		log.Printf("WebSocket client %d: unknown message type %s", c.UserID, msg.Type)
 		c.sendError("UNKNOWN_TYPE", "Unknown message type")
 	}
 }
@@ -315,6 +322,8 @@ func (c *WSClient) sendError(code, message string) {
 // @Router /chats/ws [get]
 func HandleWebSocket(hub *WSHub) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		log.Printf("WebSocket connection attempt from %s", c.ClientIP())
+
 		// Получаем токен из query или Authorization (в тестах передается MOCK_JWT_TOKEN)
 		token := c.Query("token")
 		if token == "" {
@@ -325,12 +334,17 @@ func HandleWebSocket(hub *WSHub) gin.HandlerFunc {
 			}
 		}
 
+		log.Printf("WebSocket token: %s...", token[:min(20, len(token))])
+
 		if token == "" {
+			log.Printf("WebSocket connection rejected: no token")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token required"})
 			return
 		}
 
 		userID := extractUserIDFromToken(token)
+		log.Printf("WebSocket extracted userID: %d", userID)
+
 		if userID == 0 {
 			// Фоллбек на X-User-ID, если токен не содержит user_id
 			if userIDStr := c.GetHeader("X-User-ID"); userIDStr != "" {
@@ -343,15 +357,20 @@ func HandleWebSocket(hub *WSHub) gin.HandlerFunc {
 		if userID == 0 {
 			// В тестовых сценариях разрешаем подключение даже без валидного user_id
 			// и работаем как "гость" (ID = -1), чтобы не ронять соединение.
+			log.Printf("WebSocket allowing guest connection (userID = -1)")
 			userID = -1
 		}
+
+		log.Printf("WebSocket upgrading connection for user %d", userID)
 
 		// Обновляем соединение до WebSocket
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
-			log.Printf("WebSocket upgrade error: %v", err)
+			log.Printf("WebSocket upgrade error for user %d: %v", userID, err)
 			return
 		}
+
+		log.Printf("WebSocket connection established for user %d", userID)
 
 		client := &WSClient{
 			UserID:  userID,
@@ -367,7 +386,16 @@ func HandleWebSocket(hub *WSHub) gin.HandlerFunc {
 		// Запускаем горутины для чтения и записи
 		go client.writePump()
 		go client.readPump()
+
+		log.Printf("WebSocket client registered and pumps started for user %d", userID)
 	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // extractUserIDFromToken извлекает user_id из JWT без проверки подписи (достаточно для тестового окружения)

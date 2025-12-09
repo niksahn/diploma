@@ -158,7 +158,7 @@ func (h *MemberHandler) GetMembers(c *gin.Context) {
 			Surname:  member.Surname,
 			Role:     member.Role,
 			Status:   member.Status,
-			JoinedAt: member.JoinedAt,
+			JoinedAt: member.JoinedAt.Format("2006-01-02"),
 		}
 		if member.Patronymic != nil {
 			response.Patronymic = *member.Patronymic
