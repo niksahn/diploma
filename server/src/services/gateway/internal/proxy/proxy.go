@@ -58,6 +58,7 @@ func NewReverseProxy(target string, stripPrefix bool) http.Handler {
 	return proxy
 }
 
+
 func ensureLeadingSlash(path string) string {
 	if strings.HasPrefix(path, "/") {
 		return path

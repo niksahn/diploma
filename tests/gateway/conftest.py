@@ -3,7 +3,6 @@
 Используем только публичные маршруты Gateway (см. server/plans/api/gateway.md).
 """
 import os
-import time
 import pytest
 import requests
 import psycopg2
@@ -61,15 +60,23 @@ def complaint_api_path():
     return COMPLAINT_API_PATH
 
 
-@pytest.fixture
+TEST_ADMIN_LOGIN = "gw-admin@example.com"
+TEST_USER_LOGIN_TEMPLATE = "gw-user-{idx}@example.com"
+TEST_TARIFF_NAME_TEMPLATE = "GW Test Tariff {label}"
+
+
+@pytest.fixture(scope="session")
 def unique_suffix():
-    """Уникальный суффикс для логинов/имен внутри одного теста."""
-    return int(time.time() * 1000)
+    """
+    Детеминированный суффикс, чтобы тестовые данные создавались одинаково.
+    Конфликты решаем через login-then-login (409 => login).
+    """
+    return 42
 
 
 @pytest.fixture(scope="session")
 def db_connection():
-    """Подключение к БД для очистки между сценариями."""
+    """Подключение к БД для точечных upsert'ов тестовых сущностей."""
     try:
         conn = psycopg2.connect(
             host=DB_HOST,
@@ -92,29 +99,6 @@ def db_cursor(db_connection):
     cursor.close()
 
 
-@pytest.fixture(autouse=True)
-def cleanup_db(db_cursor):
-    """
-    Полная очистка данных после каждого теста.
-    Порядок удаления важен из-за внешних ключей.
-    """
-    yield
-    db_cursor.execute('DELETE FROM "taskinchat"')
-    db_cursor.execute("DELETE FROM taskchanges")
-    db_cursor.execute("DELETE FROM userintask")
-    db_cursor.execute("DELETE FROM messages")
-    db_cursor.execute('DELETE FROM "userinchat"')
-    db_cursor.execute("DELETE FROM tasks")
-    db_cursor.execute("DELETE FROM chats")
-    db_cursor.execute('DELETE FROM "userinworkspace"')
-    db_cursor.execute("DELETE FROM complaints")
-    db_cursor.execute("DELETE FROM workspaces")
-    db_cursor.execute("DELETE FROM tariffs")
-    db_cursor.execute("DELETE FROM refresh_tokens")
-    db_cursor.execute("DELETE FROM users")
-    db_cursor.execute("DELETE FROM administrators")
-
-
 @pytest.fixture
 def auth_header():
     """Фабрика заголовков Authorization."""
@@ -123,15 +107,32 @@ def auth_header():
     return _build
 
 
+def _register_or_login(base_url: str, path: str, login: str, password: str, payload: dict):
+    """Регистрирует пользователя/админа, на 409 делает login, чтобы не трогать существующие данные."""
+    register_resp = requests.post(f"{base_url}{path}/register", json=payload)
+    if register_resp.status_code not in (200, 201, 409):
+        pytest.fail(f"register failed: {register_resp.status_code} {register_resp.text}")
+
+    login_resp = requests.post(
+        f"{base_url}{path}/login",
+        json={"login": login, "password": password},
+    )
+    assert login_resp.status_code == 200, login_resp.text
+    return login_resp.json()
+
+
 @pytest.fixture
-def create_user(gateway_url, auth_api_path, unique_suffix):
-    """Зарегистрировать и залогинить пользователя через Gateway."""
+def create_user(gateway_url, auth_api_path):
+    """Зарегистрировать/залогинить пользователя через Gateway с детерминированными логинами."""
     def _create(index: int = 0):
-        login = f"user{unique_suffix}{index}@example.com"
+        login = TEST_USER_LOGIN_TEMPLATE.format(idx=index)
         password = "UserPassword123"
-        register_resp = requests.post(
-            f"{gateway_url}{auth_api_path}/register",
-            json={
+        body = _register_or_login(
+            gateway_url,
+            auth_api_path,
+            login,
+            password,
+            {
                 "login": login,
                 "password": password,
                 "surname": "Tester",
@@ -139,14 +140,6 @@ def create_user(gateway_url, auth_api_path, unique_suffix):
                 "patronymic": "Gateway",
             },
         )
-        assert register_resp.status_code == 201, register_resp.text
-
-        login_resp = requests.post(
-            f"{gateway_url}{auth_api_path}/login",
-            json={"login": login, "password": password},
-        )
-        assert login_resp.status_code == 200, login_resp.text
-        body = login_resp.json()
         return {
             "id": body["user"]["id"],
             "login": login,
@@ -158,23 +151,18 @@ def create_user(gateway_url, auth_api_path, unique_suffix):
 
 
 @pytest.fixture
-def create_admin(gateway_url, auth_api_path, unique_suffix):
-    """Зарегистрировать и залогинить администратора через Gateway."""
+def create_admin(gateway_url, auth_api_path):
+    """Зарегистрировать/залогинить администратора через Gateway с фиксированным логином."""
     def _create(index: int = 0):
-        login = f"admin{unique_suffix}{index}@example.com"
+        login = TEST_ADMIN_LOGIN if index == 0 else f"{TEST_ADMIN_LOGIN}.{index}"
         password = "AdminSecurePassword123"
-        register_resp = requests.post(
-            f"{gateway_url}{auth_api_path}/admin/register",
-            json={"login": login, "password": password},
+        body = _register_or_login(
+            gateway_url,
+            f"{auth_api_path}/admin",
+            login,
+            password,
+            {"login": login, "password": password},
         )
-        assert register_resp.status_code == 201, register_resp.text
-
-        login_resp = requests.post(
-            f"{gateway_url}{auth_api_path}/admin/login",
-            json={"login": login, "password": password},
-        )
-        assert login_resp.status_code == 200, login_resp.text
-        body = login_resp.json()
         return {
             "id": body["admin"]["id"],
             "login": login,
@@ -185,48 +173,61 @@ def create_admin(gateway_url, auth_api_path, unique_suffix):
 
 
 @pytest.fixture
-def create_tariff(gateway_url, workspace_api_path, auth_header, unique_suffix):
-    """Создать тариф администратором и вернуть его ID."""
+def create_tariff(db_cursor):
+    """Создать/обновить тариф напрямую в БД (ON CONFLICT), вернуть ID."""
     def _create(admin_token: str, label: str):
-        resp = requests.post(
-            f"{gateway_url}{workspace_api_path}/tariffs",
-            json={
-                "name": f"{label} Tariff",
-                "description": f"{label} description",
-            },
-            headers=auth_header(admin_token),
+        name = TEST_TARIFF_NAME_TEMPLATE.format(label=label)
+        db_cursor.execute(
+            """
+            INSERT INTO tariffs (name, description)
+            VALUES (%s, %s)
+            ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description
+            RETURNING id
+            """,
+            (name, f"{label} description"),
         )
-        assert resp.status_code in (200, 201), resp.text
-        body = resp.json()
-        return body.get("id") or body.get("tariff_id") or body.get("tariffs_id")
+        row = db_cursor.fetchone()
+        if not row:
+            db_cursor.execute("SELECT id FROM tariffs WHERE name = %s", (name,))
+            row = db_cursor.fetchone()
+        return row["id"]
     return _create
 
 
 @pytest.fixture
-def create_workspace(gateway_url, workspace_api_path, auth_header):
-    """Создать рабочее пространство администратором."""
+def create_workspace(gateway_url, workspace_api_path, auth_header, db_cursor):
+    """Создать РП через API, при 409 получить id из БД, чтобы не трогать другие записи."""
     def _create(admin_token: str, name: str, tariff_id: int, leader_id: int):
         resp = requests.post(
             f"{gateway_url}{workspace_api_path}",
             json={"name": name, "tariff_id": tariff_id, "leader_id": leader_id},
             headers=auth_header(admin_token),
         )
-        assert resp.status_code == 201, resp.text
-        return resp.json()["id"]
+        if resp.status_code == 201:
+            return resp.json()["id"]
+        if resp.status_code == 409:
+            db_cursor.execute("SELECT id FROM workspaces WHERE name = %s", (name,))
+            row = db_cursor.fetchone()
+            assert row, "workspace conflict but no existing row"
+            return row["id"]
+        pytest.fail(f"create_workspace failed: {resp.status_code} {resp.text}")
     return _create
 
 
 @pytest.fixture
 def add_member(gateway_url, workspace_api_path, auth_header):
-    """Добавить пользователя в РП указанным токеном."""
+    """Добавить пользователя в РП указанным токеном, 409 трактуем как уже добавлен."""
     def _add(workspace_id: int, user_id: int, role: int, token: str):
         resp = requests.post(
             f"{gateway_url}{workspace_api_path}/{workspace_id}/members",
             json={"user_id": user_id, "role": role},
             headers=auth_header(token),
         )
-        assert resp.status_code == 201, resp.text
-        return resp.json()
+        if resp.status_code == 201:
+            return resp.json()
+        if resp.status_code == 409:
+            return {"user_id": user_id, "workspace_id": workspace_id, "role": role}
+        pytest.fail(f"add_member failed: {resp.status_code} {resp.text}")
     return _add
 
 

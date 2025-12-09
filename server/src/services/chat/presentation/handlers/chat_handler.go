@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/base64"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -298,12 +299,15 @@ func (h *ChatHandler) GetChat(c *gin.Context) {
 	}
 
 	// Проверяем, является ли пользователь участником чата
+	log.Printf("HTTP GetChatDetails: checking membership for user %d in chat %d", userID, chatID)
 	isMember, err := h.repo.IsUserInChat(c.Request.Context(), userID, chatID)
+	log.Printf("HTTP GetChatDetails: IsUserInChat returned isMember=%v, err=%v", isMember, err)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check chat membership"})
 		return
 	}
 	if !isMember {
+		log.Printf("HTTP GetChatDetails: user %d is not member of chat %d", userID, chatID)
 		c.JSON(http.StatusForbidden, gin.H{"error": "user is not a member of this chat"})
 		return
 	}
@@ -434,4 +438,80 @@ func (h *ChatHandler) DeleteChat(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+// GetChatTasks получает список задач, прикрепленных к чату
+// @Summary Получить список задач чата
+// @Description Возвращает список задач, прикрепленных к чату
+// @Tags chat-tasks
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "ID чата"
+// @Success 200 {object} models.ChatTasksResponse
+// @Failure 401 {object} map[string]string "Не авторизован"
+// @Failure 403 {object} map[string]string "Пользователь не является участником чата"
+// @Failure 404 {object} map[string]string "Чат не найден"
+// @Router /chats/{id}/tasks [get]
+func (h *ChatHandler) GetChatTasks(c *gin.Context) {
+	userID, err := getUserIDFromHeader(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user ID not found"})
+		return
+	}
+
+	chatIDStr := c.Param("id")
+	chatID, err := strconv.Atoi(chatIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid chat ID"})
+		return
+	}
+
+	// Проверяем существование чата
+	_, err = h.repo.GetChatByID(c.Request.Context(), chatID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "chat not found"})
+		return
+	}
+
+	// Проверяем, является ли пользователь участником чата
+	isMember, err := h.repo.IsUserInChat(c.Request.Context(), userID, chatID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check chat membership"})
+		return
+	}
+	if !isMember {
+		c.JSON(http.StatusForbidden, gin.H{"error": "user is not a member of this chat"})
+		return
+	}
+
+	// Получаем задачи чата
+	tasks, err := h.repo.GetChatTasks(c.Request.Context(), chatID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get chat tasks"})
+		return
+	}
+
+	// Преобразуем в формат ответа
+	var taskInfos []models.ChatTaskInfo
+	for _, task := range tasks {
+		taskInfos = append(taskInfos, models.ChatTaskInfo{
+			AttachedAt:    task.AttachedAt,
+			Creator:       task.Creator,
+			CreatorName:   task.CreatorName,
+			Date:          task.Date,
+			Description:   task.Description,
+			ID:            task.ID,
+			Status:        task.Status,
+			StatusName:    task.StatusName,
+			Title:         task.Title,
+			WorkspaceID:   task.WorkspaceID,
+			WorkspaceName: task.WorkspaceName,
+		})
+	}
+
+	c.JSON(http.StatusOK, models.ChatTasksResponse{
+		Tasks: taskInfos,
+		Total: len(taskInfos),
+	})
 }

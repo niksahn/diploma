@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -49,12 +50,15 @@ func (h *MessageHandler) GetMessages(c *gin.Context) {
 	}
 
 	// Проверяем, является ли пользователь участником чата
+	log.Printf("HTTP GetMessages: checking membership for user %d in chat %d", userID, chatID)
 	isMember, err := h.repo.IsUserInChat(c.Request.Context(), userID, chatID)
+	log.Printf("HTTP GetMessages: IsUserInChat returned isMember=%v, err=%v", isMember, err)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check chat membership"})
 		return
 	}
 	if !isMember {
+		log.Printf("HTTP GetMessages: user %d is not member of chat %d", userID, chatID)
 		c.JSON(http.StatusForbidden, gin.H{"error": "user is not a member of this chat"})
 		return
 	}
@@ -153,12 +157,15 @@ func (h *MessageHandler) CreateMessage(c *gin.Context) {
 	}
 
 	// Проверяем, является ли пользователь участником чата
+	log.Printf("HTTP GetMessages: checking membership for user %d in chat %d", userID, chatID)
 	isMember, err := h.repo.IsUserInChat(c.Request.Context(), userID, chatID)
+	log.Printf("HTTP GetMessages: IsUserInChat returned isMember=%v, err=%v", isMember, err)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check chat membership"})
 		return
 	}
 	if !isMember {
+		log.Printf("HTTP GetMessages: user %d is not member of chat %d", userID, chatID)
 		c.JSON(http.StatusForbidden, gin.H{"error": "user is not a member of this chat"})
 		return
 	}
@@ -347,12 +354,15 @@ func (h *MessageHandler) MarkAsRead(c *gin.Context) {
 	}
 
 	// Проверяем, является ли пользователь участником чата
+	log.Printf("HTTP GetMessages: checking membership for user %d in chat %d", userID, chatID)
 	isMember, err := h.repo.IsUserInChat(c.Request.Context(), userID, chatID)
+	log.Printf("HTTP GetMessages: IsUserInChat returned isMember=%v, err=%v", isMember, err)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check chat membership"})
 		return
 	}
 	if !isMember {
+		log.Printf("HTTP GetMessages: user %d is not member of chat %d", userID, chatID)
 		c.JSON(http.StatusForbidden, gin.H{"error": "user is not a member of this chat"})
 		return
 	}

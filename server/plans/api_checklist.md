@@ -10,8 +10,8 @@
 
 | Статус | Количество |
 |--------|-----------|
-| **Всего эндпоинтов** | 59 |
-| **Реализовано** | 59 |
+| **Всего эндпоинтов** | 60 |
+| **Реализовано** | 60 |
 | **В разработке** | 0 |
 | **Осталось** | 0 |
 
@@ -23,7 +23,6 @@
 
 **Статус**: ✅ Готово (Kong выведен из эксплуатации)
 
-- [x] Единый swagger Gateway (`/swagger-docs/gateway.json`)
 - [x] Proxy `/api/v1/auth/*` → Auth Service (без auth middleware)
 - [x] Proxy `/api/v1/users/*` → User Service
 - [x] Proxy `/api/v1/workspaces/*` → Workspace Service
@@ -106,7 +105,7 @@
 
 ---
 
-## 5. Chat Service (`:8084`) - 15 эндпоинтов
+## 5. Chat Service (`:8084`) - 16 эндпоинтов
 
 **Документация**: [chat_service.md](./api/chat_service.md)
 
@@ -118,6 +117,7 @@
 - [x] `GET /api/v1/chats/:id` - Информация о чате
 - [x] `PUT /api/v1/chats/:id` - Обновить чат
 - [x] `DELETE /api/v1/chats/:id` - Удалить чат
+- [x] `GET /api/v1/chats/:id/tasks` - Задачи чата
 
 ### Участники чата
 - [x] `POST /api/v1/chats/:id/members` - Добавить участников
@@ -194,7 +194,7 @@
 
 ### Фаза 3: Коммуникация (Ключевой функционал)
 6. ✅ Chat Service - CRUD чатов и управление участниками
-7. ✅ Chat Service - REST API для сообщений (15 эндпоинтов)
+7. ✅ Chat Service - REST API для сообщений (16 эндпоинтов)
 8. ✅ Chat Service - WebSocket для real-time общения
 
 ### Фаза 4: Задачи

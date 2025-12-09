@@ -133,13 +133,12 @@ def _safe_post(url, payload):
 
 
 @pytest.fixture
-def clean_workspace_data(db_cursor):
-    """Очистка данных рабочих пространств после теста"""
+def clean_workspace_data():
+    """
+    Ничего не удаляем: тестовые данные создаются идемпотентно через ON CONFLICT.
+    Оставлено для совместимости с существующими тестами.
+    """
     yield
-    # Очищаем таблицы, связанные с workspaces
-    # Порядок важен из-за внешних ключей
-    db_cursor.execute('DELETE FROM "userinworkspace"')
-    db_cursor.execute('DELETE FROM workspaces')
 
 
 @pytest.fixture

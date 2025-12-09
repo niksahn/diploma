@@ -552,7 +552,12 @@ class TestWorkspaceMembers:
 
         # Добавляем пользователя как руководителя (тот же, что в user_auth_headers)
         db_cursor.execute(
-            'INSERT INTO "userinworkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
+            '''
+            INSERT INTO "userinworkspace" (usersid, workspacesid, role, date)
+            VALUES (%s, %s, %s, NOW())
+            ON CONFLICT (usersid, workspacesid)
+            DO UPDATE SET role = EXCLUDED.role, date = NOW()
+            ''',
             (user_token["user_id"], workspace_id, 2)
         )
 
@@ -709,7 +714,12 @@ class TestWorkspaceLeader:
 
         # Добавляем пользователя как руководителя
         db_cursor.execute(
-            'INSERT INTO "userinworkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
+            '''
+            INSERT INTO "userinworkspace" (usersid, workspacesid, role, date)
+            VALUES (%s, %s, %s, NOW())
+            ON CONFLICT (usersid, workspacesid)
+            DO UPDATE SET role = EXCLUDED.role, date = NOW()
+            ''',
             (user_token["user_id"], workspace_id, 2)
         )
 
@@ -725,7 +735,12 @@ class TestWorkspaceLeader:
 
         # Добавляем второго пользователя как обычного участника
         db_cursor.execute(
-            'INSERT INTO "userinworkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
+            '''
+            INSERT INTO "userinworkspace" (usersid, workspacesid, role, date)
+            VALUES (%s, %s, %s, NOW())
+            ON CONFLICT (usersid, workspacesid)
+            DO UPDATE SET role = EXCLUDED.role, date = NOW()
+            ''',
             (new_user_id, workspace_id, 1)
         )
 
@@ -759,7 +774,12 @@ class TestWorkspaceLeader:
 
         # Добавляем пользователя как обычного участника (role = 1)
         db_cursor.execute(
-            'INSERT INTO "userinworkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
+            '''
+            INSERT INTO "userinworkspace" (usersid, workspacesid, role, date)
+            VALUES (%s, %s, %s, NOW())
+            ON CONFLICT (usersid, workspacesid)
+            DO UPDATE SET role = EXCLUDED.role, date = NOW()
+            ''',
             (user_token["user_id"], workspace_id, 1)
         )
 
@@ -789,7 +809,12 @@ class TestWorkspaceLeader:
 
         # Добавляем пользователя как руководителя
         db_cursor.execute(
-            'INSERT INTO "userinworkspace" (usersid, workspacesid, role, date) VALUES (%s, %s, %s, NOW())',
+            '''
+            INSERT INTO "userinworkspace" (usersid, workspacesid, role, date)
+            VALUES (%s, %s, %s, NOW())
+            ON CONFLICT (usersid, workspacesid)
+            DO UPDATE SET role = EXCLUDED.role, date = NOW()
+            ''',
             (user_token["user_id"], workspace_id, 2)
         )
 

@@ -138,6 +138,54 @@ definitions:
         example: 1
         type: integer
     type: object
+  models.ChatTaskInfo:
+    description: Информация о задаче в контексте чата
+    properties:
+      attached_at:
+        example: "2024-01-01T10:00:00Z"
+        type: string
+      creator:
+        example: 1
+        type: integer
+      creator_name:
+        example: Ivan Ivanov
+        type: string
+      date:
+        example: "2024-01-15"
+        type: string
+      description:
+        example: Implement user authentication system
+        type: string
+      id:
+        example: 1
+        type: integer
+      status:
+        example: 2
+        type: integer
+      status_name:
+        example: В работе
+        type: string
+      title:
+        example: Implement authentication
+        type: string
+      workspace_id:
+        example: 1
+        type: integer
+      workspace_name:
+        example: Main Project
+        type: string
+    type: object
+  models.ChatTasksResponse:
+    description: Список задач, прикрепленных к чату
+    properties:
+      tasks:
+        items:
+          $ref: '#/definitions/models.ChatTaskInfo'
+        type: array
+      total:
+        example: 3
+        type: integer
+    type: object
   models.CreateChatRequest:
     description: Данные для создания нового чата
     properties:
@@ -166,7 +214,6 @@ definitions:
         type: integer
     required:
     - members
-    - name
     - type
     - workspace_id
     type: object
@@ -994,6 +1041,47 @@ paths:
       summary: Отметить сообщения как прочитанные
       tags:
       - messages
+  /chats/{id}/tasks:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список задач, прикрепленных к чату
+      parameters:
+      - description: ID чата
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ChatTasksResponse'
+        "401":
+          description: Не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Пользователь не является участником чата
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Чат не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить список задач чата
+      tags:
+      - chat-tasks
   /chats/ws:
     get:
       description: Устанавливает WebSocket соединение для обмена сообщениями в реальном

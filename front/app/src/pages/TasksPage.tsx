@@ -1,13 +1,13 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { taskApi } from '../shared/api/tasks'
+import { taskApi, type Task } from '../shared/api/tasks'
 import { useWorkspaceStore } from '../shared/state/workspace'
 
 const TasksPage = () => {
   const { selectedWorkspaceId } = useWorkspaceStore()
   const { data, isLoading, error } = useQuery({
     queryKey: ['tasks', selectedWorkspaceId],
-    queryFn: () => taskApi.list(selectedWorkspaceId || ''),
+    queryFn: () => taskApi.list(selectedWorkspaceId || 0),
     enabled: Boolean(selectedWorkspaceId),
   })
 
@@ -21,10 +21,7 @@ const TasksPage = () => {
     )
   }
 
-  const tasks = data ?? [
-    { id: 't1', title: 'Согласовать ТЗ', status: 'in_progress', assignees: ['demo'], updatedAt: new Date().toISOString() },
-    { id: 't2', title: 'Подготовить отчёт', status: 'todo', assignees: ['you'], updatedAt: new Date().toISOString() },
-  ]
+  const tasks = data?.tasks || []
 
   return (
     <div className="space-y-4">
@@ -41,29 +38,48 @@ const TasksPage = () => {
         </Link>
       </header>
 
-      {isLoading && <div className="text-sm text-slate-600">Загрузка…</div>}
-      {error && <div className="text-sm text-amber-700">API недоступно, показываем демо-данные.</div>}
-
       <div className="grid gap-3 md:grid-cols-2">
-        {tasks.map((task) => (
-          <Link key={task.id} to={`/tasks/${task.id}`} className="card hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <div className="text-base font-semibold text-slate-900">{task.title}</div>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">{task.status || '—'}</span>
-            </div>
-            {task.assignees && (
-              <div className="mt-2 text-sm text-slate-600">Исполнители: {task.assignees.join(', ')}</div>
-            )}
-            {task.updatedAt && (
-              <div className="text-xs text-slate-500 mt-1">Обновлено: {new Date(task.updatedAt).toLocaleString()}</div>
-            )}
-          </Link>
-        ))}
+        {isLoading ? (
+          <div className="col-span-full text-center py-8">
+            <div className="text-sm text-slate-600">Загрузка…</div>
+          </div>
+        ) : error ? (
+          <div className="col-span-full text-center py-8">
+            <div className="text-sm text-amber-700">Упс, тут пусто</div>
+            <div className="text-xs text-slate-500 mt-1">Не удалось загрузить задачи</div>
+          </div>
+        ) : tasks.length === 0 ? (
+          <div className="col-span-full text-center py-8">
+            <div className="text-sm text-slate-600">Упс, тут пусто</div>
+            <div className="text-xs text-slate-500 mt-1">У вас пока нет задач</div>
+          </div>
+        ) : (
+          tasks.map((task: Task) => (
+            <Link key={task.id} to={`/tasks/${task.id}`} className="card hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <div className="text-base font-semibold text-slate-900">{task.title}</div>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">{task.status_name || '—'}</span>
+              </div>
+              {task.description && (
+                <div className="mt-2 text-sm text-slate-600 line-clamp-2">{task.description}</div>
+              )}
+              <div className="mt-2 flex items-center justify-between text-sm text-slate-500">
+                <span>Создал: {task.creator_name}</span>
+                <span>Исполнителей: {task.assignee_count || 0}</span>
+              </div>
+              {task.created_at && (
+                <div className="text-xs text-slate-500 mt-1">Создано: {new Date(task.created_at).toLocaleString()}</div>
+              )}
+            </Link>
+          ))
+        )}
       </div>
     </div>
   )
 }
 
 export default TasksPage
+
+
 
 

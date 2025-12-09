@@ -1059,6 +1059,70 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/chats/{id}/tasks": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает список задач, прикрепленных к чату",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chat-tasks"
+                ],
+                "summary": "Получить список задач чата",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID чата",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ChatTasksResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Пользователь не является участником чата",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Чат не найден",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1252,12 +1316,77 @@ const docTemplate = `{
                 }
             }
         },
+        "models.ChatTaskInfo": {
+            "description": "Информация о задаче в контексте чата",
+            "type": "object",
+            "properties": {
+                "attached_at": {
+                    "type": "string",
+                    "example": "2024-01-01T10:00:00Z"
+                },
+                "creator": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "creator_name": {
+                    "type": "string",
+                    "example": "Ivan Ivanov"
+                },
+                "date": {
+                    "type": "string",
+                    "example": "2024-01-15"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Implement user authentication system"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "status": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "status_name": {
+                    "type": "string",
+                    "example": "В работе"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Implement authentication"
+                },
+                "workspace_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "workspace_name": {
+                    "type": "string",
+                    "example": "Main Project"
+                }
+            }
+        },
+        "models.ChatTasksResponse": {
+            "description": "Список задач, прикрепленных к чату",
+            "type": "object",
+            "properties": {
+                "tasks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ChatTaskInfo"
+                    }
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 3
+                }
+            }
+        },
         "models.CreateChatRequest": {
             "description": "Данные для создания нового чата",
             "type": "object",
             "required": [
                 "members",
-                "name",
                 "type",
                 "workspace_id"
             ],
@@ -1531,15 +1660,3 @@ var SwaggerInfo = &swag.Spec{
 func init() {
 	swag.Register(SwaggerInfo.InstanceName(), SwaggerInfo)
 }
-
-
-
-
-
-
-
-
-
-
-
-

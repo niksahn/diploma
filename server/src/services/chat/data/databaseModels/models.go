@@ -1,6 +1,8 @@
 package databaseModels
 
-import "time"
+import (
+	"time"
+)
 
 // Chat представляет структуру чата в БД
 type Chat struct {
@@ -29,7 +31,22 @@ type UserInChat struct {
 	Date   time.Time `db:"date"` // Дата присоединения
 }
 
-
+// ChatTask представляет задачу, прикрепленную к чату
+type ChatTask struct {
+	ID             int    `db:"id"`
+	ChatID         int    `db:"chatsid"`
+	TaskID         int    `db:"tasksid"`
+	AttachedAt     string `db:"attached_at"`
+	Creator        int    `db:"creator"`
+	CreatorName    string `db:"creator_name"`
+	Date           string `db:"date"`
+	Description    string `db:"description"`
+	Status         int    `db:"status"`
+	StatusName     string `db:"status_name"`
+	Title          string `db:"title"`
+	WorkspaceID    int    `db:"workspace_id"`
+	WorkspaceName  string `db:"workspace_name"`
+}
 
 
 
