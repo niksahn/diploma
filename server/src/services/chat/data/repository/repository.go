@@ -244,7 +244,7 @@ type ChatMember struct {
 	Patronymic *string
 	Status     int
 	Role       int
-	JoinedAt   string
+	JoinedAt   time.Time
 }
 
 func (r *Repository) GetChatMembers(ctx context.Context, chatID int) ([]ChatMember, error) {
