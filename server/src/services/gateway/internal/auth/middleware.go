@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -44,9 +45,12 @@ func (v *Validator) Middleware(skipPaths []string) func(http.Handler) http.Handl
 			}
 
 			if isSkipped(r.URL.Path, skipPaths) {
+				log.Printf("Skipping auth for path: %s (matches skip paths: %v)", r.URL.Path, skipPaths)
 				next.ServeHTTP(w, r)
 				return
 			}
+
+			log.Printf("Auth required for path: %s", r.URL.Path)
 
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {

@@ -13,9 +13,27 @@ const ComplaintsPage = () => {
     queryFn: complaintApi.mine,
   })
 
-  const complaints = data ?? [
-    { id: 'c1', text: 'Пример жалобы', date: new Date().toISOString(), status: 'created' },
-  ]
+  const raw = Array.isArray((data as any)?.complaints) // если API возвращает объект с complaints
+    ? (data as any).complaints
+    : Array.isArray(data)
+      ? data
+      : [{ id: 'c1', text: 'Пример жалобы', date: new Date().toISOString(), status: 'created' }]
+
+  type ComplaintView = {
+    id: string
+    text: string
+    date: string
+    status?: string
+    deviceDescription?: string
+  }
+
+  const complaints: ComplaintView[] = raw.map((c: any) => ({
+    id: String(c.id ?? 'unknown'),
+    text: String(c.text ?? ''),
+    date: c.date ?? new Date().toISOString(),
+    status: c.status ?? c.state ?? '—',
+    deviceDescription: c.deviceDescription ?? c.device_description,
+  }))
 
   const { mutateAsync, isPending } = useMutation({
     mutationFn: () => complaintApi.create({ text, deviceDescription: device }),
@@ -28,7 +46,8 @@ const ComplaintsPage = () => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!text.trim()) return
+    if (!text.trim() || text.length < 10) return
+    if (!device.trim() || device.length < 5) return
     await mutateAsync()
   }
 
@@ -41,27 +60,30 @@ const ComplaintsPage = () => {
 
       <form onSubmit={handleSubmit} className="card space-y-3">
         <label className="text-sm text-slate-700">
-          Текст жалобы
+          Текст жалобы (минимум 10 символов)
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
             rows={3}
             required
+            minLength={10}
           />
         </label>
         <label className="text-sm text-slate-700">
-          Описание устройства (опционально)
+          Описание устройства (минимум 5 символов)
           <input
             value={device}
             onChange={(e) => setDevice(e.target.value)}
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            placeholder="Например: Windows 10, Chrome"
+            placeholder="Например: Windows 10, Chrome 120.0"
+            required
+            minLength={5}
           />
         </label>
         <button
           type="submit"
-          disabled={isPending || !text.trim()}
+          disabled={isPending || !text.trim() || text.length < 10 || !device.trim() || device.length < 5}
           className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
         >
           {isPending ? 'Отправляем…' : 'Отправить жалобу'}

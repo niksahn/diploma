@@ -186,3 +186,26 @@ type WSError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }
+
+// ChatTaskInfo представляет информацию о задаче в контексте чата
+// @Description Информация о задаче в контексте чата
+type ChatTaskInfo struct {
+	AttachedAt    string `json:"attached_at" example:"2024-01-01T10:00:00Z"`
+	Creator       int    `json:"creator" example:"1"`
+	CreatorName   string `json:"creator_name" example:"Ivan Ivanov"`
+	Date          string `json:"date" example:"2024-01-15"`
+	Description   string `json:"description,omitempty" example:"Implement user authentication system"`
+	ID            int    `json:"id" example:"1"`
+	Status        int    `json:"status" example:"2"`
+	StatusName    string `json:"status_name" example:"В работе"`
+	Title         string `json:"title" example:"Implement authentication"`
+	WorkspaceID   int    `json:"workspace_id" example:"1"`
+	WorkspaceName string `json:"workspace_name" example:"Main Project"`
+}
+
+// ChatTasksResponse представляет ответ со списком задач чата
+// @Description Список задач, прикрепленных к чату
+type ChatTasksResponse struct {
+	Tasks []ChatTaskInfo `json:"tasks"`
+	Total int            `json:"total" example:"3"`
+}

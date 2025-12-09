@@ -21,7 +21,7 @@ a {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 288px 1fr;
   min-height: 100vh;
 }
 

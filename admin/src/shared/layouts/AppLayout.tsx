@@ -5,6 +5,7 @@ import { useAuthStore } from "../state/auth";
 const navItems = [
   { to: "/", label: "Dashboard" },
   { to: "/workspaces", label: "Workspaces" },
+  { to: "/users", label: "Users" },
   { to: "/complaints", label: "Complaints" },
   { to: "/settings", label: "Settings/Health" }
 ];

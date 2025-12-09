@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/diploma/chat-service/data/database"
@@ -291,6 +292,8 @@ func (r *Repository) GetChatMembers(ctx context.Context, chatID int) ([]ChatMemb
 
 // IsUserInChat проверяет, является ли пользователь участником чата
 func (r *Repository) IsUserInChat(ctx context.Context, userID, chatID int) (bool, error) {
+	log.Printf("Repository IsUserInChat: checking user %d in chat %d", userID, chatID)
+
 	query := `
 		SELECT COUNT(*) > 0
 		FROM "userinchat"
@@ -300,9 +303,11 @@ func (r *Repository) IsUserInChat(ctx context.Context, userID, chatID int) (bool
 	var isMember bool
 	err := r.db.Pool.QueryRow(ctx, query, userID, chatID).Scan(&isMember)
 	if err != nil {
+		log.Printf("Repository IsUserInChat: error executing query: %v", err)
 		return false, fmt.Errorf("failed to check user in chat: %w", err)
 	}
 
+	log.Printf("Repository IsUserInChat: result for user %d in chat %d: %v", userID, chatID, isMember)
 	return isMember, nil
 }
 
@@ -626,4 +631,73 @@ func (r *Repository) CountUnreadMessages(ctx context.Context, chatID, userID int
 	}
 
 	return count, nil
+}
+
+// GetChatTasks получает все задачи, прикрепленные к чату
+func (r *Repository) GetChatTasks(ctx context.Context, chatID int) ([]databaseModels.ChatTask, error) {
+	query := `
+		SELECT
+			tic.id,
+			tic.chatsid,
+			tic.tasksid,
+			tic.id::text as attached_at, -- Используем ID как timestamp для простоты
+			t.creator,
+			COALESCE(u.name || ' ' || u.surname, 'Unknown User') as creator_name,
+			t.date::text,
+			t.description,
+			t.status,
+			CASE t.status
+				WHEN 1 THEN 'Создана'
+				WHEN 2 THEN 'В работе'
+				WHEN 3 THEN 'На проверке'
+				WHEN 4 THEN 'Завершена'
+				WHEN 5 THEN 'Отменена'
+				ELSE 'Неизвестно'
+			END as status_name,
+			t.title,
+			t.workspacesid as workspace_id,
+			COALESCE(w.name, 'Unknown Workspace') as workspace_name
+		FROM taskinchat tic
+		JOIN tasks t ON tic.tasksid = t.id
+		LEFT JOIN users u ON t.creator = u.id
+		LEFT JOIN workspaces w ON t.workspacesid = w.id
+		WHERE tic.chatsid = $1
+		ORDER BY tic.id DESC
+	`
+
+	rows, err := r.db.Pool.Query(ctx, query, chatID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get chat tasks: %w", err)
+	}
+	defer rows.Close()
+
+	var tasks []databaseModels.ChatTask
+	for rows.Next() {
+		var task databaseModels.ChatTask
+		err := rows.Scan(
+			&task.ID,
+			&task.ChatID,
+			&task.TaskID,
+			&task.AttachedAt,
+			&task.Creator,
+			&task.CreatorName,
+			&task.Date,
+			&task.Description,
+			&task.Status,
+			&task.StatusName,
+			&task.Title,
+			&task.WorkspaceID,
+			&task.WorkspaceName,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan chat task: %w", err)
+		}
+		tasks = append(tasks, task)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating chat tasks: %w", err)
+	}
+
+	return tasks, nil
 }

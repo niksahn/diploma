@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useLocation, useNavigate, type Location } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { authApi, extractToken, type LoginResponse } from '../shared/api/auth'
+import { authApi, extractToken, extractRefreshToken, type LoginResponse } from '../shared/api/auth'
 import { useAuthStore } from '../shared/state/auth'
 
 type Mode = 'login' | 'register'
@@ -21,16 +21,18 @@ const AuthPage = () => {
 
   const { mutateAsync, isPending, error } = useMutation({
     mutationFn: async (): Promise<LoginResponse> => {
+      console.log('Sending login request:', { Login: login, Password: password })
       if (mode === 'login') {
-        return authApi.login({ login, password })
+        return authApi.login({ Login: login, Password: password })
       }
-      await authApi.register({ login, password, name, surname })
-      return authApi.login({ login, password })
+      await authApi.register({ Login: login, Password: password, Name: name, Surname: surname })
+      return authApi.login({ Login: login, Password: password })
     },
     onSuccess: async (data) => {
       try {
         const token = extractToken(data)
-        setAuth(token, data.user ?? null)
+        const refreshToken = extractRefreshToken(data)
+        setAuth(token, refreshToken, data.user ?? null)
         if (!data.user) {
           try {
             const profile = await authApi.me()
@@ -58,7 +60,7 @@ const AuthPage = () => {
   }
 
   const handleDemoLogin = () => {
-    setAuth('demo-token', { id: 'demo', login: 'demo', name: 'Demo User' })
+    setAuth('demo-token', null, { id: 'demo', login: 'demo', name: 'Demo User' })
     navigate('/workspaces', { replace: true })
   }
 
@@ -66,7 +68,6 @@ const AuthPage = () => {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
       <div className="w-full max-w-[420px] sm:max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h1 className="text-xl font-semibold mb-4">{mode === 'login' ? 'Вход' : 'Регистрация'}</h1>
-        <p className="text-sm text-slate-600 mb-6">Фронт ходит через API Gateway</p>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <label className="text-sm text-slate-700">
             Логин

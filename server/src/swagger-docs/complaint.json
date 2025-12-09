@@ -473,10 +473,14 @@
       "properties": {
         "device_description": {
           "type": "string",
+          "minLength": 5,
+          "maxLength": 255,
           "example": "Windows 10, Chrome 120.0, 16GB RAM"
         },
         "text": {
           "type": "string",
+          "minLength": 10,
+          "maxLength": 255,
           "example": "Application crashes when uploading large files"
         }
       }

@@ -31,7 +31,7 @@ def api_path():
     return API_BASE_PATH
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def unique_timestamp():
     """Уникальный timestamp для генерации уникальных логинов"""
     return int(time.time() * 1000)  # миллисекунды для большей уникальности

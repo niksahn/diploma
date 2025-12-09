@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/diploma/gateway-service/config"
 	"github.com/diploma/gateway-service/internal/auth"
@@ -21,6 +22,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
 	}
+
+	log.Printf("Public routes: %v", cfg.PublicRoutes)
 
 	httpClient := auth.NewHTTPClient(cfg.RequestTimeout)
 
@@ -56,8 +59,11 @@ func main() {
 	mountProxy(r, "/api/v1/tasks", cfg.TaskServiceURL)
 	mountProxy(r, "/api/v1/complaints", cfg.ComplaintServiceURL)
 
-	// WebSocket pass-through
-	mountProxy(r, "/ws", cfg.ChatServiceURL)
+	// WebSocket pass-through - direct routing without auth check
+	r.Route("/ws", func(r chi.Router) {
+		r.Use(middleware.Timeout(30 * time.Second)) // Longer timeout for WebSocket
+		r.Handle("/*", proxy.NewReverseProxy(cfg.ChatServiceURL+"/ws", false))
+	})
 
 	// Swagger per-service (strip prefix)
 	mountStripProxy(r, "/swagger/auth", cfg.AuthServiceURL)

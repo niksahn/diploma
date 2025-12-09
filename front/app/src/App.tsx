@@ -5,6 +5,7 @@ import ChatsPage from './pages/ChatsPage'
 import ChatPage from './pages/ChatPage'
 import TasksPage from './pages/TasksPage'
 import TaskDetailPage from './pages/TaskDetailPage'
+import TaskCreatePage from './pages/TaskCreatePage'
 import MembersPage from './pages/MembersPage'
 import ComplaintsPage from './pages/ComplaintsPage'
 import ProfilePage from './pages/ProfilePage'
@@ -23,6 +24,7 @@ function App() {
           <Route path="/chats" element={<ChatsPage />} />
           <Route path="/chats/:chatId" element={<ChatPage />} />
           <Route path="/tasks" element={<TasksPage />} />
+          <Route path="/tasks/new" element={<TaskCreatePage />} />
           <Route path="/tasks/:taskId" element={<TaskDetailPage />} />
           <Route path="/members" element={<MembersPage />} />
           <Route path="/complaints" element={<ComplaintsPage />} />

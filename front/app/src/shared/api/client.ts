@@ -1,15 +1,43 @@
 import { useAuthStore } from '../state/auth'
+import { authApi } from './auth'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 const API_PREFIX = '/api/v1'
 
 type RequestOptions = RequestInit & { skipAuthHeader?: boolean }
 
+// Флаг для предотвращения множественных одновременных рефрешей
+let isRefreshing = false
+let refreshPromise: Promise<string> | null = null
+
+async function refreshToken(): Promise<string> {
+  const refreshToken = useAuthStore.getState().refreshToken
+  if (!refreshToken) {
+    throw new Error('No refresh token available')
+  }
+
+  try {
+    const response = await authApi.refresh({ refresh_token: refreshToken })
+    const newToken = response.access_token
+    useAuthStore.getState().setToken(newToken)
+    return newToken
+  } catch (error) {
+    // Если рефреш не удался, очищаем состояние и редиректим на авторизацию
+    useAuthStore.getState().logout()
+    // Редирект на страницу авторизации
+    if (typeof window !== 'undefined') {
+      window.location.href = '/auth'
+    }
+    throw error
+  }
+}
+
+
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { skipAuthHeader, ...init } = options
   const headers = new Headers(init.headers || {})
 
-  const token = useAuthStore.getState().token
+  let token = useAuthStore.getState().token
   const shouldAttachAuth = token && !skipAuthHeader
 
   const isFormData = init.body instanceof FormData
@@ -23,10 +51,35 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const url = path.startsWith('http')
     ? path
     : `${API_BASE_URL}${API_PREFIX}${path.startsWith('/') ? path : `/${path}`}`
-  const response = await fetch(url, {
+
+  let response = await fetch(url, {
     ...init,
     headers,
   })
+
+  // Если получили 401 и у нас есть refresh токен, пытаемся рефрешить
+  if (response.status === 401 && !skipAuthHeader && useAuthStore.getState().refreshToken) {
+    if (!isRefreshing) {
+      isRefreshing = true
+      refreshPromise = refreshToken().finally(() => {
+        isRefreshing = false
+        refreshPromise = null
+      })
+    }
+
+    try {
+      const newToken = await refreshPromise!
+      // Повторяем оригинальный запрос с новым токеном
+      headers.set('Authorization', `Bearer ${newToken}`)
+      response = await fetch(url, {
+        ...init,
+        headers,
+      })
+    } catch (error) {
+      // Рефреш не удался, ошибка уже обработана в refreshToken
+      throw error
+    }
+  }
 
   const text = await response.text()
   const data = text ? safeJson(text) : null

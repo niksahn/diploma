@@ -131,7 +131,7 @@ class TestChatCreation:
         assert response.status_code == 401
 
     def test_create_chat_invalid_workspace(
-        self, chat_service_url, chat_api_path, user_token, user_auth_headers
+        self, chat_service_url, chat_api_path, user_auth_headers
     ):
         """Создание чата с несуществующим РП"""
         url = f"{chat_service_url}{chat_api_path}"
@@ -348,11 +348,12 @@ class TestChatInfo:
         assert data["my_role"] == 2  # Создатель - администратор
 
     def test_get_chat_info_not_member(
-        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers, user_token
+        self, chat_service_url, chat_api_path, workspace_with_members, user_auth_headers, auth_headers_factory
     ):
         """Получение информации о чате, в котором пользователь не участвует"""
         workspace = workspace_with_members
         leader = workspace["leader"]
+        outsider = workspace["members"][0]
         
         # Создаем чат
         create_url = f"{chat_service_url}{chat_api_path}"
@@ -373,13 +374,13 @@ class TestChatInfo:
         url = f"{chat_service_url}{chat_api_path}/{chat_id}"
         response = requests.get(
             url,
-            headers=user_auth_headers
+            headers=auth_headers_factory(outsider["user_id"], "user")
         )
         
         assert response.status_code == 403
 
     def test_get_chat_info_not_found(
-        self, chat_service_url, chat_api_path, user_token, user_auth_headers
+        self, chat_service_url, chat_api_path, user_auth_headers
     ):
         """Получение информации о несуществующем чате"""
         url = f"{chat_service_url}{chat_api_path}/99999"

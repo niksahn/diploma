@@ -147,6 +147,9 @@ func setupRouter(chatHandler *handlers.ChatHandler, memberHandler *handlers.Memb
 		api.PUT("/:id/members/:user_id", memberHandler.UpdateMemberRole)
 		api.DELETE("/:id/members/:user_id", memberHandler.RemoveMember)
 
+		// Задачи чата
+		api.GET("/:id/tasks", chatHandler.GetChatTasks)
+
 		// Чаты (общие маршруты с :id - регистрируем ПОСЛЕДНИМИ)
 		api.GET("/:id", chatHandler.GetChat)
 		api.PUT("/:id", chatHandler.UpdateChat)

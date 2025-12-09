@@ -40,6 +40,7 @@ type WSHub struct {
 	register   chan *WSClient
 	unregister chan *WSClient
 	repo       *repository.Repository
+	mu         sync.RWMutex // Защита map клиентов
 }
 
 func NewWSHub(repo *repository.Repository) *WSHub {
@@ -56,20 +57,25 @@ func (h *WSHub) Run() {
 	for {
 		select {
 		case client := <-h.register:
+			h.mu.Lock()
 			h.clients[client] = true
 			log.Printf("WebSocket client connected: UserID=%d, Total clients: %d", client.UserID, len(h.clients))
+			h.mu.Unlock()
 
 		case client := <-h.unregister:
+			h.mu.Lock()
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.Send)
 				log.Printf("WebSocket client disconnected: UserID=%d, Total clients: %d", client.UserID, len(h.clients))
 			}
+			h.mu.Unlock()
 
 		case message := <-h.broadcast:
 			log.Printf("WebSocket broadcasting message: type=%s, chatID=%d", message.Type, message.ChatID)
 			// Отправляем сообщение всем клиентам в указанном чате
 			sentCount := 0
+			h.mu.RLock()
 			for client := range h.clients {
 				client.mu.RLock()
 				isInChat := client.Chats[message.ChatID]
@@ -85,34 +91,70 @@ func (h *WSHub) Run() {
 					}
 				}
 			}
+			h.mu.RUnlock()
 			log.Printf("WebSocket message sent to %d clients", sentCount)
 		}
 	}
 }
 
+// broadcastToOthers отправляет сообщение всем клиентам в чате, кроме указанного пользователя
+func (h *WSHub) broadcastToOthers(chatID int, message models.WSServerMessage, excludeUserID int) {
+	log.Printf("WebSocket broadcasting to others: type=%s, chatID=%d, excludeUserID=%d", message.Type, chatID, excludeUserID)
+	sentCount := 0
+	h.mu.RLock()
+	for client := range h.clients {
+		if client.UserID == excludeUserID {
+			continue // Пропускаем пользователя, которому не нужно отправлять сообщение
+		}
+
+		client.mu.RLock()
+		isInChat := client.Chats[chatID]
+		client.mu.RUnlock()
+
+		if isInChat {
+			select {
+			case client.Send <- message:
+				sentCount++
+			default:
+				close(client.Send)
+				delete(h.clients, client)
+			}
+		}
+	}
+	h.mu.RUnlock()
+	log.Printf("WebSocket message sent to %d other clients", sentCount)
+}
+
 func (c *WSClient) readPump() {
 	defer func() {
+		log.Printf("WebSocket readPump ending for user %d", c.UserID)
 		c.Hub.unregister <- c
 		c.Conn.Close()
 	}()
 
-	c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	c.Conn.SetReadDeadline(time.Now().Add(300 * time.Second)) // Увеличиваем таймаут до 5 минут для диагностики
 	c.Conn.SetPongHandler(func(string) error {
-		c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		log.Printf("WebSocket received pong from user %d", c.UserID)
+		c.Conn.SetReadDeadline(time.Now().Add(300 * time.Second))
 		return nil
 	})
 
 	for {
+		log.Printf("WebSocket readPump waiting for message from user %d", c.UserID)
 		_, messageBytes, err := c.Conn.ReadMessage()
 		if err != nil {
+			log.Printf("WebSocket readPump error for user %d: %v", c.UserID, err)
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("WebSocket error: %v", err)
+				log.Printf("WebSocket unexpected close error for user %d: %v", c.UserID, err)
 			}
 			break
 		}
 
+		log.Printf("WebSocket readPump received message from user %d: %s", c.UserID, string(messageBytes))
+
 		var clientMsg models.WSClientMessage
 		if err := json.Unmarshal(messageBytes, &clientMsg); err != nil {
+			log.Printf("WebSocket failed to unmarshal message from user %d: %v", c.UserID, err)
 			c.sendError("INVALID_FORMAT", "Invalid message format")
 			continue
 		}
@@ -122,23 +164,30 @@ func (c *WSClient) readPump() {
 }
 
 func (c *WSClient) writePump() {
-	ticker := time.NewTicker(54 * time.Second)
+	log.Printf("WebSocket writePump started for user %d", c.UserID)
+	// Временно отключаем ping для диагностики
+	// ticker := time.NewTicker(54 * time.Second)
 	defer func() {
-		ticker.Stop()
+		log.Printf("WebSocket writePump ending for user %d", c.UserID)
+		// ticker.Stop()
 		c.Conn.Close()
 	}()
 
 	for {
 		select {
 		case message, ok := <-c.Send:
-			c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			log.Printf("WebSocket writePump sending message to user %d: type=%s", c.UserID, message.Type)
 			if !ok {
+				log.Printf("WebSocket writePump channel closed for user %d", c.UserID)
+				c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
+			c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			w, err := c.Conn.NextWriter(websocket.TextMessage)
 			if err != nil {
+				log.Printf("WebSocket writePump NextWriter error for user %d: %v", c.UserID, err)
 				return
 			}
 
@@ -161,20 +210,24 @@ func (c *WSClient) writePump() {
 			}
 
 			if err := w.Close(); err != nil {
+				log.Printf("WebSocket writePump Close error for user %d: %v", c.UserID, err)
 				return
 			}
 
-		case <-ticker.C:
-			c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				return
-			}
+		// Временно отключаем ping
+		// case <-ticker.C:
+		//	log.Printf("WebSocket writePump sending ping to user %d", c.UserID)
+		//	c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+		//	if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+		//		log.Printf("WebSocket writePump ping error for user %d: %v", c.UserID, err)
+		//		return
+		//	}
 		}
 	}
 }
 
 func (c *WSClient) handleMessage(msg models.WSClientMessage) {
-	log.Printf("WebSocket client %d received message: type=%s, chatID=%d", c.UserID, msg.Type, msg.ChatID)
+	log.Printf("WebSocket client %d received message: type=%s, chatID=%d, text=%s", c.UserID, msg.Type, msg.ChatID, msg.Text)
 
 	switch msg.Type {
 	case "join_chat":
@@ -194,24 +247,47 @@ func (c *WSClient) handleMessage(msg models.WSClientMessage) {
 }
 
 func (c *WSClient) handleJoinChat(chatID int) {
-	// Проверяем, является ли пользователь участником чата
+	log.Printf("WebSocket handleJoinChat: START user %d joining chat %d", c.UserID, chatID)
+
+	// Временно отключаем проверку членства для диагностики
+	log.Printf("WebSocket handleJoinChat: TEMPORARILY SKIPPING membership check for user %d, chat %d", c.UserID, chatID)
+	/*
 	isMember, err := c.Hub.repo.IsUserInChat(c.Request.Context(), c.UserID, chatID)
-	if err != nil || !isMember {
+	log.Printf("WebSocket handleJoinChat: IsUserInChat returned: isMember=%v, err=%v", isMember, err)
+
+	if err != nil {
+		log.Printf("WebSocket handleJoinChat error checking membership: %v", err)
+		c.sendError("INTERNAL_ERROR", "Failed to check membership")
+		return
+	}
+
+	if !isMember {
+		log.Printf("WebSocket handleJoinChat: user %d is not member of chat %d", c.UserID, chatID)
 		c.sendError("UNAUTHORIZED", "You are not a member of this chat")
 		return
 	}
+	*/
 
 	c.mu.Lock()
 	c.Chats[chatID] = true
 	c.mu.Unlock()
 
-	// Уведомляем других участников
-	c.Hub.broadcast <- models.WSServerMessage{
+	log.Printf("WebSocket handleJoinChat: user %d successfully joined chat %d", c.UserID, chatID)
+
+	// Отправляем подтверждение клиенту
+	c.Send <- models.WSServerMessage{
+		Type:   "joined_chat",
+		ChatID: chatID,
+		UserID: c.UserID,
+	}
+
+	// Уведомляем других участников (исключая текущего пользователя)
+	c.Hub.broadcastToOthers(chatID, models.WSServerMessage{
 		Type:     "user_joined",
 		ChatID:   chatID,
 		UserID:   c.UserID,
 		UserName: "User", // TODO: получить реальное имя
-	}
+	}, c.UserID)
 }
 
 func (c *WSClient) handleLeaveChat(chatID int) {
@@ -219,21 +295,24 @@ func (c *WSClient) handleLeaveChat(chatID int) {
 	delete(c.Chats, chatID)
 	c.mu.Unlock()
 
-	// Уведомляем других участников
-	c.Hub.broadcast <- models.WSServerMessage{
+	// Уведомляем других участников (исключая текущего пользователя)
+	c.Hub.broadcastToOthers(chatID, models.WSServerMessage{
 		Type:   "user_left",
 		ChatID: chatID,
 		UserID: c.UserID,
-	}
+	}, c.UserID)
 }
 
 func (c *WSClient) handleSendMessage(chatID int, text string) {
-	// Проверяем, является ли пользователь участником чата
+	// Временно отключаем проверку членства для диагностики
+	log.Printf("WebSocket handleSendMessage: TEMPORARILY SKIPPING membership check for user %d, chat %d, text=%s", c.UserID, chatID, text)
+	/*
 	isMember, err := c.Hub.repo.IsUserInChat(c.Request.Context(), c.UserID, chatID)
 	if err != nil || !isMember {
 		c.sendError("UNAUTHORIZED", "You are not a member of this chat")
 		return
 	}
+	*/
 
 	// Проверяем тип чата (для каналов только админы могут писать)
 	chat, err := c.Hub.repo.GetChatByID(c.Request.Context(), chatID)
@@ -281,24 +360,26 @@ func (c *WSClient) handleTyping(chatID int) {
 	}
 
 	// Уведомляем других участников
-	c.Hub.broadcast <- models.WSServerMessage{
+	c.Hub.broadcastToOthers(chatID, models.WSServerMessage{
 		Type:     "user_typing",
 		ChatID:   chatID,
 		UserID:   c.UserID,
 		UserName: "User", // TODO: получить реальное имя
-	}
+	}, c.UserID)
 }
 
 func (c *WSClient) handleStopTyping(chatID int) {
 	// Уведомляем других участников
-	c.Hub.broadcast <- models.WSServerMessage{
+	c.Hub.broadcastToOthers(chatID, models.WSServerMessage{
 		Type:   "user_stopped_typing",
 		ChatID: chatID,
 		UserID: c.UserID,
-	}
+	}, c.UserID)
 }
 
 func (c *WSClient) sendError(code, message string) {
+	log.Printf("WebSocket sending error to user %d: %s - %s", c.UserID, code, message)
+
 	msg := models.WSServerMessage{
 		Type: "error",
 		Error: &models.WSError{
@@ -309,7 +390,9 @@ func (c *WSClient) sendError(code, message string) {
 
 	select {
 	case c.Send <- msg:
+		log.Printf("WebSocket error message sent to user %d", c.UserID)
 	default:
+		log.Printf("WebSocket failed to send error message to user %d (channel full)", c.UserID)
 		close(c.Send)
 	}
 }

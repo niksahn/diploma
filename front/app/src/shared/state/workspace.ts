@@ -2,8 +2,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 type WorkspaceState = {
-  selectedWorkspaceId: string | null
-  setSelectedWorkspace: (id: string | null) => void
+  selectedWorkspaceId: number | null
+  setSelectedWorkspace: (id: number | null) => void
   reset: () => void
 }
 
