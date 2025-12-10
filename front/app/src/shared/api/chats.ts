@@ -197,7 +197,7 @@ export class ChatWebSocket {
     this.chatId = null
   }
 
-  send(data: Record<string, unknown>) {
+  send(data: any) {
     console.log('WebSocket: Sending message:', data)
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data))

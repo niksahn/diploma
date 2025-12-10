@@ -47,16 +47,12 @@ const TaskCreatePage = () => {
   const members = membersData?.members || []
 
   // Обрабатываем ответ API чатов (может быть массивом или объектом с полем chats)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rawChats = Array.isArray((chatsData as any)?.chats)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ? (chatsData as any).chats
     : Array.isArray(chatsData)
       ? chatsData
       : []
 
-   
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chats: Chat[] = rawChats.map((c: any) => ({
     id: typeof c.id === 'number' ? c.id : parseInt(String(c.id ?? '0'), 10) || 0,
     name: String(c.name ?? 'Без названия'),

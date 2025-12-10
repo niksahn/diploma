@@ -41,5 +41,3 @@ CMD ["./user-service"]
 
 
 
-
-
