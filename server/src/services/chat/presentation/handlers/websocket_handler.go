@@ -73,7 +73,10 @@ func (h *WSHub) Run() {
 			h.mu.Unlock()
 
 		case message := <-h.broadcast:
+			log.Printf("=== WEBSOCKET BROADCAST ===")
 			log.Printf("WebSocket broadcasting message: type=%s, chatID=%d", message.Type, message.ChatID)
+			log.Printf("WebSocket total clients connected: %d", len(h.clients))
+
 			// Отправляем сообщение всем клиентам в указанном чате
 			sentCount := 0
 			h.mu.RLock()
@@ -82,18 +85,22 @@ func (h *WSHub) Run() {
 				isInChat := client.Chats[message.ChatID]
 				client.mu.RUnlock()
 
+				log.Printf("WebSocket checking client UserID=%d, isInChat=%v for chatID=%d", client.UserID, isInChat, message.ChatID)
+
 				if isInChat {
 					select {
 					case client.Send <- message:
 						sentCount++
+						log.Printf("WebSocket message sent to client UserID=%d", client.UserID)
 					default:
+						log.Printf("WebSocket failed to send message to client UserID=%d (channel full), disconnecting", client.UserID)
 						close(client.Send)
 						delete(h.clients, client)
 					}
 				}
 			}
 			h.mu.RUnlock()
-			log.Printf("WebSocket message sent to %d clients", sentCount)
+			log.Printf("WebSocket broadcast completed: message sent to %d clients", sentCount)
 		}
 	}
 }
@@ -361,7 +368,8 @@ func (c *WSClient) handleSendMessage(chatID int, text string) {
 
 	// Отправляем новое сообщение всем участникам чата
 	c.Hub.broadcast <- models.WSServerMessage{
-		Type: "new_message",
+		Type:   "new_message",
+		ChatID: chatID, // Важно: заполняем ChatID для broadcast
 		Message: &models.MessageResponse{
 			ID:       message.ID,
 			ChatID:   message.ChatID,
