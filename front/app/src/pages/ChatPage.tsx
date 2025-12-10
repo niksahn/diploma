@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { chatApi, type Message, ChatWebSocket, type ChatTaskInfo } from '../shared/api/chats'
 import { workspaceApi } from '../shared/api/workspaces'
 import { taskApi } from '../shared/api/tasks'
+import { useAuthStore } from '../shared/state/auth'
 
 const ChatPage = () => {
   const { chatId: chatIdParam } = useParams()
@@ -16,6 +17,7 @@ const ChatPage = () => {
   const [showMembersModal, setShowMembersModal] = useState(false)
   const queryClient = useQueryClient()
   const wsRef = useRef<ChatWebSocket | null>(null)
+  const { user } = useAuthStore()
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['chat', chatId],
@@ -60,11 +62,26 @@ const ChatPage = () => {
 
       // Обновляем кэш React Query, добавляя новое сообщение
       queryClient.setQueryData<Message[]>(['chat', chatId], (oldMessages = []) => {
+        if (!oldMessages) return [newMessage]
+
         // Проверяем, нет ли уже такого сообщения (чтобы избежать дубликатов)
-        const messageExists = oldMessages && oldMessages.some(msg => msg.id === newMessage.id)
+        const messageExists = oldMessages.some(msg => msg.id === newMessage.id)
         if (messageExists) return oldMessages
 
-        return [...oldMessages, newMessage]
+        // Заменяем оптимистическое сообщение на реальное
+        const updatedMessages = oldMessages.map(msg =>
+          msg.status === 'sending' && msg.text === newMessage.text && msg.user_id === newMessage.user_id
+            ? newMessage
+            : msg
+        )
+
+        // Если оптимистическое сообщение не найдено, добавляем новое
+        const optimisticReplaced = updatedMessages.some(msg => msg.id === newMessage.id)
+        if (!optimisticReplaced) {
+          updatedMessages.push(newMessage)
+        }
+
+        return updatedMessages
       })
     })
 
@@ -107,20 +124,7 @@ const ChatPage = () => {
     scrollToBottom()
   }, [messages])
 
-  const { mutateAsync, isPending } = useMutation({
-    mutationFn: (payload: { chatId: number; text: string }) => chatApi.sendMessage(payload.chatId, payload.text),
-    onSuccess: (newMessage) => {
-      // Добавляем отправленное сообщение в кэш немедленно
-      queryClient.setQueryData<Message[]>(['chat', chatId], (oldMessages = []) => {
-        // Проверяем, нет ли уже такого сообщения
-        const messageExists = oldMessages && oldMessages.some(msg => msg.id === newMessage.id)
-        if (messageExists) return oldMessages
-
-        return [...oldMessages, newMessage]
-      })
-      setText('')
-    },
-  })
+  // Удаляем старую мутацию для отправки сообщений через HTTP, теперь используем WebSocket
 
   const { mutateAsync: addMembers, isPending: isAddingMembers } = useMutation({
     mutationFn: (userIds: number[]) => chatId ? chatApi.addMembers(chatId, { user_ids: userIds, role: 1 }) : Promise.reject(new Error('Invalid chat ID')),
@@ -147,8 +151,34 @@ const ChatPage = () => {
 
   const handleSend = async (e: FormEvent) => {
     e.preventDefault()
-    if (!chatId || !text.trim()) return
-    await mutateAsync({ chatId, text })
+    if (!chatId || !text.trim() || !wsRef.current?.isConnected) return
+
+    const messageText = text.trim()
+
+    // Оптимистическое обновление - добавляем сообщение сразу
+    const optimisticMessage: Message = {
+      chat_id: chatId,
+      date: Math.floor(Date.now() / 1000),
+      edited: false,
+      id: Date.now(), // Временный ID
+      status: 'sending',
+      text: messageText,
+      user_id: parseInt(user?.id || '0') || 0,
+      user_name: user?.name || 'Вы'
+    }
+
+    queryClient.setQueryData<Message[]>(['chat', chatId], (oldMessages = []) => {
+      return [...oldMessages, optimisticMessage]
+    })
+
+    // Отправляем сообщение через WebSocket
+    wsRef.current.send({
+      type: 'send_message',
+      chat_id: chatId,
+      text: messageText
+    })
+
+    setText('')
   }
 
   const handleAddMembers = async () => {
@@ -286,10 +316,10 @@ const ChatPage = () => {
         />
         <button
           type="submit"
-          disabled={isPending || !text.trim()}
+          disabled={!text.trim() || !wsRef.current?.isConnected}
           className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
         >
-          {isPending ? 'Отправка…' : 'Отправить'}
+          Отправить
         </button>
       </form>
 

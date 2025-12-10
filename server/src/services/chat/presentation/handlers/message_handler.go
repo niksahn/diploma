@@ -191,14 +191,18 @@ func (h *MessageHandler) CreateMessage(c *gin.Context) {
 		return
 	}
 
-	// Получаем имя пользователя
-	// TODO: можно получить из User Service или кэшировать
+	// Получаем реальное имя пользователя
+	userName, err := h.repo.GetUserName(c.Request.Context(), userID)
+	if err != nil {
+		log.Printf("HTTP CreateMessage: failed to get user name: %v", err)
+		userName = "User"
+	}
 
 	response := models.MessageResponse{
 		ID:       message.ID,
 		ChatID:   message.ChatID,
 		UserID:   message.UserID,
-		UserName: "User", // TODO: получить реальное имя
+		UserName: userName,
 		Text:     message.Text,
 		Date:     message.Date,
 		Status:   "sent",

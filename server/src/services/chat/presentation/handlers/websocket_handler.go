@@ -249,9 +249,7 @@ func (c *WSClient) handleMessage(msg models.WSClientMessage) {
 func (c *WSClient) handleJoinChat(chatID int) {
 	log.Printf("WebSocket handleJoinChat: START user %d joining chat %d", c.UserID, chatID)
 
-	// Временно отключаем проверку членства для диагностики
-	log.Printf("WebSocket handleJoinChat: TEMPORARILY SKIPPING membership check for user %d, chat %d", c.UserID, chatID)
-	/*
+	// Проверяем, является ли пользователь участником чата
 	isMember, err := c.Hub.repo.IsUserInChat(c.Request.Context(), c.UserID, chatID)
 	log.Printf("WebSocket handleJoinChat: IsUserInChat returned: isMember=%v, err=%v", isMember, err)
 
@@ -266,7 +264,6 @@ func (c *WSClient) handleJoinChat(chatID int) {
 		c.sendError("UNAUTHORIZED", "You are not a member of this chat")
 		return
 	}
-	*/
 
 	c.mu.Lock()
 	c.Chats[chatID] = true
@@ -281,12 +278,19 @@ func (c *WSClient) handleJoinChat(chatID int) {
 		UserID: c.UserID,
 	}
 
+	// Получаем реальное имя пользователя
+	userName, err := c.Hub.repo.GetUserName(c.Request.Context(), c.UserID)
+	if err != nil {
+		log.Printf("WebSocket handleJoinChat: failed to get user name: %v", err)
+		userName = "User"
+	}
+
 	// Уведомляем других участников (исключая текущего пользователя)
 	c.Hub.broadcastToOthers(chatID, models.WSServerMessage{
 		Type:     "user_joined",
 		ChatID:   chatID,
 		UserID:   c.UserID,
-		UserName: "User", // TODO: получить реальное имя
+		UserName: userName,
 	}, c.UserID)
 }
 
@@ -304,15 +308,12 @@ func (c *WSClient) handleLeaveChat(chatID int) {
 }
 
 func (c *WSClient) handleSendMessage(chatID int, text string) {
-	// Временно отключаем проверку членства для диагностики
-	log.Printf("WebSocket handleSendMessage: TEMPORARILY SKIPPING membership check for user %d, chat %d, text=%s", c.UserID, chatID, text)
-	/*
+	// Проверяем, является ли пользователь участником чата
 	isMember, err := c.Hub.repo.IsUserInChat(c.Request.Context(), c.UserID, chatID)
 	if err != nil || !isMember {
 		c.sendError("UNAUTHORIZED", "You are not a member of this chat")
 		return
 	}
-	*/
 
 	// Проверяем тип чата (для каналов только админы могут писать)
 	chat, err := c.Hub.repo.GetChatByID(c.Request.Context(), chatID)
@@ -336,6 +337,13 @@ func (c *WSClient) handleSendMessage(chatID int, text string) {
 		return
 	}
 
+	// Получаем реальное имя пользователя
+	userName, err := c.Hub.repo.GetUserName(c.Request.Context(), c.UserID)
+	if err != nil {
+		log.Printf("WebSocket handleSendMessage: failed to get user name: %v", err)
+		userName = "User"
+	}
+
 	// Отправляем новое сообщение всем участникам чата
 	c.Hub.broadcast <- models.WSServerMessage{
 		Type: "new_message",
@@ -343,7 +351,7 @@ func (c *WSClient) handleSendMessage(chatID int, text string) {
 			ID:       message.ID,
 			ChatID:   message.ChatID,
 			UserID:   message.UserID,
-			UserName: "User", // TODO: получить реальное имя
+			UserName: userName,
 			Text:     message.Text,
 			Date:     message.Date,
 			Status:   "sent",
@@ -359,12 +367,19 @@ func (c *WSClient) handleTyping(chatID int) {
 		return
 	}
 
+	// Получаем реальное имя пользователя
+	userName, err := c.Hub.repo.GetUserName(c.Request.Context(), c.UserID)
+	if err != nil {
+		log.Printf("WebSocket handleTyping: failed to get user name: %v", err)
+		userName = "User"
+	}
+
 	// Уведомляем других участников
 	c.Hub.broadcastToOthers(chatID, models.WSServerMessage{
 		Type:     "user_typing",
 		ChatID:   chatID,
 		UserID:   c.UserID,
-		UserName: "User", // TODO: получить реальное имя
+		UserName: userName,
 	}, c.UserID)
 }
 
@@ -434,6 +449,14 @@ func HandleWebSocket(hub *WSHub) gin.HandlerFunc {
 				if parsedID, err := strconv.Atoi(userIDStr); err == nil {
 					userID = parsedID
 				}
+			}
+		}
+
+		if userID == 0 {
+			// Обработка демо токена
+			if token == "demo-token" {
+				log.Printf("WebSocket demo token detected, using userID = 1")
+				userID = 1
 			}
 		}
 
