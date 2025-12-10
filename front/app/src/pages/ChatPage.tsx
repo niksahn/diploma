@@ -78,7 +78,6 @@ const ChatPage = () => {
 
     // Подключаемся к чату
     wsRef.current.connect(chatId)
-    setIsWsConnected(true)
 
     // Очистка при размонтировании
     return () => {

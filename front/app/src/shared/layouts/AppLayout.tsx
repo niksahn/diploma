@@ -1,12 +1,10 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../state/auth'
 import { useWorkspaceStore } from '../state/workspace'
-import { workspaceApi } from '../api/workspaces'
-import SidebarChats from '../components/SidebarChats'
 
 const navItems = [
   { to: '/workspaces', label: 'Рабочие пространства' },
+  { to: '/chats', label: 'Чаты' },
   { to: '/tasks', label: 'Задачи' },
   { to: '/members', label: 'Участники' },
   { to: '/complaints', label: 'Жалобы' },
@@ -26,8 +24,9 @@ const AppLayout = () => {
 
   return (
     <div className="app-shell">
-      <aside className="bg-slate-900 text-white flex flex-col w-72 p-4 gap-4">
+      <aside className="bg-slate-900 text-white flex flex-col p-4 gap-4">
         <div className="text-lg font-semibold">Корп. мессенджер</div>
+        <div className="text-xs text-slate-300">Работа через API Gateway</div>
         <nav className="flex flex-col gap-1 text-sm">
           {navItems.map((item) => (
             <NavLink
@@ -41,9 +40,6 @@ const AppLayout = () => {
             </NavLink>
           ))}
         </nav>
-
-        <SidebarChats />
-
         <div className="mt-auto">
           <button
             onClick={handleLogout}

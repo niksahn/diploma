@@ -37,7 +37,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const { skipAuthHeader, ...init } = options
   const headers = new Headers(init.headers || {})
 
-  let token = useAuthStore.getState().token
+  const token = useAuthStore.getState().token
   const shouldAttachAuth = token && !skipAuthHeader
 
   const isFormData = init.body instanceof FormData
@@ -67,18 +67,13 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       })
     }
 
-    try {
-      const newToken = await refreshPromise!
-      // Повторяем оригинальный запрос с новым токеном
-      headers.set('Authorization', `Bearer ${newToken}`)
-      response = await fetch(url, {
-        ...init,
-        headers,
-      })
-    } catch (error) {
-      // Рефреш не удался, ошибка уже обработана в refreshToken
-      throw error
-    }
+    const newToken = await refreshPromise!
+    // Повторяем оригинальный запрос с новым токеном
+    headers.set('Authorization', `Bearer ${newToken}`)
+    response = await fetch(url, {
+      ...init,
+      headers,
+    })
   }
 
   const text = await response.text()

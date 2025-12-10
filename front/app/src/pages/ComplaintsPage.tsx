@@ -13,7 +13,9 @@ const ComplaintsPage = () => {
     queryFn: complaintApi.mine,
   })
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const raw = Array.isArray((data as any)?.complaints) // если API возвращает объект с complaints
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ? (data as any).complaints
     : Array.isArray(data)
       ? data
@@ -27,6 +29,8 @@ const ComplaintsPage = () => {
     deviceDescription?: string
   }
 
+   
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const complaints: ComplaintView[] = raw.map((c: any) => ({
     id: String(c.id ?? 'unknown'),
     text: String(c.text ?? ''),

@@ -11,12 +11,16 @@ const WorkspacesPage = () => {
 
   type WorkspaceView = { id: number; name: string; role?: string; tariff?: string }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const raw = Array.isArray((data as any)?.workspaces) // если API возвращает { workspaces: [...] }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ? (data as any).workspaces
     : Array.isArray(data)
       ? data
       : []
 
+   
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const workspaces: WorkspaceView[] = raw.map((item: any) => ({
     id: Number(item.id ?? item.workspacesid ?? 0),
     name: String(item.name ?? 'Без названия'),
