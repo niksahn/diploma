@@ -272,8 +272,7 @@ func (r *Repository) GetTaskAssignees(ctx context.Context, taskID int) ([]models
 			u.login,
 			u.name,
 			u.surname,
-			u.patronymic,
-			uit.tasksid as assigned_at
+			uit.id::text as assigned_at
 		FROM "userintask" uit
 		INNER JOIN users u ON uit.usersid = u.id
 		WHERE uit.tasksid = $1
@@ -294,7 +293,6 @@ func (r *Repository) GetTaskAssignees(ctx context.Context, taskID int) ([]models
 			&assignee.Login,
 			&assignee.Name,
 			&assignee.Surname,
-			&assignee.Patronymic,
 			&assignee.AssignedAt,
 		)
 		if err != nil {
@@ -366,7 +364,7 @@ func (r *Repository) GetTaskChats(ctx context.Context, taskID int) ([]models.Tas
 			c.name as chat_name,
 			c.type as chat_type,
 			c.workspacesid as workspace_id,
-			tic.chatsid as attached_at
+			tic.id::text as attached_at
 		FROM "taskinchat" tic
 		INNER JOIN chats c ON tic.chatsid = c.id
 		WHERE tic.tasksid = $1

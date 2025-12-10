@@ -62,12 +62,12 @@ type TaskListResponse struct {
 
 // TaskAssigneeResponse ответ с информацией об исполнителе
 type TaskAssigneeResponse struct {
-	UserID     int       `json:"user_id"`
-	Login      string    `json:"login"`
-	Name       string    `json:"name"`
-	Surname    string    `json:"surname"`
-	Patronymic *string   `json:"patronymic,omitempty"`
-	AssignedAt time.Time `json:"assigned_at"`
+	UserID     int     `json:"user_id"`
+	Login      string  `json:"login"`
+	Name       string  `json:"name"`
+	Surname    string  `json:"surname"`
+	Patronymic *string `json:"patronymic,omitempty"`
+	AssignedAt string  `json:"assigned_at"`
 }
 
 // TaskAssigneesResponse ответ со списком исполнителей
@@ -78,11 +78,11 @@ type TaskAssigneesResponse struct {
 
 // TaskChatResponse ответ с информацией о чате задачи
 type TaskChatResponse struct {
-	ChatID      int       `json:"chat_id"`
-	ChatName    string    `json:"chat_name"`
-	ChatType    int       `json:"chat_type"`
-	WorkspaceID int       `json:"workspace_id"`
-	AttachedAt  time.Time `json:"attached_at"`
+	ChatID      int    `json:"chat_id"`
+	ChatName    string `json:"chat_name"`
+	ChatType    int    `json:"chat_type"`
+	WorkspaceID int    `json:"workspace_id"`
+	AttachedAt  string `json:"attached_at"`
 }
 
 // TaskChatsResponse ответ со списком чатов задачи
