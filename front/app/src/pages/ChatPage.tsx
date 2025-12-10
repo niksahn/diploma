@@ -94,7 +94,10 @@ const ChatPage = () => {
     })
 
     // Подключаемся к чату
+    console.log('=== CHAT PAGE WEBSOCKET CONNECTION ===')
+    console.log('ChatPage: Connecting to chat', chatId)
     wsRef.current.connect(chatId)
+    console.log('ChatPage: WebSocket connect called, assuming connected for now')
     setIsWsConnected(true)
 
     // Очистка при размонтировании
@@ -151,9 +154,17 @@ const ChatPage = () => {
 
   const handleSend = async (e: FormEvent) => {
     e.preventDefault()
-    if (!chatId || !text.trim() || !wsRef.current?.isConnected) return
+    console.log('=== CHAT PAGE SEND MESSAGE ===')
+    console.log('ChatPage: handleSend called, chatId:', chatId, 'text:', text.trim())
+    console.log('ChatPage: wsRef.current?.isConnected:', wsRef.current?.isConnected)
+
+    if (!chatId || !text.trim() || !wsRef.current?.isConnected) {
+      console.log('ChatPage: Early return - conditions not met')
+      return
+    }
 
     const messageText = text.trim()
+    console.log('ChatPage: Sending message:', messageText)
 
     // Оптимистическое обновление - добавляем сообщение сразу
     const optimisticMessage: Message = {
