@@ -1,8 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '../state/auth'
 import { useWorkspaceStore } from '../state/workspace'
-import { workspaceApi } from '../api/workspaces'
 import SidebarChats from '../components/SidebarChats'
 
 const navItems = [
