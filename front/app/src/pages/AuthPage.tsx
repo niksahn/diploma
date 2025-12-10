@@ -60,7 +60,7 @@ const AuthPage = () => {
   }
 
   const handleDemoLogin = () => {
-    setAuth('demo-token', null, { id: 'demo', login: 'demo', name: 'Demo User' })
+    setAuth('demo-token', null, { id: '1', login: 'demo', name: 'Demo User' })
     navigate('/workspaces', { replace: true })
   }
 

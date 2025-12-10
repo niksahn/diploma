@@ -701,3 +701,23 @@ func (r *Repository) GetChatTasks(ctx context.Context, chatID int) ([]databaseMo
 
 	return tasks, nil
 }
+
+// GetUserName получает имя пользователя по ID
+func (r *Repository) GetUserName(ctx context.Context, userID int) (string, error) {
+	query := `
+		SELECT COALESCE(surname || ' ' || name, 'Unknown')
+		FROM users
+		WHERE id = $1
+	`
+
+	var name string
+	err := r.db.Get(ctx, &name, query, userID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return "Unknown", nil
+		}
+		return "", fmt.Errorf("failed to get user name: %w", err)
+	}
+
+	return name, nil
+}
