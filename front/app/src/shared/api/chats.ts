@@ -107,9 +107,9 @@ export class ChatWebSocket {
       return
     }
 
-    // Прямое подключение к чат-сервису без API Gateway
+    // Прямое подключение к чат-сервису
     const wsUrl = `ws://localhost:8084/ws/chats/ws?token=${token}`
-    console.log(`WebSocket: Connecting directly to chat service at ${wsUrl}`)
+    console.log(`WebSocket: Connecting via Vite proxy to ${wsUrl}`)
     console.log(`WebSocket: Token preview: ${token.substring(0, 20)}...`)
     this.ws = new WebSocket(wsUrl)
 
