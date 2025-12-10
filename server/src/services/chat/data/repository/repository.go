@@ -711,9 +711,9 @@ func (r *Repository) GetUserName(ctx context.Context, userID int) (string, error
 	`
 
 	var name string
-	err := r.db.Get(ctx, &name, query, userID)
+	err := r.db.Pool.QueryRow(ctx, query, userID).Scan(&name)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if err.Error() == "no rows in result set" {
 			return "Unknown", nil
 		}
 		return "", fmt.Errorf("failed to get user name: %w", err)

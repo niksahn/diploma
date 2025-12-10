@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Direct WebSocket Test</title>
+</head>
+<body>
+    <h1>Direct WebSocket Test (Port 8084)</h1>
+    <div id="log"></div>
+    <button onclick="connect()">Connect Direct</button>
+    <button onclick="joinChat()">Join Chat 1</button>
+    <button onclick="sendMessage()">Send Message</button>
+
+    <script>
+        let ws;
+        const logDiv = document.getElementById('log');
+
+        function log(message) {
+            logDiv.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+            console.log(message);
+        }
+
+        function connect() {
+            log('Connecting directly to chat-service on port 8084...');
+            ws = new WebSocket('ws://localhost:8084/ws/chats/ws?token=demo-token');
+
+            ws.onopen = function(event) {
+                log('✅ WebSocket connected directly!');
+            };
+
+            ws.onmessage = function(event) {
+                log('📥 Received: ' + event.data);
+                try {
+                    const messages = event.data.trim().split('\n').filter(msg => msg.trim());
+                    messages.forEach(msgStr => {
+                        log('📥 Parsed: ' + JSON.stringify(JSON.parse(msgStr), null, 2));
+                    });
+                } catch (e) {
+                    log('❌ Parse error: ' + e);
+                }
+            };
+
+            ws.onclose = function(event) {
+                log('🔌 WebSocket closed: ' + event.code + ' ' + event.reason);
+            };
+
+            ws.onerror = function(error) {
+                log('❌ WebSocket error: ' + error);
+            };
+        }
+
+        function joinChat() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const msg = { type: 'join_chat', chat_id: 1 };
+                log('📤 Sending: ' + JSON.stringify(msg));
+                ws.send(JSON.stringify(msg));
+            } else {
+                log('❌ WebSocket not connected');
+            }
+        }
+
+        function sendMessage() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const text = 'Test message from direct connection!';
+                const msg = { type: 'send_message', chat_id: 1, text: text };
+                log('📤 Sending: ' + JSON.stringify(msg));
+                ws.send(JSON.stringify(msg));
+            } else {
+                log('❌ WebSocket not connected');
+            }
+        }
+    </script>
+</body>
+</html>

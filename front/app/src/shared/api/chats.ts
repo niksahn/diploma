@@ -107,8 +107,10 @@ export class ChatWebSocket {
       return
     }
 
-    const wsUrl = `ws://localhost:8080/ws/chats/ws?token=${token}`
-    console.log(`WebSocket: Connecting to ${wsUrl}`)
+    // Прямое подключение к чат-сервису без API Gateway
+    const wsUrl = `ws://localhost:8084/ws/chats/ws?token=${token}`
+    console.log(`WebSocket: Connecting directly to chat service at ${wsUrl}`)
+    console.log(`WebSocket: Token preview: ${token.substring(0, 20)}...`)
     this.ws = new WebSocket(wsUrl)
 
     this.ws.onopen = () => {
@@ -133,12 +135,16 @@ export class ChatWebSocket {
 
             switch (data.type) {
               case 'error':
+                console.log('=== WEBSOCKET SERVER ERROR ===')
                 console.error('WebSocket error from server:', data.error)
+                console.log('WebSocket full error data:', data)
                 // Не разрываем соединение при ошибке
                 break
               case 'new_message':
+                console.log('=== WEBSOCKET NEW MESSAGE ===')
+                console.log('Received new message:', data.message)
+                console.log('Full message data:', data)
                 if (data.message && this.onMessage) {
-                  console.log('Received new message:', data.message)
                   this.onMessage(data.message)
                 }
                 break
@@ -198,11 +204,19 @@ export class ChatWebSocket {
   }
 
   send(data: any) {
+    console.log('=== WEBSOCKET FRONTEND SEND ===')
     console.log('WebSocket: Sending message:', data)
+    console.log('WebSocket: Connection state:', this.ws?.readyState)
+    console.log('WebSocket: Is connected:', this.isConnected)
+
     if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(data))
+      const messageString = JSON.stringify(data)
+      console.log('WebSocket: Sending JSON string:', messageString)
+      this.ws.send(messageString)
+      console.log('WebSocket: Message sent successfully')
     } else {
       console.error('WebSocket: Not connected, cannot send:', data, 'State:', this.ws?.readyState)
+      console.error('WebSocket: Available states: CONNECTING=0, OPEN=1, CLOSING=2, CLOSED=3')
     }
   }
 

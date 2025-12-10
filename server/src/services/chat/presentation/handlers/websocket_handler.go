@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"log"
@@ -126,8 +127,9 @@ func (h *WSHub) broadcastToOthers(chatID int, message models.WSServerMessage, ex
 }
 
 func (c *WSClient) readPump() {
+	log.Printf("=== WEBSOCKET READ PUMP STARTED for user %d ===", c.UserID)
 	defer func() {
-		log.Printf("WebSocket readPump ending for user %d", c.UserID)
+		log.Printf("=== WEBSOCKET READ PUMP ENDING for user %d ===", c.UserID)
 		c.Hub.unregister <- c
 		c.Conn.Close()
 	}()
@@ -164,11 +166,11 @@ func (c *WSClient) readPump() {
 }
 
 func (c *WSClient) writePump() {
-	log.Printf("WebSocket writePump started for user %d", c.UserID)
+	log.Printf("=== WEBSOCKET WRITE PUMP STARTED for user %d ===", c.UserID)
 	// Временно отключаем ping для диагностики
 	// ticker := time.NewTicker(54 * time.Second)
 	defer func() {
-		log.Printf("WebSocket writePump ending for user %d", c.UserID)
+		log.Printf("=== WEBSOCKET WRITE PUMP ENDING for user %d ===", c.UserID)
 		// ticker.Stop()
 		c.Conn.Close()
 	}()
@@ -227,7 +229,9 @@ func (c *WSClient) writePump() {
 }
 
 func (c *WSClient) handleMessage(msg models.WSClientMessage) {
+	log.Printf("=== WEBSOCKET MESSAGE RECEIVED ===")
 	log.Printf("WebSocket client %d received message: type=%s, chatID=%d, text=%s", c.UserID, msg.Type, msg.ChatID, msg.Text)
+	log.Printf("WebSocket message details: %+v", msg)
 
 	switch msg.Type {
 	case "join_chat":
@@ -247,10 +251,13 @@ func (c *WSClient) handleMessage(msg models.WSClientMessage) {
 }
 
 func (c *WSClient) handleJoinChat(chatID int) {
+	log.Printf("=== WEBSOCKET JOIN CHAT ===")
 	log.Printf("WebSocket handleJoinChat: START user %d joining chat %d", c.UserID, chatID)
 
 	// Проверяем, является ли пользователь участником чата
-	isMember, err := c.Hub.repo.IsUserInChat(c.Request.Context(), c.UserID, chatID)
+	log.Printf("WebSocket handleJoinChat: calling IsUserInChat for user %d, chat %d", c.UserID, chatID)
+	// Используем context.Background() вместо c.Request.Context() для WebSocket
+	isMember, err := c.Hub.repo.IsUserInChat(context.Background(), c.UserID, chatID)
 	log.Printf("WebSocket handleJoinChat: IsUserInChat returned: isMember=%v, err=%v", isMember, err)
 
 	if err != nil {
@@ -279,7 +286,7 @@ func (c *WSClient) handleJoinChat(chatID int) {
 	}
 
 	// Получаем реальное имя пользователя
-	userName, err := c.Hub.repo.GetUserName(c.Request.Context(), c.UserID)
+	userName, err := c.Hub.repo.GetUserName(context.Background(), c.UserID)
 	if err != nil {
 		log.Printf("WebSocket handleJoinChat: failed to get user name: %v", err)
 		userName = "User"
@@ -308,22 +315,30 @@ func (c *WSClient) handleLeaveChat(chatID int) {
 }
 
 func (c *WSClient) handleSendMessage(chatID int, text string) {
+	log.Printf("=== WEBSOCKET SEND MESSAGE ===")
+	log.Printf("WebSocket handleSendMessage: user %d sending to chat %d, text='%s'", c.UserID, chatID, text)
+
 	// Проверяем, является ли пользователь участником чата
-	isMember, err := c.Hub.repo.IsUserInChat(c.Request.Context(), c.UserID, chatID)
+	log.Printf("WebSocket handleSendMessage: checking membership for user %d in chat %d", c.UserID, chatID)
+	isMember, err := c.Hub.repo.IsUserInChat(context.Background(), c.UserID, chatID)
+	log.Printf("WebSocket handleSendMessage: membership check result: isMember=%v, err=%v", isMember, err)
+
 	if err != nil || !isMember {
+		log.Printf("WebSocket handleSendMessage: user %d not authorized for chat %d", c.UserID, chatID)
 		c.sendError("UNAUTHORIZED", "You are not a member of this chat")
 		return
 	}
 
 	// Проверяем тип чата (для каналов только админы могут писать)
-	chat, err := c.Hub.repo.GetChatByID(c.Request.Context(), chatID)
+	chat, err := c.Hub.repo.GetChatByID(context.Background(), chatID)
 	if err != nil {
+		log.Printf("WebSocket handleSendMessage: GetChatByID failed for chat %d: %v", chatID, err)
 		c.sendError("CHAT_NOT_FOUND", "Chat not found")
 		return
 	}
 
 	if chat.Type == 3 {
-		role, _ := c.Hub.repo.GetUserRoleInChat(c.Request.Context(), c.UserID, chatID)
+		role, _ := c.Hub.repo.GetUserRoleInChat(context.Background(), c.UserID, chatID)
 		if role != 2 {
 			c.sendError("FORBIDDEN", "Only admins can write in channels")
 			return
@@ -331,14 +346,14 @@ func (c *WSClient) handleSendMessage(chatID int, text string) {
 	}
 
 	// Создаем сообщение в БД
-	message, err := c.Hub.repo.CreateMessage(c.Request.Context(), chatID, c.UserID, text)
+	message, err := c.Hub.repo.CreateMessage(context.Background(), chatID, c.UserID, text)
 	if err != nil {
 		c.sendError("INTERNAL_ERROR", "Failed to create message")
 		return
 	}
 
 	// Получаем реальное имя пользователя
-	userName, err := c.Hub.repo.GetUserName(c.Request.Context(), c.UserID)
+	userName, err := c.Hub.repo.GetUserName(context.Background(), c.UserID)
 	if err != nil {
 		log.Printf("WebSocket handleSendMessage: failed to get user name: %v", err)
 		userName = "User"
@@ -368,7 +383,7 @@ func (c *WSClient) handleTyping(chatID int) {
 	}
 
 	// Получаем реальное имя пользователя
-	userName, err := c.Hub.repo.GetUserName(c.Request.Context(), c.UserID)
+	userName, err := c.Hub.repo.GetUserName(context.Background(), c.UserID)
 	if err != nil {
 		log.Printf("WebSocket handleTyping: failed to get user name: %v", err)
 		userName = "User"
@@ -420,19 +435,27 @@ func (c *WSClient) sendError(code, message string) {
 // @Router /chats/ws [get]
 func HandleWebSocket(hub *WSHub) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		log.Printf("=== WEBSOCKET CONNECTION ATTEMPT ===")
 		log.Printf("WebSocket connection attempt from %s", c.ClientIP())
+		log.Printf("WebSocket request method: %s", c.Request.Method)
+		log.Printf("WebSocket request URL: %s", c.Request.URL.String())
+		log.Printf("WebSocket request headers: %v", c.Request.Header)
+		log.Printf("WebSocket user agent: %s", c.GetHeader("User-Agent"))
 
 		// Получаем токен из query или Authorization (в тестах передается MOCK_JWT_TOKEN)
 		token := c.Query("token")
+		log.Printf("WebSocket token from query: '%s'", token)
+
 		if token == "" {
 			authHeader := c.GetHeader("Authorization")
+			log.Printf("WebSocket Authorization header: '%s'", authHeader)
 			const bearer = "Bearer "
 			if strings.HasPrefix(authHeader, bearer) {
 				token = strings.TrimPrefix(authHeader, bearer)
 			}
 		}
 
-		log.Printf("WebSocket token: %s...", token[:min(20, len(token))])
+		log.Printf("WebSocket final token: '%s...'", token[:min(50, len(token))])
 
 		if token == "" {
 			log.Printf("WebSocket connection rejected: no token")
@@ -440,6 +463,7 @@ func HandleWebSocket(hub *WSHub) gin.HandlerFunc {
 			return
 		}
 
+		log.Printf("WebSocket calling extractUserIDFromToken with token: '%s...'", token[:min(50, len(token))])
 		userID := extractUserIDFromToken(token)
 		log.Printf("WebSocket extracted userID: %d", userID)
 
@@ -454,9 +478,12 @@ func HandleWebSocket(hub *WSHub) gin.HandlerFunc {
 
 		if userID == 0 {
 			// Обработка демо токена
+			log.Printf("WebSocket checking for demo token, current token: '%s'", token)
 			if token == "demo-token" {
-				log.Printf("WebSocket demo token detected, using userID = 1")
+				log.Printf("WebSocket DEMO TOKEN DETECTED! Setting userID = 1")
 				userID = 1
+			} else {
+				log.Printf("WebSocket token is not demo-token: '%s' (length: %d)", token[:min(20, len(token))], len(token))
 			}
 		}
 
@@ -467,6 +494,7 @@ func HandleWebSocket(hub *WSHub) gin.HandlerFunc {
 			userID = -1
 		}
 
+		log.Printf("WebSocket final userID: %d", userID)
 		log.Printf("WebSocket upgrading connection for user %d", userID)
 
 		// Обновляем соединение до WebSocket
@@ -506,29 +534,49 @@ func min(a, b int) int {
 
 // extractUserIDFromToken извлекает user_id из JWT без проверки подписи (достаточно для тестового окружения)
 func extractUserIDFromToken(token string) int {
+	log.Printf("extractUserIDFromToken: input token: '%s'", token)
+
 	parts := strings.Split(token, ".")
+	log.Printf("extractUserIDFromToken: token parts count: %d", len(parts))
+
 	if len(parts) < 2 {
+		log.Printf("extractUserIDFromToken: token has less than 2 parts, returning 0")
 		return 0
 	}
 
+	log.Printf("extractUserIDFromToken: payload part: '%s'", parts[1])
 	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
+		log.Printf("extractUserIDFromToken: failed to decode payload: %v", err)
 		return 0
 	}
+
+	log.Printf("extractUserIDFromToken: decoded payload: '%s'", string(payload))
 
 	var claims map[string]interface{}
 	if err := json.Unmarshal(payload, &claims); err != nil {
+		log.Printf("extractUserIDFromToken: failed to unmarshal claims: %v", err)
 		return 0
 	}
 
+	log.Printf("extractUserIDFromToken: parsed claims: %v", claims)
+
 	if v, ok := claims["user_id"]; ok {
+		log.Printf("extractUserIDFromToken: found user_id claim: %v (type: %T)", v, v)
 		switch id := v.(type) {
 		case float64:
+			log.Printf("extractUserIDFromToken: user_id is float64: %f, converting to int: %d", id, int(id))
 			return int(id)
 		case int:
+			log.Printf("extractUserIDFromToken: user_id is int: %d", id)
 			return id
+		default:
+			log.Printf("extractUserIDFromToken: user_id has unexpected type: %T, value: %v", v, v)
 		}
+	} else {
+		log.Printf("extractUserIDFromToken: user_id claim not found in claims")
 	}
 
+	log.Printf("extractUserIDFromToken: returning 0")
 	return 0
 }
