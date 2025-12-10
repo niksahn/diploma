@@ -546,7 +546,7 @@ func (h *TaskHandler) GetTaskAssignees(c *gin.Context) {
 			Login:      assignee.Login,
 			Name:       assignee.Name,
 			Surname:    assignee.Surname,
-			Patronymic: assignee.Patronymic,
+			Patronymic: nil, // TODO: add patronymic field
 			AssignedAt: assignee.AssignedAt,
 		})
 	}

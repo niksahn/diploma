@@ -35,6 +35,33 @@ export type TaskListResponse = {
 
 export type TaskResponse = Task
 
+export type TaskAssigneeResponse = {
+  user_id: number
+  login: string
+  name: string
+  surname: string
+  patronymic?: string
+  assigned_at: string
+}
+
+export type TaskAssigneesResponse = {
+  assignees: TaskAssigneeResponse[]
+  total: number
+}
+
+export type TaskChatResponse = {
+  chat_id: number
+  chat_name: string
+  chat_type: number
+  workspace_id: number
+  attached_at: string
+}
+
+export type TaskChatsResponse = {
+  chats: TaskChatResponse[]
+  total: number
+}
+
 export const taskApi = {
   list: (workspaceId: number) => request<TaskListResponse>(`/tasks?workspace_id=${workspaceId}`),
   byId: (taskId: number) => request<TaskResponse>(`/tasks/${taskId}`),
@@ -46,6 +73,16 @@ export const taskApi = {
     request<void>(`/tasks/${taskId}`, { method: 'DELETE' }),
   updateStatus: (taskId: number, status: TaskStatus) =>
     request<{ message: string }>(`/tasks/${taskId}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  // Assignees
+  getAssignees: (taskId: number) => request<TaskAssigneesResponse>(`/tasks/${taskId}/assignees`),
+  addAssignees: (taskId: number, userIds: number[]) =>
+    request<{ message: string }>(`/tasks/${taskId}/assignees`, { method: 'POST', body: JSON.stringify({ user_ids: userIds }) }),
+  removeAssignee: (taskId: number, userId: number) =>
+    request<{ message: string }>(`/tasks/${taskId}/assignees/${userId}`, { method: 'DELETE' }),
+  // Chats
+  getChats: (taskId: number) => request<TaskChatsResponse>(`/tasks/${taskId}/chats`),
+  attachToChat: (taskId: number, chatId: number) =>
+    request<{ message: string }>(`/tasks/${taskId}/chats`, { method: 'POST', body: JSON.stringify({ chat_id: chatId }) }),
   detachFromChat: (taskId: number, chatId: number) =>
     request<{ message: string }>(`/tasks/${taskId}/chats/${chatId}`, { method: 'DELETE' }),
 }

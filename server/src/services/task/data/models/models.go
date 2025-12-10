@@ -44,8 +44,7 @@ type TaskAssignee struct {
 	Login      string `db:"login"`
 	Name       string `db:"name"`
 	Surname    string `db:"surname"`
-	Patronymic *string `db:"patronymic"`
-	AssignedAt time.Time `db:"assigned_at"`
+	AssignedAt string `db:"assigned_at"`
 }
 
 // TaskInChat представляет связь задачи с чатом
@@ -61,7 +60,7 @@ type TaskChat struct {
 	ChatName    string `db:"chat_name"`
 	ChatType    int    `db:"chat_type"`
 	WorkspaceID int    `db:"workspace_id"`
-	AttachedAt  time.Time `db:"attached_at"`
+	AttachedAt  string `db:"attached_at"`
 }
 
 // TaskChange представляет изменение задачи (история)
