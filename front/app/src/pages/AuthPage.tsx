@@ -21,7 +21,6 @@ const AuthPage = () => {
 
   const { mutateAsync, isPending, error } = useMutation({
     mutationFn: async (): Promise<LoginResponse> => {
-      console.log('Sending login request:', { Login: login, Password: password })
       if (mode === 'login') {
         return authApi.login({ Login: login, Password: password })
       }
@@ -68,6 +67,7 @@ const AuthPage = () => {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
       <div className="w-full max-w-[420px] sm:max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h1 className="text-xl font-semibold mb-4">{mode === 'login' ? 'Вход' : 'Регистрация'}</h1>
+        <p className="text-sm text-slate-600 mb-6">Фронт ходит через API Gateway</p>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <label className="text-sm text-slate-700">
             Логин

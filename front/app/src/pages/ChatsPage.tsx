@@ -74,12 +74,16 @@ const ChatsPage = () => {
 
   type ChatView = { id: number; name: string; type?: number; unread?: number; members_count?: number }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const raw = Array.isArray((data as any)?.chats) // если API возвращает объект с chats
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ? (data as any).chats
     : Array.isArray(data)
       ? data
       : []
 
+   
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chats: ChatView[] = raw.map((c: any) => ({
     id: typeof c.id === 'number' ? c.id : parseInt(String(c.id ?? '0'), 10) || 0,
     name: String(c.name ?? 'Без названия'),
