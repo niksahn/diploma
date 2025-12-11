@@ -12,7 +12,7 @@ Workspace Service управляет рабочими пространствам
 
 ---
 
-## Эндпоинты (12)
+## Эндпоинты (13)
 
 ### Рабочие пространства
 
@@ -92,6 +92,51 @@ Workspace Service управляет рабочими пространствам
 - `401` - Не авторизован
 
 **Note**: Возвращает только РП, в которых состоит текущий пользователь.
+
+---
+
+#### `GET /api/v1/workspaces/all`
+
+Получить список всех рабочих пространств в системе (только администратор).
+
+**Headers**: `Authorization: Bearer <admin_token>`
+
+**Response**: `200 OK`
+```json
+{
+  "workspaces": [
+    {
+      "id": 1,
+      "name": "Development Team",
+      "creator": 1,
+      "tariff_id": 1,
+      "tariff_name": "Basic",
+      "members_count": 5,
+      "chats_count": 3,
+      "tasks_count": 12,
+      "created_at": "2024-01-01T00:00:00Z"
+    },
+    {
+      "id": 2,
+      "name": "Marketing Team",
+      "creator": 2,
+      "tariff_id": 2,
+      "tariff_name": "Pro",
+      "members_count": 8,
+      "chats_count": 5,
+      "tasks_count": 25,
+      "created_at": "2024-01-05T00:00:00Z"
+    }
+  ],
+  "total": 2
+}
+```
+
+**Errors**:
+- `401` - Не авторизован
+- `403` - Недостаточно прав (не администратор)
+
+**Note**: Возвращает все РП в системе с дополнительной статистикой.
 
 ---
 

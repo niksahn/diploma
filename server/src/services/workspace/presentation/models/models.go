@@ -85,6 +85,25 @@ type UserWorkspacesResponse struct {
 	Total      int                     `json:"total"`
 }
 
+// AdminWorkspaceResponse РП для администратора
+type AdminWorkspaceResponse struct {
+	ID           int        `json:"id"`
+	Name         string     `json:"name"`
+	Creator      int        `json:"creator"`
+	TariffID     int        `json:"tariff_id"`
+	TariffName   string     `json:"tariff_name"`
+	MembersCount int        `json:"members_count"`
+	ChatsCount   int        `json:"chats_count"`
+	TasksCount   int        `json:"tasks_count"`
+	CreatedAt    string     `json:"created_at"`
+}
+
+// AllWorkspacesResponse список всех РП для администратора
+type AllWorkspacesResponse struct {
+	Workspaces []AdminWorkspaceResponse `json:"workspaces"`
+	Total      int                      `json:"total"`
+}
+
 // MemberResponse информация об участнике
 type MemberResponse struct {
 	UserID     int     `json:"user_id"`

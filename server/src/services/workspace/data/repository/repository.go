@@ -121,6 +121,55 @@ func (r *Repository) GetUserWorkspaces(ctx context.Context, userID int) ([]model
 	return workspaces, nil
 }
 
+// GetAllWorkspaces получает список всех рабочих пространств (для администраторов)
+func (r *Repository) GetAllWorkspaces(ctx context.Context) ([]models.WorkspaceWithDetails, error) {
+	query := `
+		SELECT
+			w.id,
+			w.name,
+			w.creator,
+			t.id as tariff_id,
+			t.name as tariff_name,
+			t.description as tariff_description,
+			COALESCE((SELECT COUNT(*) FROM "userinworkspace" WHERE workspacesid = w.id), 0) as members_count,
+			COALESCE((SELECT COUNT(*) FROM chats WHERE workspacesid = w.id), 0) as chats_count,
+			COALESCE((SELECT COUNT(*) FROM tasks WHERE workspacesid = w.id), 0) as tasks_count,
+			NOW() as created_at
+		FROM workspaces w
+		LEFT JOIN tariffs t ON w.tariffsid = t.id
+		ORDER BY w.id
+	`
+
+	rows, err := r.db.Pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all workspaces: %w", err)
+	}
+	defer rows.Close()
+
+	var workspaces []models.WorkspaceWithDetails
+	for rows.Next() {
+		var workspace models.WorkspaceWithDetails
+		err := rows.Scan(
+			&workspace.ID,
+			&workspace.Name,
+			&workspace.Creator,
+			&workspace.TariffID,
+			&workspace.TariffName,
+			&workspace.TariffDesc,
+			&workspace.MembersCount,
+			&workspace.ChatsCount,
+			&workspace.TasksCount,
+			&workspace.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan workspace: %w", err)
+		}
+		workspaces = append(workspaces, workspace)
+	}
+
+	return workspaces, nil
+}
+
 // UpdateWorkspace обновляет параметры рабочего пространства
 func (r *Repository) UpdateWorkspace(ctx context.Context, workspaceID int, name string, tariffID int) error {
 	query := `
