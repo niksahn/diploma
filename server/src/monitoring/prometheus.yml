@@ -1,0 +1,41 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'gateway'
+    static_configs:
+      - targets: ['gateway:8080']
+
+  - job_name: 'auth-service'
+    static_configs:
+      - targets: ['auth-service:8081']
+
+  - job_name: 'user-service'
+    static_configs:
+      - targets: ['user-service:8082']
+
+  - job_name: 'workspace-service'
+    static_configs:
+      - targets: ['workspace-service:8083']
+
+  - job_name: 'chat-service'
+    static_configs:
+      - targets: ['chat-service:8084']
+
+  - job_name: 'task-service'
+    static_configs:
+      - targets: ['task-service:8085']
+
+  - job_name: 'complaint-service'
+    static_configs:
+      - targets: ['complaint-service:8086']
