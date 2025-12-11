@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { taskApi, type TaskStatus, type TaskAssigneeResponse, type TaskChatResponse } from '../shared/api/tasks'
+import { taskApi, type TaskStatus } from '../shared/api/tasks'
 
 const statusOptions: { value: TaskStatus; label: string }[] = [
   { value: 1, label: 'К выполнению' },
@@ -130,7 +130,7 @@ const TaskDetailPage = () => {
   const handleEdit = () => {
     setFormData({
       title: task.title,
-      description: task.description,
+      description: task.description || '',
       date: task.date,
     })
     setIsEditing(true)
