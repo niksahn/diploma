@@ -12,6 +12,7 @@ import (
 	"github.com/diploma/gateway-service/internal/auth"
 	"github.com/diploma/gateway-service/internal/handlers"
 	"github.com/diploma/gateway-service/internal/proxy"
+	metrics "github.com/diploma/shared/metrics"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -27,12 +28,16 @@ func main() {
 
 	httpClient := auth.NewHTTPClient(cfg.RequestTimeout)
 
+	// Создаем метрики
+	serviceMetrics := metrics.NewServiceMetrics("gateway")
+
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(cfg.RequestTimeout))
+	r.Use(serviceMetrics.ChiMiddleware())
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
@@ -50,6 +55,9 @@ func main() {
 	r.Get("/health", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"status":"ok","service":"gateway"}`))
 	})
+
+	// Metrics
+	r.Get("/metrics", serviceMetrics.ChiHandler().ServeHTTP)
 
 	// Passthrough proxies for services (keep original paths).
 	mountProxy(r, "/api/v1/auth", cfg.AuthServiceURL)

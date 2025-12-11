@@ -2,13 +2,15 @@ FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
-# Копируем go.mod и go.sum
-COPY go.mod go.sum ./
+# Копируем go.mod и go.sum (контекст сборки = server/src)
+COPY services/chat/go.mod services/chat/go.sum ./
+# Копируем общий модуль метрик
+COPY shared/metrics ./shared/metrics
 RUN go mod download
 
 # Копируем исходный код
 RUN echo "Build timestamp: $(date)" > /tmp/build_time
-COPY . .
+COPY services/chat/. .
 
 # Собираем приложение
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o chat-service ./main.go

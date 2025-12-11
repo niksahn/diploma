@@ -14,6 +14,7 @@ import (
 	"github.com/diploma/complaint-service/data/repository"
 	"github.com/diploma/complaint-service/docs"
 	"github.com/diploma/complaint-service/presentation/handlers"
+	metrics "github.com/diploma/shared/metrics"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -48,7 +49,10 @@ func main() {
 	repo := repository.NewRepository(db)
 	handler := handlers.NewComplaintHandler(repo)
 
-	router := setupRouter(handler)
+	// Создаем метрики
+	serviceMetrics := metrics.NewServiceMetrics("complaint-service")
+
+	router := setupRouter(handler, serviceMetrics)
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.Port,
@@ -78,7 +82,7 @@ func main() {
 	log.Println("Server exited")
 }
 
-func setupRouter(handler *handlers.ComplaintHandler) *gin.Engine {
+func setupRouter(handler *handlers.ComplaintHandler, serviceMetrics *metrics.ServiceMetrics) *gin.Engine {
 	router := gin.Default()
 
 	docs.SwaggerInfo.BasePath = "/api/v1"
@@ -86,6 +90,10 @@ func setupRouter(handler *handlers.ComplaintHandler) *gin.Engine {
 
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
+	router.Use(serviceMetrics.Middleware())
+
+	// Metrics endpoint
+	router.GET("/metrics", serviceMetrics.Handler())
 
 	api := router.Group("/api/v1/complaints")
 	{

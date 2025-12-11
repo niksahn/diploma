@@ -14,6 +14,7 @@ import (
 	"github.com/diploma/workspace-service/data/repository"
 	"github.com/diploma/workspace-service/docs"
 	"github.com/diploma/workspace-service/presentation/handlers"
+	metrics "github.com/diploma/shared/metrics"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -59,8 +60,11 @@ func main() {
 	workspaceHandler := handlers.NewWorkspaceHandler(repo)
 	tariffHandler := handlers.NewTariffHandler(repo)
 
+	// Создаем метрики
+	serviceMetrics := metrics.NewServiceMetrics("workspace-service")
+
 	// Настраиваем роутер
-	router := setupRouter(workspaceHandler, tariffHandler)
+	router := setupRouter(workspaceHandler, tariffHandler, serviceMetrics)
 
 	// Создаем HTTP сервер
 	srv := &http.Server{
@@ -93,7 +97,7 @@ func main() {
 	log.Println("Server exited")
 }
 
-func setupRouter(workspaceHandler *handlers.WorkspaceHandler, tariffHandler *handlers.TariffHandler) *gin.Engine {
+func setupRouter(workspaceHandler *handlers.WorkspaceHandler, tariffHandler *handlers.TariffHandler, serviceMetrics *metrics.ServiceMetrics) *gin.Engine {
 	router := gin.Default()
 
 	// Swagger документация
@@ -104,6 +108,10 @@ func setupRouter(workspaceHandler *handlers.WorkspaceHandler, tariffHandler *han
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 	router.Use(corsMiddleware())
+	router.Use(serviceMetrics.Middleware())
+
+	// Metrics endpoint
+	router.GET("/metrics", serviceMetrics.Handler())
 
 	// API routes
 	api := router.Group("/api/v1/workspaces")

@@ -2,12 +2,14 @@ FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
-# Копируем go.mod и go.sum
-COPY go.mod go.sum ./
+# Копируем go.mod и go.sum (контекст сборки = server/src)
+COPY services/user/go.mod services/user/go.sum ./
+# Копируем общий модуль метрик
+COPY shared/metrics ./shared/metrics
 RUN go mod download
 
 # Копируем исходный код
-COPY . .
+COPY services/user/. .
 
 # Собираем приложение
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o user-service ./main.go

@@ -2,10 +2,11 @@ FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+COPY services/complaint/go.mod services/complaint/go.sum ./
+COPY shared/metrics ./shared/metrics
 RUN go mod download
 
-COPY . .
+COPY services/complaint/. .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o complaint-service ./main.go
 
