@@ -203,6 +203,57 @@ func (h *WorkspaceHandler) GetUserWorkspaces(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// GetAllWorkspaces godoc
+// @Summary Получить список всех РП
+// @Description Возвращает список всех рабочих пространств в системе (только администратор)
+// @Tags workspaces
+// @Produce json
+// @Success 200 {object} models.AllWorkspacesResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Security BearerAuth
+// @Router /workspaces/all [get]
+func (h *WorkspaceHandler) GetAllWorkspaces(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil || userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+	if !isAdmin(c) {
+		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "insufficient permissions"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	workspaces, err := h.repo.GetAllWorkspaces(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get workspaces"})
+		return
+	}
+
+	response := models.AllWorkspacesResponse{
+		Workspaces: make([]models.AdminWorkspaceResponse, 0, len(workspaces)),
+		Total:      len(workspaces),
+	}
+
+	for _, ws := range workspaces {
+		response.Workspaces = append(response.Workspaces, models.AdminWorkspaceResponse{
+			ID:           ws.ID,
+			Name:         ws.Name,
+			Creator:      ws.Creator,
+			TariffID:     ws.TariffID,
+			TariffName:   ws.TariffName,
+			MembersCount: ws.MembersCount,
+			ChatsCount:   ws.ChatsCount,
+			TasksCount:   ws.TasksCount,
+			CreatedAt:    ws.CreatedAt.UTC().Format(time.RFC3339),
+		})
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
 // GetWorkspace godoc
 // @Summary Получить информацию о РП
 // @Description Возвращает детальную информацию о рабочем пространстве
@@ -241,15 +292,17 @@ func (h *WorkspaceHandler) GetWorkspace(c *gin.Context) {
 		return
 	}
 
-	// Проверяем, что пользователь является участником РП
-	isMember, err := h.repo.IsMemberOfWorkspace(ctx, userID, workspaceID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to check membership"})
-		return
-	}
-	if !isMember {
-		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "user is not a member of this workspace"})
-		return
+	// Проверяем, что пользователь является участником РП (пропускаем для администраторов)
+	if !isAdmin(c) {
+		isMember, err := h.repo.IsMemberOfWorkspace(ctx, userID, workspaceID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to check membership"})
+			return
+		}
+		if !isMember {
+			c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "user is not a member of this workspace"})
+			return
+		}
 	}
 
 	// Получаем информацию о РП
@@ -546,15 +599,17 @@ func (h *WorkspaceHandler) GetMembers(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
-	// Проверяем, что пользователь является участником РП
-	isMember, err := h.repo.IsMemberOfWorkspace(ctx, userID, workspaceID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to check membership"})
-		return
-	}
-	if !isMember {
-		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "user is not a member of this workspace"})
-		return
+	// Проверяем, что пользователь является участником РП (пропускаем для администраторов)
+	if !isAdmin(c) {
+		isMember, err := h.repo.IsMemberOfWorkspace(ctx, userID, workspaceID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to check membership"})
+			return
+		}
+		if !isMember {
+			c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "user is not a member of this workspace"})
+			return
+		}
 	}
 
 	// Получаем список участников

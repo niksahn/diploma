@@ -117,6 +117,7 @@ func setupRouter(workspaceHandler *handlers.WorkspaceHandler, tariffHandler *han
 		api.POST("", workspaceHandler.CreateWorkspace)
 		api.GET("", workspaceHandler.GetUserWorkspaces)
 		api.GET("/:id", workspaceHandler.GetWorkspace)
+		api.GET("/all", workspaceHandler.GetAllWorkspaces)
 		api.PUT("/:id", workspaceHandler.UpdateWorkspace)
 		api.DELETE("/:id", workspaceHandler.DeleteWorkspace)
 
