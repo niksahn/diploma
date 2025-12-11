@@ -29,3 +29,4 @@ CREATE UNIQUE INDEX IF NOT EXISTS tariffs_description ON tariffs (description);
 
 
 
+
