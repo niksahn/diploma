@@ -14,6 +14,7 @@ import (
 	"github.com/diploma/user-service/docs"
 	"github.com/diploma/user-service/presentation/handlers"
 	"github.com/diploma/user-service/data/repository"
+	metrics "github.com/diploma/shared/metrics"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -58,8 +59,11 @@ func main() {
 	// Создаем обработчики
 	userHandler := handlers.NewUserHandler(repo)
 
+	// Создаем метрики
+	serviceMetrics := metrics.NewServiceMetrics("user-service")
+
 	// Настраиваем роутер
-	router := setupRouter(userHandler)
+	router := setupRouter(userHandler, serviceMetrics)
 
 	// Создаем HTTP сервер
 	srv := &http.Server{
@@ -92,7 +96,7 @@ func main() {
 	log.Println("Server exited")
 }
 
-func setupRouter(userHandler *handlers.UserHandler) *gin.Engine {
+func setupRouter(userHandler *handlers.UserHandler, serviceMetrics *metrics.ServiceMetrics) *gin.Engine {
 	router := gin.Default()
 
 	// Swagger документация
@@ -103,6 +107,10 @@ func setupRouter(userHandler *handlers.UserHandler) *gin.Engine {
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 	router.Use(corsMiddleware())
+	router.Use(serviceMetrics.Middleware())
+
+	// Metrics endpoint
+	router.GET("/metrics", serviceMetrics.Handler())
 
 	// API routes
 	api := router.Group("/api/v1/users")

@@ -14,6 +14,7 @@ import (
 	"github.com/diploma/chat-service/data/repository"
 	"github.com/diploma/chat-service/docs"
 	"github.com/diploma/chat-service/presentation/handlers"
+	metrics "github.com/diploma/shared/metrics"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -66,8 +67,11 @@ func main() {
 	wsHub := handlers.NewWSHub(repo)
 	go wsHub.Run()
 
+	// Создаем метрики
+	serviceMetrics := metrics.NewServiceMetrics("chat-service")
+
 	// Настраиваем роутер
-	router := setupRouter(chatHandler, memberHandler, messageHandler, wsHub)
+	router := setupRouter(chatHandler, memberHandler, messageHandler, wsHub, serviceMetrics)
 
 	// Выводим все маршруты для отладки
 	log.Printf("Registered routes:")
@@ -106,7 +110,7 @@ func main() {
 	log.Println("Server exited")
 }
 
-func setupRouter(chatHandler *handlers.ChatHandler, memberHandler *handlers.MemberHandler, messageHandler *handlers.MessageHandler, wsHub *handlers.WSHub) *gin.Engine {
+func setupRouter(chatHandler *handlers.ChatHandler, memberHandler *handlers.MemberHandler, messageHandler *handlers.MessageHandler, wsHub *handlers.WSHub, serviceMetrics *metrics.ServiceMetrics) *gin.Engine {
 	router := gin.Default()
 
 	// Swagger документация
@@ -117,6 +121,10 @@ func setupRouter(chatHandler *handlers.ChatHandler, memberHandler *handlers.Memb
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 	router.Use(corsMiddleware())
+	router.Use(serviceMetrics.Middleware())
+
+	// Metrics endpoint
+	router.GET("/metrics", serviceMetrics.Handler())
 
 	// WebSocket endpoint (на корневом уровне, до API routes)
 	router.GET("/ws/chats/ws", handlers.HandleWebSocket(wsHub))

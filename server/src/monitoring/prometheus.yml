@@ -39,3 +39,4 @@ scrape_configs:
   - job_name: 'complaint-service'
     static_configs:
       - targets: ['complaint-service:8086']
+

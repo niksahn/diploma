@@ -1,178 +1,123 @@
 {
-  "dashboard": {
-    "id": null,
-    "title": "Microservices Overview",
-    "tags": ["microservices", "overview"],
-    "timezone": "browser",
-    "panels": [
-      {
-        "id": 1,
-        "title": "Service Health Status",
-        "type": "stat",
-        "targets": [
-          {
-            "expr": "up{job=~\"gateway|auth-service|user-service|workspace-service|chat-service|task-service|complaint-service\"}",
-            "legendFormat": "{{job}}"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "mappings": [
-              {
-                "options": {
-                  "0": {
-                    "text": "DOWN",
-                    "color": "red"
-                  },
-                  "1": {
-                    "text": "UP",
-                    "color": "green"
-                  }
+  "id": null,
+  "uid": "microservices-overview",
+  "title": "Microservices Overview",
+  "tags": ["microservices", "overview"],
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Service Health Status",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "up{job=~\"gateway|auth-service|user-service|workspace-service|chat-service|task-service|complaint-service\"}",
+          "legendFormat": "{{job}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
                 },
-                "type": "value"
-              }
-            ]
-          }
-        },
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 0
+                "1": {
+                  "text": "UP",
+                  "color": "green"
+                }
+              },
+              "type": "value"
+            }
+          ]
         }
       },
-      {
-        "id": 2,
-        "title": "HTTP Request Rate (per second)",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "rate(http_requests_total[5m])",
-            "legendFormat": "{{job}} - {{method}} {{endpoint}}"
-          }
-        ],
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 0
-        }
-      },
-      {
-        "id": 3,
-        "title": "HTTP Response Time (95th percentile)",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
-            "legendFormat": "{{job}} - {{method}} {{endpoint}}"
-          }
-        ],
-        "yAxes": [
-          {
-            "unit": "seconds"
-          }
-        ],
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 8
-        }
-      },
-      {
-        "id": 4,
-        "title": "HTTP Error Rate (4xx/5xx)",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "rate(http_requests_total{status=~\"4..|5..\"}[5m])",
-            "legendFormat": "{{job}} - {{status}} errors"
-          }
-        ],
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 8
-        }
-      },
-      {
-        "id": 5,
-        "title": "Memory Usage",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "go_memory_used_bytes",
-            "legendFormat": "{{job}} memory"
-          }
-        ],
-        "yAxes": [
-          {
-            "unit": "bytes"
-          }
-        ],
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 16
-        }
-      },
-      {
-        "id": 6,
-        "title": "CPU Usage (Goroutines)",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "go_goroutines_total",
-            "legendFormat": "{{job}} goroutines"
-          }
-        ],
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 16
-        }
-      },
-      {
-        "id": 7,
-        "title": "HTTP Response Size",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "histogram_quantile(0.95, rate(http_response_size_bytes_bucket[5m]))",
-            "legendFormat": "{{job}} - {{method}} {{endpoint}}"
-          }
-        ],
-        "yAxes": [
-          {
-            "unit": "bytes"
-          }
-        ],
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 24
-        }
-      }
-    ],
-    "time": {
-      "from": "now-1h",
-      "to": "now"
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
     },
-    "timepicker": {},
-    "templating": {
-      "list": []
+    {
+      "id": 2,
+      "title": "HTTP Request Rate (per second)",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(http_requests_total[5m])",
+          "legendFormat": "{{job}} - {{method}} {{endpoint}}"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
     },
-    "annotations": {
-      "list": []
+    {
+      "id": 3,
+      "title": "HTTP Response Time (95th percentile)",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+          "legendFormat": "{{job}} - {{method}} {{endpoint}}"
+        }
+      ],
+      "yaxes": [{ "format": "s" }, { "format": "short" }],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
     },
-    "refresh": "30s",
-    "schemaVersion": 27,
-    "version": 0,
-    "links": []
-  }
+    {
+      "id": 4,
+      "title": "HTTP Error Rate (4xx/5xx)",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{status=~\"4..|5..\"}[5m])",
+          "legendFormat": "{{job}} - {{status}} errors"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
+    },
+    {
+      "id": 5,
+      "title": "Memory Usage",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "go_memory_used_bytes",
+          "legendFormat": "{{job}} memory"
+        }
+      ],
+      "yaxes": [{ "format": "bytes" }, { "format": "short" }],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 }
+    },
+    {
+      "id": 6,
+      "title": "CPU Usage (Goroutines)",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "go_goroutines_total",
+          "legendFormat": "{{job}} goroutines"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 }
+    },
+    {
+      "id": 7,
+      "title": "HTTP Response Size",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(http_response_size_bytes_bucket[5m]))",
+          "legendFormat": "{{job}} - {{method}} {{endpoint}}"
+        }
+      ],
+      "yaxes": [{ "format": "bytes" }, { "format": "short" }],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 }
+    }
+  ],
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "version": 1,
+  "links": [],
+  "overwrite": true
 }

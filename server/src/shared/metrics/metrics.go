@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -21,7 +20,6 @@ type ServiceMetrics struct {
 
 	// Системные метрики
 	GoGoroutines prometheus.Gauge
-	GoGC         prometheus.Gauge
 	GoMemory     prometheus.Gauge
 }
 
@@ -64,13 +62,6 @@ func NewServiceMetrics(serviceName string) *ServiceMetrics {
 		},
 	)
 
-	sm.GoGC = prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Name: "go_gc_duration_seconds",
-			Help: "Time spent in garbage collection",
-		},
-	)
-
 	sm.GoMemory = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "go_memory_used_bytes",
@@ -84,7 +75,6 @@ func NewServiceMetrics(serviceName string) *ServiceMetrics {
 		sm.HTTPRequestTotal,
 		sm.HTTPResponseSize,
 		sm.GoGoroutines,
-		sm.GoGC,
 		sm.GoMemory,
 	)
 

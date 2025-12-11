@@ -14,6 +14,7 @@ import (
 	"github.com/diploma/task-service/data/repository"
 	"github.com/diploma/task-service/docs"
 	"github.com/diploma/task-service/presentation/handlers"
+	metrics "github.com/diploma/shared/metrics"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -58,8 +59,11 @@ func main() {
 	// Создаем обработчик
 	taskHandler := handlers.NewTaskHandler(repo)
 
+	// Создаем метрики
+	serviceMetrics := metrics.NewServiceMetrics("task-service")
+
 	// Настраиваем роутер
-	router := setupRouter(taskHandler)
+	router := setupRouter(taskHandler, serviceMetrics)
 
 	// Создаем HTTP сервер
 	srv := &http.Server{
@@ -92,7 +96,7 @@ func main() {
 	log.Println("Server exited")
 }
 
-func setupRouter(taskHandler *handlers.TaskHandler) *gin.Engine {
+func setupRouter(taskHandler *handlers.TaskHandler, serviceMetrics *metrics.ServiceMetrics) *gin.Engine {
 	router := gin.Default()
 
 	// Swagger документация
@@ -103,6 +107,10 @@ func setupRouter(taskHandler *handlers.TaskHandler) *gin.Engine {
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 	router.Use(corsMiddleware())
+	router.Use(serviceMetrics.Middleware())
+
+	// Metrics endpoint
+	router.GET("/metrics", serviceMetrics.Handler())
 
 	// API routes
 	api := router.Group("/api/v1/tasks")
