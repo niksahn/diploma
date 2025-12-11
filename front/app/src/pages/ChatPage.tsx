@@ -61,15 +61,16 @@ const ChatPage = () => {
       console.log('New message received via WebSocket:', newMessage)
 
       // Обновляем кэш React Query, добавляя новое сообщение
-      queryClient.setQueryData<Message[]>(['chat', chatId], (oldMessages = []) => {
-        if (!oldMessages) return [newMessage]
+      queryClient.setQueryData<Message[]>(['chat', chatId], (oldMessages) => {
+        const safeMessages = Array.isArray(oldMessages) ? oldMessages : []
+        if (safeMessages.length === 0) return [newMessage]
 
         // Проверяем, нет ли уже такого сообщения (чтобы избежать дубликатов)
-        const messageExists = oldMessages.some(msg => msg.id === newMessage.id)
-        if (messageExists) return oldMessages
+        const messageExists = safeMessages.some(msg => msg.id === newMessage.id)
+        if (messageExists) return safeMessages
 
         // Заменяем оптимистическое сообщение на реальное
-        const updatedMessages = oldMessages.map(msg =>
+        const updatedMessages = safeMessages.map(msg =>
           msg.status === 'sending' && msg.text === newMessage.text && msg.user_id === newMessage.user_id
             ? newMessage
             : msg
@@ -178,8 +179,9 @@ const ChatPage = () => {
       user_name: user?.name || 'Вы'
     }
 
-    queryClient.setQueryData<Message[]>(['chat', chatId], (oldMessages = []) => {
-      return [...oldMessages, optimisticMessage]
+    queryClient.setQueryData<Message[]>(['chat', chatId], (oldMessages) => {
+      const safeMessages = Array.isArray(oldMessages) ? oldMessages : []
+      return [...safeMessages, optimisticMessage]
     })
 
     // Отправляем сообщение через WebSocket
