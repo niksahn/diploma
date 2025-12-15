@@ -560,3 +560,16 @@ func (r *Repository) UserExists(ctx context.Context, userID int) (bool, error) {
 
 	return exists, nil
 }
+
+// AdminExists проверяет существование администратора
+func (r *Repository) AdminExists(ctx context.Context, adminID int) (bool, error) {
+	query := `SELECT EXISTS(SELECT 1 FROM administrators WHERE id = $1)`
+
+	var exists bool
+	err := r.db.Pool.QueryRow(ctx, query, adminID).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check admin existence: %w", err)
+	}
+
+	return exists, nil
+}

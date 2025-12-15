@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { apiFetch } from "../shared/api/client";
+import { useAuthStore } from "../shared/state/auth";
 
 type Tariff = {
   id: number;
@@ -39,18 +40,17 @@ type MembersResponse = {
 };
 
 const roleOptions = [
-  { value: 2, label: "Owner" },
-  { value: 1, label: "Moderator" },
-  { value: 0, label: "Member" },
+  { value: 2, label: "Руководитель" },
+  { value: 1, label: "Участник" },
 ];
 
 function WorkspaceDetailPage() {
   const { id: workspaceId } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  const { admin } = useAuthStore();
 
   const [workspaceForm, setWorkspaceForm] = useState({ name: "", tariffId: "" });
-  const [leaderId, setLeaderId] = useState("");
-  const [addMemberForm, setAddMemberForm] = useState({ userId: "", role: "0" });
+  const [addMemberForm, setAddMemberForm] = useState({ userId: "", role: "1" });
   const [roleDrafts, setRoleDrafts] = useState<Record<number, string>>({});
 
   const workspaceQuery = useQuery({
@@ -92,29 +92,21 @@ function WorkspaceDetailPage() {
     },
   });
 
-  const changeLeader = useMutation({
-    mutationFn: (payload: { leader_id: number }) =>
-      apiFetch(`/api/v1/workspaces/${workspaceId}/leader`, { method: "PUT", body: payload }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId] });
-      queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspaceId] });
-    },
-  });
 
   const addMember = useMutation({
-    mutationFn: (payload: { user_id: number; role: number }) =>
+    mutationFn: (payload: { user_id: number; role: number; leader_id: number }) =>
       apiFetch(`/api/v1/workspaces/${workspaceId}/members`, { method: "POST", body: payload }),
     onSuccess: () => {
-      setAddMemberForm({ userId: "", role: "0" });
+      setAddMemberForm({ userId: "", role: "1" });
       queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspaceId] });
     },
   });
 
   const updateMemberRole = useMutation({
-    mutationFn: (payload: { userId: number; role: number }) =>
+    mutationFn: (payload: { userId: number; role: number; leader_id: number }) =>
       apiFetch(`/api/v1/workspaces/${workspaceId}/members/${payload.userId}`, {
         method: "PUT",
-        body: { role: payload.role },
+        body: { role: payload.role, leader_id: payload.leader_id },
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspaceId] });
@@ -156,20 +148,15 @@ function WorkspaceDetailPage() {
     });
   };
 
-  const handleChangeLeader = (event: FormEvent) => {
-    event.preventDefault();
-    if (!leaderId.trim()) return;
-
-    changeLeader.mutate({ leader_id: Number(leaderId) });
-  };
 
   const handleAddMember = (event: FormEvent) => {
     event.preventDefault();
-    if (!addMemberForm.userId.trim()) return;
+    if (!addMemberForm.userId.trim() || !admin?.id) return;
 
     addMember.mutate({
       user_id: Number(addMemberForm.userId),
       role: Number(addMemberForm.role),
+      leader_id: Number(admin.id),
     });
   };
 
@@ -296,28 +283,6 @@ function WorkspaceDetailPage() {
               </form>
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-slate-900">Change leader</h3>
-              <p className="text-sm text-slate-600">Укажите ID пользователя, который станет лидером.</p>
-
-              <form onSubmit={handleChangeLeader} className="mt-4 grid gap-3 md:grid-cols-[1fr,auto]">
-                <input
-                  type="number"
-                  min={1}
-                  value={leaderId}
-                  onChange={(e) => setLeaderId(e.target.value)}
-                  className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-                  placeholder="User ID"
-                />
-                <button
-                  type="submit"
-                  disabled={changeLeader.isPending}
-                  className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-                >
-                  {changeLeader.isPending ? "Updating…" : "Update leader"}
-                </button>
-              </form>
-            </div>
           </div>
 
           <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
@@ -420,6 +385,7 @@ function WorkspaceDetailPage() {
                                   updateMemberRole.mutate({
                                     userId: member.user_id,
                                     role: Number(draft),
+                                    leader_id: Number(admin?.id),
                                   })
                                 }
                                 disabled={updating}

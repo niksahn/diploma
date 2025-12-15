@@ -40,3 +40,8 @@ scrape_configs:
     static_configs:
       - targets: ['complaint-service:8086']
 
+
+
+
+
+

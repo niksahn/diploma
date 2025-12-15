@@ -86,7 +86,7 @@ function WorkspaceCreatePage() {
       return;
     }
     if (Number.isNaN(leaderIdNumber) || leaderIdNumber <= 0) {
-      setErrorMessage("Leader ID must be a positive number");
+      setErrorMessage("Leader User ID must be a positive number");
       return;
     }
     if (Number.isNaN(tariffIdNumber) || tariffIdNumber <= 0) {
@@ -147,14 +147,14 @@ function WorkspaceCreatePage() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-gray-700">Leader ID</label>
+                <label className="text-sm font-medium text-gray-700">Leader User ID</label>
                 <input
                   type="number"
                   min={1}
                   value={form.leaderId}
                   onChange={(e) => setForm((prev) => ({ ...prev, leaderId: e.target.value }))}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="123"
+                  placeholder="User ID who will be the leader"
                   required
                 />
               </div>
@@ -175,16 +175,20 @@ function WorkspaceCreatePage() {
                   </option>
                 ))}
               </select>
-              {sortedTariffs.length > 0 && (
-                <ul className="text-sm text-gray-600 space-y-1 bg-gray-50 border border-gray-200 rounded-md p-3">
+
+            {sortedTariffs.length > 0 && (
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                <div className="font-medium text-slate-900">Тарифы</div>
+                <ul className="mt-2 space-y-1">
                   {sortedTariffs.map((tariff) => (
                     <li key={tariff.id}>
-                      <span className="font-medium text-gray-800">{tariff.name}:</span>{" "}
-                      {tariff.description || "No description"}
+                      <span className="font-semibold text-slate-900">{tariff.name}:</span>{" "}
+                      {tariff.description || "Без описания"}
                     </li>
                   ))}
                 </ul>
-              )}
+              </div>
+            )}
             </div>
 
             {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
