@@ -9,7 +9,7 @@ const WorkspacesPage = () => {
     queryFn: workspaceApi.list,
   })
 
-  type WorkspaceView = { id: number; name: string; role?: string; tariff?: string }
+  type WorkspaceView = { id: number; name: string; role?: number | string; tariff?: string }
 
   const raw = Array.isArray((data as any)?.workspaces) // если API возвращает { workspaces: [...] }
     ? (data as any).workspaces
@@ -50,14 +50,21 @@ const WorkspacesPage = () => {
           workspaces.map((ws) => (
             <button
               key={ws.id}
-              onClick={() => setSelectedWorkspace(ws.id)}
+              onClick={() => setSelectedWorkspace(ws.id, typeof ws.role === 'number' ? ws.role : parseInt(String(ws.role || '0'), 10) || null)}
               className={`card text-left transition hover:shadow-md ${
                 selectedWorkspaceId === ws.id ? 'border-slate-900 ring-1 ring-slate-900' : ''
               }`}
             >
               <div className="flex items-center justify-between">
                 <div className="text-base font-semibold text-slate-900">{ws.name}</div>
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">{ws.role || 'участник'}</span>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
+                  {(() => {
+                    const roleNum = typeof ws.role === 'number' ? ws.role : parseInt(String(ws.role || '0'), 10)
+                    if (roleNum === 2) return 'руководитель'
+                    if (roleNum === 1) return 'участник'
+                    return ws.role || 'участник'
+                  })()}
+                </span>
               </div>
               <div className="mt-2 text-sm text-slate-600">ID: {ws.id}</div>
               {ws.tariff && <div className="text-xs text-slate-500 mt-1">Тариф: {ws.tariff}</div>}

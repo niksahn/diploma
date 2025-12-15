@@ -98,6 +98,17 @@ func (h *WorkspaceHandler) CreateWorkspace(c *gin.Context) {
 		return
 	}
 
+	// Проверяем, что лидер - это обычный пользователь, а не администратор
+	adminExists, err := h.repo.AdminExists(ctx, req.LeaderID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to check admin"})
+		return
+	}
+	if adminExists {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "leader cannot be an admin, must be a regular user"})
+		return
+	}
+
 	// Проверяем существование пользователя (будущего руководителя)
 	userExists, err := h.repo.UserExists(ctx, req.LeaderID)
 	if err != nil {
