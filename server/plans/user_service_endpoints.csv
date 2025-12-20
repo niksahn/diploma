@@ -1,0 +1,9 @@
+Метод	Точка доступа	Описание	Параметры
+GET	/api/v1/users/me	Получить профиль текущего пользователя	-
+PUT	/api/v1/users/me	Обновить профиль текущего пользователя	Body: { surname, name, patronymic }
+GET	/api/v1/users/:id	Получить профиль пользователя по ID	Path: id
+PUT	/api/v1/users/:id	Обновить данные пользователя (только для руководителя РП)	Path: id, Body: { surname, name, patronymic }
+PUT	/api/v1/users/me/status	Обновить статус текущего пользователя	Body: { status }
+GET	/api/v1/users	Поиск пользователей с фильтрацией и пагинацией	Query: search, workspace_id, status, limit, offset
+GET	/api/v1/users/workspace/:workspace_id	Получить всех пользователей рабочего пространства	Path: workspace_id
+

@@ -4,15 +4,16 @@ WORKDIR /app
 
 # Копируем go.mod и go.sum (контекст сборки = server/src)
 COPY services/user/go.mod services/user/go.sum ./
-# Копируем общий модуль метрик
+# Копируем общие модули
 COPY shared/metrics ./shared/metrics
+COPY shared/kafka ./shared/kafka
 RUN go mod download
 
 # Копируем исходный код
-COPY services/user/. .
+COPY services/user/ .
 
 # Собираем приложение
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o user-service ./main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o user-service .
 
 # Финальный образ
 FROM alpine:latest

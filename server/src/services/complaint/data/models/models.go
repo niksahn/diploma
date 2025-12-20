@@ -1,17 +1,21 @@
 package models
 
-import "time"
+import (
+	"database/sql"
+	"time"
+)
 
 // Complaint представляет запись жалобы в БД.
 type Complaint struct {
-	ID                int       `db:"id"`
-	Text              string    `db:"text"`
-	Date              time.Time `db:"date"`
-	DeviceDescription string    `db:"devicedescription"`
-	Author            int       `db:"author"`
-	Status            string    `db:"status"`
-	CreatedAt         time.Time `db:"created_at"`
-	UpdatedAt         time.Time `db:"updated_at"`
+	ID                int            `db:"id"`
+	Text              string         `db:"text"`
+	Date              time.Time      `db:"date"`
+	DeviceDescription string         `db:"devicedescription"`
+	Author            int            `db:"author"`
+	AuthorEmail       sql.NullString `db:"author_email"`
+	Status            string         `db:"status"`
+	CreatedAt         time.Time      `db:"created_at"`
+	UpdatedAt         time.Time      `db:"updated_at"`
 }
 
 // ComplaintWithUser дополняет жалобу данными об авторе.

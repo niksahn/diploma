@@ -1,0 +1,150 @@
+@startuml
+skinparam componentStyle uml2
+skinparam backgroundColor white
+skinparam linetype ortho  
+
+title Диаграмма типов Go - Сервис Жалоб (Архитектурные слои)
+
+' Определение архитектурных слоев
+skinparam package {
+  backgroundColor<<Presentation>> #LightGreen
+  backgroundColor<<Data>> #LightYellow
+}
+
+' ===== PRESENTATION LAYER =====
+package "Presentation Layer <<Presentation>>" as Presentation {
+  package "handlers" {
+    struct ComplaintHandler {
+        -repo: *Repository
+        -cfg: *Config
+        -kafka: *KafkaProducer
+        +NewComplaintHandler(repo, cfg, kafka): *ComplaintHandler
+        +CreateComplaint(c *gin.Context)
+        +GetComplaints(c *gin.Context)
+        +GetComplaint(c *gin.Context)
+        +UpdateComplaintStatus(c *gin.Context)
+        +DeleteComplaint(c *gin.Context)
+    }
+  }
+}
+
+' ===== DATA LAYER ===== '
+package "Data Layer <<Data>>" as Data {
+   package "models" {
+    struct Complaint {
+        +ID: int
+        +Text: string
+        +Date: string
+        +DeviceDescription: string
+        +Author: int
+        +Status: string
+        +CreatedAt: time.Time
+        +UpdatedAt: time.Time
+        +AuthorName: string
+        +AuthorLogin: string
+        +AuthorEmail: string
+    }
+
+    struct ComplaintStatusHistory {
+        +ID: int
+        +ComplaintID: int
+        +Status: string
+        +Comment: string
+        +ChangedBy: int
+        +ChangedAt: time.Time
+    }
+
+    struct CreateComplaintRequest {
+        +Text: string
+        +DeviceDescription: string
+        +UserEmail: string
+    }
+
+    struct UpdateStatusRequest {
+        +Status: string
+        +Comment: string
+    }
+
+    struct ComplaintStatusChangedEvent {
+        +ComplaintID: int
+        +OldStatus: string
+        +NewStatus: string
+        +Comment: string
+        +ChangedBy: int
+        +ChangedByLogin: string
+        +UserEmail: string
+        +UserName: string
+        +ComplaintText: string
+        +DeviceDescription: string
+        +ChangedAt: time.Time
+    }
+  }
+
+  package "repository" {
+    struct Repository {
+        -db: *DB
+        +NewRepository(db): *Repository
+        +CreateComplaint(ctx, complaint): (*Complaint, error)
+        +GetComplaints(ctx, filters): ([]*Complaint, error)
+        +GetComplaintByID(ctx, complaintID): (*Complaint, error)
+        +UpdateComplaintStatus(ctx, complaintID, status, comment, changedBy): error
+        +DeleteComplaint(ctx, complaintID): error
+        +GetComplaintStatusHistory(ctx, complaintID): ([]*ComplaintStatusHistory, error)
+    }
+  }
+
+  package "database" {
+    struct DB {
+        +Pool: *pgxpool.Pool
+        +NewDB(cfg): (*DB, error)
+        +Close()
+    }
+  }
+
+  package "config" {
+    struct Config {
+        +Port: string
+        +DBHost: string
+        +DBPort: string
+        +DBName: string
+        +DBUser: string
+        +DBPassword: string
+        +AuthServiceURL: string
+        +UserServiceURL: string
+        +KafkaBrokers: string
+        +Load(): (*Config, error)
+    }
+  }
+
+  package "kafka" {
+      struct KafkaProducer {
+          -producer: sarama.SyncProducer
+          +NewKafkaProducer(brokers): (*KafkaProducer, error)
+          +SendStatusChangedEvent(event): error
+          +Close()
+      }
+  }
+}
+
+' ===== RELATIONSHIPS BETWEEN LAYERS =====
+' Dependencies between layers (top to bottom)
+Presentation ..> Data : uses models and repository
+
+' Composition within layers
+Presentation.handlers.ComplaintHandler *-- Data.repository.Repository : composition
+Presentation.handlers.ComplaintHandler *-- Data.config.Config : composition
+Presentation.handlers.ComplaintHandler *-- Data.kafka.KafkaProducer : composition
+
+Data.repository.Repository *-- Data.database.DB : composition
+
+' Working with domain objects
+Presentation.handlers.ComplaintHandler ..> Data.models.Complaint 
+Presentation.handlers.ComplaintHandler ..> Data.models.CreateComplaintRequest
+Presentation.handlers.ComplaintHandler ..> Data.models.UpdateStatusRequest
+Data.repository.Repository ..> Data.models.Complaint 
+Data.repository.Repository ..> Data.models.ComplaintStatusHistory
+
+Data.kafka.KafkaProducer ..> Data.models.ComplaintStatusChangedEvent 
+
+@enduml
+

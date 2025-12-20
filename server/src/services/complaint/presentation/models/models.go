@@ -4,6 +4,7 @@ package models
 type CreateComplaintRequest struct {
 	Text              string `json:"text" binding:"required,min=10,max=255" example:"Application crashes when uploading large files"`
 	DeviceDescription string `json:"device_description" binding:"required,min=5,max=255" example:"Windows 10, Chrome 120.0, 16GB RAM"`
+	UserEmail         string `json:"user_email" binding:"required,email" example:"user@example.com"`
 }
 
 // UpdateStatusRequest описывает тело запроса на смену статуса.
@@ -31,6 +32,7 @@ type ComplaintResponse struct {
 	Author            int    `json:"author" example:"1"`
 	AuthorName        string `json:"author_name,omitempty" example:"Ivan Ivanov"`
 	AuthorLogin       string `json:"author_login,omitempty" example:"ivan@example.com"`
+	AuthorEmail       string `json:"author_email,omitempty" example:"ivan@example.com"`
 	Status            string `json:"status" example:"pending"`
 	AssignedTo        string `json:"assigned_to,omitempty" example:"admin@example.com"`
 	CreatedAt         string `json:"created_at" example:"2024-01-01T12:00:00Z"`

@@ -30,13 +30,15 @@ Complaint Service обрабатывает жалобы пользователе
 ```json
 {
   "text": "Application crashes when uploading large files",
-  "device_description": "Windows 10, Chrome 120.0, 16GB RAM"
+  "device_description": "Windows 10, Chrome 120.0, 16GB RAM",
+  "user_email": "user@example.com"
 }
 ```
 
 **Validation**:
 - `text`: обязательно, 10-255 символов
 - `device_description`: обязательно, до 255 символов
+- `user_email`: обязательно, валидный email адрес
 
 **Response**: `201 Created`
 ```json
@@ -47,6 +49,8 @@ Complaint Service обрабатывает жалобы пользователе
   "device_description": "Windows 10, Chrome 120.0, 16GB RAM",
   "author": 1,
   "author_name": "Ivan Ivanov",
+  "author_login": "ivan@example.com",
+  "author_email": "ivan@example.com",
   "status": "pending",
   "created_at": "2024-01-01T12:00:00Z",
   "updated_at": "2024-01-01T12:00:00Z"
@@ -90,6 +94,7 @@ Complaint Service обрабатывает жалобы пользователе
       "device_description": "Windows 10, Chrome 120.0, 16GB RAM",
       "author": 1,
       "author_name": "Ivan Ivanov",
+      "author_email": "ivan@example.com",
       "status": "pending",
       "created_at": "2024-01-01T12:00:00Z"
     },
@@ -100,6 +105,7 @@ Complaint Service обрабатывает жалобы пользователе
       "device_description": "macOS 14, Safari 17.0",
       "author": 3,
       "author_name": "Petr Petrov",
+      "author_email": "petr@example.com",
       "status": "in_progress",
       "created_at": "2024-01-02T10:00:00Z",
       "assigned_to": "admin@example.com",
@@ -137,6 +143,7 @@ Complaint Service обрабатывает жалобы пользователе
   "author": 1,
   "author_name": "Ivan Ivanov",
   "author_login": "ivan@example.com",
+  "author_email": "ivan@example.com",
   "status": "in_progress",
   "status_history": [
     {
@@ -343,6 +350,43 @@ Thank you for your feedback!
 
 ---
 
+## Kafka интеграция
+
+Сервис использует Apache Kafka для асинхронной отправки уведомлений:
+
+### События
+
+#### `complaints.status.changed`
+Отправляется при изменении статуса жалобы администратором.
+
+**Структура события:**
+```json
+{
+  "complaint_id": 1,
+  "old_status": "pending",
+  "new_status": "resolved",
+  "comment": "Issue fixed in version 1.2.3",
+  "changed_by": 1,
+  "changed_by_login": "admin@example.com",
+  "user_email": "user@example.com",
+  "user_name": "Ivan Ivanov",
+  "complaint_text": "Application crashes when uploading large files",
+  "device_description": "Windows 10, Chrome 120.0, 16GB RAM",
+  "changed_at": "2024-01-01T14:00:00Z"
+}
+```
+
+**Потребители:**
+- User Service: отправляет email уведомления пользователям
+- Analytics Service: собирает статистику по жалобам
+- Notification Service: отправляет push уведомления
+
+### Конфигурация
+
+```bash
+KAFKA_BROKERS=kafka:29092
+```
+
 ## Примечания
 
 1. Жалобы помогают администраторам отслеживать проблемы приложения
@@ -350,8 +394,8 @@ Thank you for your feedback!
 3. Пользователи видят только свои жалобы
 4. Администраторы имеют полный доступ ко всем жалобам
 5. История изменений статуса помогает отслеживать работу с жалобой
-6. Можно интегрировать с системой тикетов (Jira, GitHub Issues)
-7. Email уведомления опциональны, но рекомендуются
+6. Email уведомления отправляются автоматически через Kafka
+7. Можно интегрировать с системой тикетов (Jira, GitHub Issues)
 
 ---
 

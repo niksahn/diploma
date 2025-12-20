@@ -6,6 +6,7 @@ import { complaintApi } from '../shared/api/complaints'
 const ComplaintsPage = () => {
   const [text, setText] = useState('')
   const [device, setDevice] = useState('')
+  const [userEmail, setUserEmail] = useState('')
   const queryClient = useQueryClient()
 
   const { data, isLoading, error } = useQuery({
@@ -36,10 +37,11 @@ const ComplaintsPage = () => {
   }))
 
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: () => complaintApi.create({ text, deviceDescription: device }),
+    mutationFn: () => complaintApi.create({ text, deviceDescription: device, userEmail }),
     onSuccess: () => {
       setText('')
       setDevice('')
+      setUserEmail('')
       queryClient.invalidateQueries({ queryKey: ['complaints'] })
     },
   })
@@ -48,6 +50,7 @@ const ComplaintsPage = () => {
     e.preventDefault()
     if (!text.trim() || text.length < 10) return
     if (!device.trim() || device.length < 5) return
+    if (!userEmail.trim() || !userEmail.includes('@')) return
     await mutateAsync()
   }
 
@@ -81,9 +84,20 @@ const ComplaintsPage = () => {
             minLength={5}
           />
         </label>
+        <label className="text-sm text-slate-700">
+          Email для связи
+          <input
+            type="email"
+            value={userEmail}
+            onChange={(e) => setUserEmail(e.target.value)}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            placeholder="your.email@example.com"
+            required
+          />
+        </label>
         <button
           type="submit"
-          disabled={isPending || !text.trim() || text.length < 10 || !device.trim() || device.length < 5}
+          disabled={isPending || !text.trim() || text.length < 10 || !device.trim() || device.length < 5 || !userEmail.trim() || !userEmail.includes('@')}
           className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
         >
           {isPending ? 'Отправляем…' : 'Отправить жалобу'}

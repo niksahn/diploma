@@ -1,0 +1,195 @@
+@startuml
+skinparam componentStyle uml2
+skinparam backgroundColor white
+skinparam linetype ortho
+title Диаграмма типов Go - Сервис Задач (Архитектурные слои)
+
+' Определение архитектурных слоев
+skinparam package {
+  backgroundColor<<Presentation>> #LightGreen
+  backgroundColor<<Data>> #LightYellow
+}
+
+' ===== PRESENTATION LAYER =====
+package "Presentation Layer <<Presentation>>" as Presentation {
+  package "handlers" {
+    struct TaskHandler {
+        -repo: *Repository
+        -cfg: *Config
+        +NewTaskHandler(repo, cfg): *TaskHandler
+        +CreateTask(c *gin.Context)
+        +GetTasks(c *gin.Context)
+        +GetTask(c *gin.Context)
+        +UpdateTask(c *gin.Context)
+        +DeleteTask(c *gin.Context)
+        +UpdateTaskStatus(c *gin.Context)
+        +AddAssignees(c *gin.Context)
+        +GetAssignees(c *gin.Context)
+        +RemoveAssignee(c *gin.Context)
+        +AttachToChat(c *gin.Context)
+        +GetTaskChats(c *gin.Context)
+        +DetachFromChat(c *gin.Context)
+        +GetTaskHistory(c *gin.Context)
+    }
+  }
+}
+
+' ===== DATA LAYER ===== '
+package "Data Layer <<Data>>" as Data {
+   package "models" {
+    struct Task {
+        +ID: int
+        +Creator: int
+        +WorkspaceID: int
+        +Title: string
+        +Description: string
+        +Date: string
+        +Status: int
+        +CreatedAt: time.Time
+    }
+
+    struct TaskWithDetails {
+        +ID: int
+        +Creator: int
+        +CreatorName: string
+        +WorkspaceID: int
+        +Title: string
+        +Description: string
+        +Date: string
+        +Status: int
+        +AssignedUsers: []Assignee
+        +Chats: []ChatInfo
+        +ChangesHistory: []TaskChange
+        +CreatedAt: time.Time
+        +UpdatedAt: time.Time
+    }
+
+    struct Assignee {
+        +UserID: int
+        +Name: string
+        +Surname: string
+        +Status: int
+        +AssignedAt: string
+    }
+
+    struct ChatInfo {
+        +ID: int
+        +Name: string
+        +Type: int
+        +AttachedAt: string
+    }
+
+    struct TaskChange {
+        +ID: int
+        +Description: string
+        +CreatedAt: time.Time
+        +TaskID: int
+    }
+
+    struct CreateTaskRequest {
+        +WorkspaceID: int
+        +Title: string
+        +Description: string
+        +Date: string
+        +Status: int
+        +AssignedUsers: []int
+        +ChatID: int
+    }
+
+    struct UpdateTaskRequest {
+        +Title: string
+        +Description: string
+        +Date: string
+    }
+
+    struct UpdateStatusRequest {
+        +Status: int
+        +Comment: string
+    }
+
+    struct AddAssigneesRequest {
+        +UserIDs: []int
+    }
+
+    struct AttachChatRequest {
+        +ChatID: int
+    }
+
+    struct TaskFilters {
+        +WorkspaceID: int
+        +Status: int
+        +AssignedToMe: bool
+        +CreatedByMe: bool
+        +Limit: int
+        +Offset: int
+    }
+  }
+
+  package "repository" {
+    struct Repository {
+        -db: *DB
+        +NewRepository(db): *Repository
+        +CreateTask(ctx, task): (*Task, error)
+        +GetTasks(ctx, filters): ([]*Task, error)
+        +GetTaskByID(ctx, taskID): (*TaskWithDetails, error)
+        +UpdateTask(ctx, taskID, updates): (*Task, error)
+        +DeleteTask(ctx, taskID): error
+        +UpdateTaskStatus(ctx, taskID, status, comment, userID): error
+        +AddAssignees(ctx, taskID, userIDs): error
+        +GetAssignees(ctx, taskID): ([]*Assignee, error)
+        +RemoveAssignee(ctx, taskID, userID): error
+        +AttachTaskToChat(ctx, taskID, chatID): error
+        +GetTaskChats(ctx, taskID): ([]*ChatInfo, error)
+        +DetachTaskFromChat(ctx, taskID, chatID): error
+        +GetTaskHistory(ctx, taskID): ([]*TaskChange, error)
+        +CheckUserInWorkspace(ctx, userID, workspaceID): (bool, error)
+    }
+  }
+
+  package "database" {
+    struct DB {
+        +Pool: *pgxpool.Pool
+        +NewDB(cfg): (*DB, error)
+        +Close()
+    }
+  }
+
+  package "config" {
+    struct Config {
+        +Port: string
+        +DBHost: string
+        +DBPort: string
+        +DBName: string
+        +DBUser: string
+        +DBPassword: string
+        +AuthServiceURL: string
+        +UserServiceURL: string
+        +WorkspaceServiceURL: string
+        +ChatServiceURL: string
+        +Load(): (*Config, error)
+    }
+  }
+}
+
+' ===== RELATIONSHIPS BETWEEN LAYERS =====
+' Dependencies between layers (top to bottom)
+Presentation ..> Data : uses models and repository
+
+' Composition within layers
+Presentation.handlers.TaskHandler *-- Data.repository.Repository : composition
+Presentation.handlers.TaskHandler *-- Data.config.Config : composition
+
+Data.repository.Repository *-- Data.database.DB : composition
+
+' Working with domain objects
+Presentation.handlers.TaskHandler ..> Data.models.Task : works with struct
+Presentation.handlers.TaskHandler ..> Data.models.CreateTaskRequest : receives data
+Presentation.handlers.TaskHandler ..> Data.models.UpdateStatusRequest : receives data
+
+Data.repository.Repository ..> Data.models.Task : works with struct
+Data.repository.Repository ..> Data.models.TaskWithDetails : returns aggregate
+Data.repository.Repository ..> Data.models.Assignee : works with struct
+Data.repository.Repository ..> Data.models.TaskChange : works with struct
+
+@enduml
+
