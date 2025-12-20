@@ -10,6 +10,7 @@ import (
 	dmodels "github.com/diploma/complaint-service/data/models"
 	"github.com/diploma/complaint-service/data/repository"
 	apiModels "github.com/diploma/complaint-service/presentation/models"
+	"github.com/diploma/shared/kafka"
 	"github.com/gin-gonic/gin"
 )
 
@@ -22,12 +23,16 @@ var allowedStatuses = map[string]bool{
 
 // ComplaintHandler обслуживает HTTP запросы.
 type ComplaintHandler struct {
-	repo *repository.Repository
+	repo           *repository.Repository
+	kafkaProducer  *kafka.Producer
 }
 
 // NewComplaintHandler конструктор обработчика.
-func NewComplaintHandler(repo *repository.Repository) *ComplaintHandler {
-	return &ComplaintHandler{repo: repo}
+func NewComplaintHandler(repo *repository.Repository, kafkaProducer *kafka.Producer) *ComplaintHandler {
+	return &ComplaintHandler{
+		repo:          repo,
+		kafkaProducer: kafkaProducer,
+	}
 }
 
 // getUserID извлекает ID пользователя из заголовка (устанавливается Gateway).
@@ -82,7 +87,7 @@ func (h *ComplaintHandler) CreateComplaint(c *gin.Context) {
 		return
 	}
 
-	complaint, err := h.repo.CreateComplaint(c.Request.Context(), userID, req.Text, req.DeviceDescription)
+	complaint, err := h.repo.CreateComplaint(c.Request.Context(), userID, req.Text, req.DeviceDescription, req.UserEmail)
 	if err != nil {
 		log.Printf("create complaint user %d failed: %v", userID, err)
 		c.JSON(http.StatusInternalServerError, apiModels.ErrorResponse{Error: "failed to create complaint"})
@@ -107,8 +112,13 @@ func (h *ComplaintHandler) CreateComplaint(c *gin.Context) {
 // @Failure 401 {object} apiModels.ErrorResponse
 // @Router /complaints [get]
 func (h *ComplaintHandler) ListComplaints(c *gin.Context) {
+	log.Printf("ListComplaints called")
+
 	userID, err := getUserID(c)
+	log.Printf("getUserID returned: userID=%d, err=%v", userID, err)
+
 	if err != nil || userID == 0 {
+		log.Printf("Unauthorized: err=%v, userID=%d", err, userID)
 		c.JSON(http.StatusUnauthorized, apiModels.ErrorResponse{Error: "unauthorized"})
 		return
 	}
@@ -288,6 +298,51 @@ func (h *ComplaintHandler) UpdateComplaintStatus(c *gin.Context) {
 		return
 	}
 
+	// Отправляем событие в Kafka асинхронно
+	if h.kafkaProducer != nil {
+		// Получаем обновленную жалобу для данных события
+		complaint, err := h.repo.GetComplaint(c.Request.Context(), complaintID)
+		if err == nil {
+			// Получаем информацию об администраторе
+			adminLogin := "admin" // По умолчанию
+			if history.ChangedByLogin != nil {
+				adminLogin = *history.ChangedByLogin
+			}
+
+			userEmail := ""
+			if complaint.AuthorEmail.Valid {
+				userEmail = complaint.AuthorEmail.String
+			}
+
+			event := kafka.ComplaintStatusChangedEvent{
+				ComplaintID:       complaint.ID,
+				OldStatus:         history.Status, // Предыдущий статус из истории
+				NewStatus:         req.Status,
+				Comment:           "",
+				ChangedBy:         adminID,
+				ChangedByLogin:    adminLogin,
+				UserEmail:         userEmail,
+				UserName:          complaint.AuthorName,
+				ComplaintText:     complaint.Text,
+				DeviceDescription: complaint.DeviceDescription,
+				ChangedAt:         history.CreatedAt.Format(time.RFC3339),
+			}
+
+			if req.Comment != nil {
+				event.Comment = *req.Comment
+			}
+
+			// Отправляем событие асинхронно
+			go func() {
+				if err := h.kafkaProducer.Publish(kafka.TopicComplaintStatusChanged, event); err != nil {
+					log.Printf("Failed to publish complaint status changed event: %v", err)
+				}
+			}()
+		} else {
+			log.Printf("Failed to get complaint for Kafka event: %v", err)
+		}
+	}
+
 	c.JSON(http.StatusOK, mapHistoryResponse(*history))
 }
 
@@ -339,6 +394,13 @@ func mapComplaintResponse(cpl dmodels.ComplaintWithUser) apiModels.ComplaintResp
 		Status:            cpl.Status,
 		CreatedAt:         cpl.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:         cpl.UpdatedAt.UTC().Format(time.RFC3339),
+	}
+
+	// Handle nullable AuthorEmail field
+	if cpl.AuthorEmail.Valid {
+		resp.AuthorEmail = cpl.AuthorEmail.String
+	} else {
+		resp.AuthorEmail = ""
 	}
 
 	if cpl.AssignedTo != nil {

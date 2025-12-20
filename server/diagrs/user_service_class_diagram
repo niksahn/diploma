@@ -1,0 +1,129 @@
+@startuml
+skinparam componentStyle uml2
+skinparam backgroundColor white
+skinparam linetype ortho
+title Диаграмма типов Go - Сервис Пользователей (Архитектурные слои)
+
+' Определение архитектурных слоев
+skinparam package {
+  backgroundColor<<Presentation>> #LightGreen
+  backgroundColor<<Data>> #LightYellow
+}
+
+' ===== PRESENTATION LAYER =====
+package "Presentation Layer <<Presentation>>" as Presentation {
+  package "handlers" {
+    struct UserHandler {
+        -repo: *Repository
+        -cfg: *Config
+        +NewUserHandler(repo, cfg): *UserHandler
+        +GetMe(c *gin.Context)
+        +UpdateMe(c *gin.Context)
+        +GetUser(c *gin.Context)
+        +UpdateUser(c *gin.Context)
+        +UpdateStatus(c *gin.Context)
+        +SearchUsers(c *gin.Context)
+        +GetWorkspaceUsers(c *gin.Context)
+    }
+  }
+}
+
+' ===== DATA LAYER ===== '
+package "Data Layer <<Data>>" as Data {
+   package "models" {
+    struct User {
+        +ID: int
+        +Login: string
+        +Password: string
+        +Surname: string
+        +Name: string
+        +Patronymic: *string
+        +Status: int
+    }
+
+    struct UserWithRole {
+        +ID: int
+        +Login: string
+        +Surname: string
+        +Name: string
+        +Patronymic: *string
+        +Status: int
+        +Role: int
+        +JoinedAt: time.Time
+    }
+
+    struct UpdateProfileRequest {
+        +Surname: string
+        +Name: string
+        +Patronymic: *string
+    }
+
+    struct UpdateStatusRequest {
+        +Status: int
+    }
+
+    struct SearchFilters {
+        +Search: string
+        +WorkspaceID: int
+        +Status: int
+        +Limit: int
+        +Offset: int
+    }
+  }
+
+  package "repository" {
+    struct Repository {
+        -db: *DB
+        +NewRepository(db): *Repository
+        +GetUserByID(ctx, id): (*User, error)
+        +UpdateUser(ctx, id, updates): (*User, error)
+        +UpdateUserStatus(ctx, id, status): error
+        +SearchUsers(ctx, filters): ([]*User, error)
+        +GetUsersByWorkspaceID(ctx, workspaceID): ([]*UserWithRole, error)
+        +CheckUserInWorkspace(ctx, userID, workspaceID): (bool, int, error)
+    }
+  }
+
+  package "database" {
+    struct DB {
+        +Pool: *pgxpool.Pool
+        +NewDB(cfg): (*DB, error)
+        +Close()
+    }
+  }
+
+  package "config" {
+    struct Config {
+        +Port: string
+        +DBHost: string
+        +DBPort: string
+        +DBName: string
+        +DBUser: string
+        +DBPassword: string
+        +AuthServiceURL: string
+        +Load(): (*Config, error)
+    }
+  }
+}
+
+' ===== RELATIONSHIPS BETWEEN LAYERS =====
+' Dependencies between layers (top to bottom)
+Presentation ..> Data : uses models and repository
+
+' Composition within layers
+Presentation.handlers.UserHandler *-- Data.repository.Repository : composition
+Presentation.handlers.UserHandler *-- Data.config.Config : composition
+
+Data.repository.Repository *-- Data.database.DB : composition
+
+' Working with domain objects
+Presentation.handlers.UserHandler ..> Data.models.User : works with struct
+Presentation.handlers.UserHandler ..> Data.models.UpdateProfileRequest : receives data
+Presentation.handlers.UserHandler ..> Data.models.UpdateStatusRequest : receives data
+
+Data.repository.Repository ..> Data.models.User : works with struct
+Data.repository.Repository ..> Data.models.UserWithRole : works with struct
+Data.repository.Repository ..> Data.models.SearchFilters : uses for query
+
+@enduml
+

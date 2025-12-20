@@ -14,6 +14,7 @@ import (
 	"github.com/diploma/complaint-service/data/repository"
 	"github.com/diploma/complaint-service/docs"
 	"github.com/diploma/complaint-service/presentation/handlers"
+	"github.com/diploma/shared/kafka"
 	metrics "github.com/diploma/shared/metrics"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -46,8 +47,23 @@ func main() {
 	}
 	defer db.Close()
 
+	// Инициализируем Kafka producer
+	var kafkaProducer *kafka.Producer
+	if len(cfg.KafkaBrokers) > 0 {
+		kafkaProducer, err = kafka.NewProducer(cfg.KafkaBrokers)
+		if err != nil {
+			log.Printf("Failed to create Kafka producer: %v", err)
+			log.Println("Kafka producer disabled, notifications will not be sent")
+		} else {
+			defer kafkaProducer.Close()
+			log.Println("Kafka producer initialized successfully")
+		}
+	} else {
+		log.Println("Kafka brokers not configured, notifications disabled")
+	}
+
 	repo := repository.NewRepository(db)
-	handler := handlers.NewComplaintHandler(repo)
+	handler := handlers.NewComplaintHandler(repo, kafkaProducer)
 
 	// Создаем метрики
 	serviceMetrics := metrics.NewServiceMetrics("complaint-service")

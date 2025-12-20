@@ -23,20 +23,21 @@ func NewRepository(db *database.DB) *Repository {
 }
 
 // CreateComplaint создает новую жалобу со статусом pending.
-func (r *Repository) CreateComplaint(ctx context.Context, authorID int, text, deviceDescription string) (*models.ComplaintWithUser, error) {
+func (r *Repository) CreateComplaint(ctx context.Context, authorID int, text, deviceDescription, authorEmail string) (*models.ComplaintWithUser, error) {
 	query := `
-		INSERT INTO complaints (text, devicedescription, author, status, date)
-		VALUES ($1, $2, $3, 'pending', CURRENT_DATE)
-		RETURNING id, text, date, devicedescription, author, status, created_at, updated_at
+		INSERT INTO complaints (text, devicedescription, author, author_email, status, date)
+		VALUES ($1, $2, $3, $4, 'pending', CURRENT_DATE)
+		RETURNING id, text, date, devicedescription, author, author_email, status, created_at, updated_at
 	`
 
 	var complaint models.Complaint
-	if err := r.db.Pool.QueryRow(ctx, query, text, deviceDescription, authorID).Scan(
+	if err := r.db.Pool.QueryRow(ctx, query, text, deviceDescription, authorID, authorEmail).Scan(
 		&complaint.ID,
 		&complaint.Text,
 		&complaint.Date,
 		&complaint.DeviceDescription,
 		&complaint.Author,
+		&complaint.AuthorEmail,
 		&complaint.Status,
 		&complaint.CreatedAt,
 		&complaint.UpdatedAt,
@@ -60,7 +61,7 @@ func (r *Repository) CreateComplaint(ctx context.Context, authorID int, text, de
 // GetComplaint возвращает жалобу по ID.
 func (r *Repository) GetComplaint(ctx context.Context, id int) (*models.ComplaintWithUser, error) {
 	query := `
-		SELECT c.id, c.text, c.date, c.devicedescription, c.author, c.status, c.created_at, c.updated_at,
+		SELECT c.id, c.text, c.date, c.devicedescription, c.author, c.author_email, c.status, c.created_at, c.updated_at,
 		       u.surname, u.name, u.login,
 		       la.login AS assigned_to
 		FROM complaints c
@@ -84,6 +85,7 @@ func (r *Repository) GetComplaint(ctx context.Context, id int) (*models.Complain
 		&complaint.Date,
 		&complaint.DeviceDescription,
 		&complaint.Author,
+		&complaint.AuthorEmail,
 		&complaint.Status,
 		&complaint.CreatedAt,
 		&complaint.UpdatedAt,
@@ -165,6 +167,8 @@ func (r *Repository) GetComplaintHistory(ctx context.Context, complaintID int) (
 
 // ListComplaints возвращает список жалоб с учетом фильтров.
 func (r *Repository) ListComplaints(ctx context.Context, filter models.ComplaintFilter) ([]models.ComplaintWithUser, int, error) {
+	log.Printf("ListComplaints called with filter: %+v", filter)
+
 	conditions := []string{}
 	args := []interface{}{}
 	argNum := 1
@@ -199,7 +203,7 @@ func (r *Repository) ListComplaints(ctx context.Context, filter models.Complaint
 	}
 
 	listQuery := fmt.Sprintf(`
-		SELECT c.id, c.text, c.date, c.devicedescription, c.author, c.status, c.created_at, c.updated_at,
+		SELECT c.id, c.text, c.date, c.devicedescription, c.author, c.author_email, c.status, c.created_at, c.updated_at,
 		       u.surname, u.name, u.login,
 		       la.login AS assigned_to
 		FROM complaints c
@@ -236,6 +240,7 @@ func (r *Repository) ListComplaints(ctx context.Context, filter models.Complaint
 			&complaint.Date,
 			&complaint.DeviceDescription,
 			&complaint.Author,
+			&complaint.AuthorEmail,
 			&complaint.Status,
 			&complaint.CreatedAt,
 			&complaint.UpdatedAt,

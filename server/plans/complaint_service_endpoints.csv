@@ -1,0 +1,7 @@
+Метод	Точка доступа	Описание	Параметры
+POST	/api/v1/complaints	Создать новую жалобу	Body: { text, device_description, user_email }
+GET	/api/v1/complaints	Получить список жалоб	Query: status, author_id, limit, offset
+GET	/api/v1/complaints/:id	Получить детальную информацию о жалобе	Path: id
+PUT	/api/v1/complaints/:id/status	Изменить статус жалобы (только администратор)	Path: id, Body: { status, comment }
+DELETE	/api/v1/complaints/:id	Удалить жалобу (только администратор)	Path: id
+

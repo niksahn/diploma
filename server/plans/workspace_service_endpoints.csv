@@ -1,0 +1,16 @@
+Метод	Точка доступа	Описание	Параметры
+POST	/api/v1/workspaces	Создать рабочее пространство (только администратор)	Body: { name, tariff_id, leader_id }
+GET	/api/v1/workspaces	Получить список рабочих пространств текущего пользователя	-
+GET	/api/v1/workspaces/all	Получить список всех рабочих пространств в системе (только администратор)	-
+GET	/api/v1/workspaces/:id	Получить информацию о рабочем пространстве	Path: id
+PUT	/api/v1/workspaces/:id	Обновить параметры рабочего пространства	Path: id, Body: { name, tariff_id }
+DELETE	/api/v1/workspaces/:id	Удалить рабочее пространство (только администратор)	Path: id
+POST	/api/v1/workspaces/:id/members	Добавить пользователя в рабочее пространство	Path: id, Body: { user_id, role }
+GET	/api/v1/workspaces/:id/members	Получить список участников рабочего пространства	Path: id
+PUT	/api/v1/workspaces/:id/members/:user_id	Изменить роль пользователя в рабочем пространстве	Path: id, user_id, Body: { role }
+DELETE	/api/v1/workspaces/:id/members/:user_id	Удалить пользователя из рабочего пространства	Path: id, user_id
+PUT	/api/v1/workspaces/:id/leader	Сменить руководителя рабочего пространства	Path: id, Body: { new_leader_id }
+GET	/api/v1/workspaces/tariffs	Получить список доступных тарифов	-
+POST	/api/v1/workspaces/tariffs	Создать новый тариф (только администратор)	Body: { name, description }
+PUT	/api/v1/workspaces/tariffs/:id	Обновить тариф (только администратор)	Path: id, Body: { name, description }
+

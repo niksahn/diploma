@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY services/complaint/go.mod services/complaint/go.sum ./
 COPY shared/metrics ./shared/metrics
+COPY shared/kafka ./shared/kafka
 RUN go mod download
 
 COPY services/complaint/. .

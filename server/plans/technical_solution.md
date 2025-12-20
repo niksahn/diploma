@@ -155,7 +155,48 @@ volumes:
   kong_data:
 ```
 
-## 5. REST API Спецификация
+## 4. Диаграммы проекта
+
+### 4.1. Схема базы данных ([`server/diagrs/Laba5.ddl`](server/diagrs/Laba5.ddl))
+**SQL DDL схема PostgreSQL** с основными таблицами:
+
+**Основные сущности**:
+- `users` - пользователи системы (id, login, password, status, surname, name, patronymic)
+- `messages` - сообщения в чатах (id, chatsid, usersid, text, date, status)
+- `chats` - чаты (id, name, type, workspacesid)
+- `workspaces` - рабочие пространства (id, creator, tariffsid, name)
+- `tasks` - задачи (id, creator, workspacesid, title, description, date, status)
+- `administrators` - администраторы (id, login, password)
+- `complaints` - жалобы пользователей (id, text, date, deviceDescription, author)
+- `tariffs` - тарифные планы (id, name, description)
+
+**Связующие таблицы**:
+- `userInWorkspace` - связь пользователей с РП (usersid, workspacesid, role, date)
+- `userInChat` - участники чата (id, role, date, chatsid, usersid)
+- `taskInChat` - привязка задач к чатам (id, chatsid, tasksid)
+- `taskChanges` - история изменений задач (id, description, tasksid)
+- `userInTask` - назначение пользователей на задачи (id, tasksid, usersid)
+
+**Ключевые связи**:
+- Workspace создается администратором, имеет тариф
+- Чаты и задачи привязаны к рабочим пространствам
+- Пользователи могут участвовать в нескольких РП с разными ролями
+- Задачи могут быть прикреплены к чатам
+
+### 4.2. Диаграммы компонентов и классов
+
+**Диаграмма компонентов системы**: [`server/diagrs/component`](server/diagrs/component) - архитектура микросервисов, взаимодействие между компонентами и потоками данных.
+
+**Диаграммы типов микросервисов**:
+- **Auth Service**: [`server/diagrs/auth_service_class_diagram`](server/diagrs/auth_service_class_diagram) - структура типов Go сервиса аутентификации с моделями данных, обработчиками, репозиторием и утилитами
+
+### 4.3. Use Case диаграммы
+
+**Панель администратора**: [`server/diagrs/usecase_admin`](server/diagrs/usecase_admin) - диаграмма функций для администраторов системы.
+
+**Корпоративный мессенджер**: [`server/diagrs/usecase_messendger`](server/diagrs/usecase_messendger) - диаграмма функций для пользователей мессенджера.
+
+## 6. REST API Спецификация
 
 Подробное описание всех REST API эндпоинтов для каждого микросервиса находится в отдельной папке:
 
@@ -192,7 +233,7 @@ volumes:
 - ✅ Task Service: 13/13 эндпоинтов
 - ✅ Complaint Service: 5/5 эндпоинтов
 
-## 6. Мониторинг и метрики
+## 7. Мониторинг и метрики
 
 ### 6.1. Обзор системы мониторинга
 
@@ -252,7 +293,7 @@ volumes:
 - **Grafana**: http://localhost:3000
 - **Metrics эндпоинты**: Каждый сервис предоставляет `/metrics` на своем порту
 
-## 7. План разработки (Roadmap)
+## 8. План разработки (Roadmap)
 
 1.  **Проектирование БД**: Создание SQL-схемы на основе ER-диаграммы.
 2.  **Базовая инфраструктура**: Настройка Kong Gateway + Docker Compose.

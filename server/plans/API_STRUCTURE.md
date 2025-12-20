@@ -101,6 +101,8 @@ server/plans/
 - [API Checklist](./api_checklist.md) - чеклист для разработки
 - [Схема БД](../diagrs/Laba5.ddl) - SQL DDL схема
 - [Use Cases](../diagrs/usecase_messendger) - диаграмма функций
+- [Диаграмма компонентов](../diagrs/component) - архитектура системы
+- [Диаграмма типов Auth Service](../diagrs/auth_service_class_diagram) - структура типов Go сервиса аутентификации
 
 ---
 
@@ -145,7 +147,7 @@ server/plans/
 ---
 
 **Версия**: 1.2
-**Последнее обновление**: 2025-12-06
+**Последнее обновление**: 2025-12-15
 
 
 

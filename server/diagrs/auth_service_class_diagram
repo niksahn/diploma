@@ -1,0 +1,204 @@
+@startuml
+skinparam componentStyle uml2
+skinparam backgroundColor white
+title Диаграмма типов Go - Сервис Аутентификации (Архитектурные слои)
+
+' Определение архитектурных слоев
+skinparam package {
+  backgroundColor<<Presentation>> #LightGreen
+  backgroundColor<<Data>> #LightYellow
+}
+
+' ===== PRESENTATION LAYER =====
+package "Presentation Layer <<Presentation>>" as Presentation {
+  package "handlers" {
+    struct AuthHandler {
+        -repo: *Repository
+        -cfg: *Config
+        +NewAuthHandler(repo, cfg): *AuthHandler
+        +Register(c *gin.Context)
+        +Login(c *gin.Context)
+        +Refresh(c *gin.Context)
+        +Logout(c *gin.Context)
+        +AdminLogin(c *gin.Context)
+        +AdminRegister(c *gin.Context)
+        +Validate(c *gin.Context)
+    }
+  }
+}
+
+' ===== DATA LAYER ===== '
+package "Data Layer <<Data>>" as Data {
+   package "models" {
+    struct User {
+        +ID: int
+        +Login: string
+        +Password: string
+        +Surname: string
+        +Name: string
+        +Patronymic: *string
+        +Status: int
+    }
+
+    struct Administrator {
+        +ID: int
+        +Login: string
+        +Password: string
+    }
+
+    struct RefreshToken {
+        +ID: int
+        +UserID: int
+        +Token: string
+        +ExpiresAt: time.Time
+        +Revoked: bool
+        +Role: string
+    }
+
+    struct RegisterRequest {
+        +Login: string
+        +Password: string
+        +Surname: string
+        +Name: string
+        +Patronymic: *string
+    }
+
+    struct LoginRequest {
+        +Login: string
+        +Password: string
+    }
+
+    struct RefreshRequest {
+        +RefreshToken: string
+    }
+
+    struct LoginResponse {
+        +AccessToken: string
+        +RefreshToken: string
+        +ExpiresIn: int
+        +User: *UserInfo
+        +Admin: *AdminInfo
+    }
+
+    struct UserInfo {
+        +ID: int
+        +Login: string
+        +Name: string
+        +Surname: string
+        +Status: int
+    }
+
+    struct AdminInfo {
+        +ID: int
+        +Login: string
+    }
+
+    struct ValidateResponse {
+        +Valid: bool
+        +UserID: *int
+        +Role: string
+        +ExpiresAt: string
+        +Error: string
+    }
+  }
+  package "repository" {
+    struct Repository {
+        -db: *DB
+        +NewRepository(db): *Repository
+        +CreateUser(ctx, user): error
+        +GetUserByLogin(ctx, login): (*User, error)
+        +GetUserByID(ctx, id): (*User, error)
+        +UpdateUserStatus(ctx, userID, status): error
+        +CreateAdministrator(ctx, admin): error
+        +GetAdministratorByLogin(ctx, login): (*Administrator, error)
+        +CreateRefreshToken(ctx, token): error
+        +GetRefreshToken(ctx, token): (*RefreshToken, error)
+        +RevokeRefreshToken(ctx, token): error
+        +RevokeAllUserTokens(ctx, userID): error
+        +CleanExpiredTokens(ctx): error
+    }
+  }
+
+  package "database" {
+    struct DB {
+        +Pool: *pgxpool.Pool
+        +NewDB(cfg): (*DB, error)
+        +Close()
+    }
+  }
+
+  package "config" {
+    struct Config {
+        +Port: string
+        +DBHost: string
+        +DBPort: string
+        +DBName: string
+        +DBUser: string
+        +DBPassword: string
+        +JWTSecret: string
+        +JWTAccessExpiration: int
+        +JWTRefreshExpiration: int
+        +BcryptCost: int
+        +Load(): (*Config, error)
+    }
+  }
+
+  package "utils" {
+    package "jwt" {
+        struct Claims {
+            +UserID: int
+            +Role: string
+            +Type: string
+            +RegisteredClaims
+        }
+    }
+  }
+}
+
+' Utility functions (not Go types)'
+note right
+    JWT utility functions:
+    GenerateAccessToken()
+    GenerateRefreshToken()
+    ValidateToken()
+    ExtractTokenFromHeader()
+end note
+
+note right
+    Password utility functions:
+    HashPassword()
+    CheckPasswordHash()
+end note
+
+' ===== RELATIONSHIPS BETWEEN LAYERS =====
+' Dependencies between layers (top to bottom)
+Presentation ..> Data : uses models and repository
+
+' Composition within layers
+Presentation.handlers.AuthHandler *-- Data.repository.Repository : composition
+Presentation.handlers.AuthHandler *-- Data.config.Config : composition
+Data.repository.Repository *-- Data.database.DB : composition
+
+' Working with domain objects
+Presentation.handlers.AuthHandler ..> Data.models.User : works with struct
+Presentation.handlers.AuthHandler ..> Data.models.Administrator : works with struct
+Presentation.handlers.AuthHandler ..> Data.models.RefreshToken : works with struct
+Presentation.handlers.AuthHandler ..> Data.models.RegisterRequest : receives data
+Presentation.handlers.AuthHandler ..> Data.models.LoginRequest : receives data
+Presentation.handlers.AuthHandler ..> Data.models.RefreshRequest : receives data
+Presentation.handlers.AuthHandler ..> Data.models.LoginResponse : returns data
+Presentation.handlers.AuthHandler ..> Data.models.ValidateResponse : returns data
+
+Data.repository.Repository ..> Data.models.User : works with struct
+Data.repository.Repository ..> Data.models.Administrator : works with struct
+Data.repository.Repository ..> Data.models.RefreshToken : works with struct
+
+' Go interfaces '
+note as N1
+    In Go, interfaces are implemented implicitly.
+    Types automatically implement an interface
+    if they have all required methods.
+    No explicit inheritance like in OOP.
+end note
+
+@enduml

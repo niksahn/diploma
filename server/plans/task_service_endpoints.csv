@@ -1,0 +1,15 @@
+Метод	Точка доступа	Описание	Параметры
+POST	/api/v1/tasks	Создать новую задачу	Body: { workspace_id, title, description, date, status, assigned_users, chat_id }
+GET	/api/v1/tasks	Получить список задач с фильтрацией	Query: workspace_id, status, assigned_to_me, created_by_me, limit, offset
+GET	/api/v1/tasks/:id	Получить детальную информацию о задаче	Path: id
+PUT	/api/v1/tasks/:id	Обновить задачу	Path: id, Body: { title, description, date }
+DELETE	/api/v1/tasks/:id	Удалить задачу	Path: id
+PUT	/api/v1/tasks/:id/status	Изменить статус задачи	Path: id, Body: { status, comment }
+POST	/api/v1/tasks/:id/assignees	Назначить пользователей на задачу	Path: id, Body: { user_ids }
+GET	/api/v1/tasks/:id/assignees	Получить список исполнителей задачи	Path: id
+DELETE	/api/v1/tasks/:id/assignees/:user_id	Удалить исполнителя из задачи	Path: id, user_id
+POST	/api/v1/tasks/:id/chats	Прикрепить задачу к чату	Path: id, Body: { chat_id }
+GET	/api/v1/tasks/:id/chats	Получить список чатов, к которым прикреплена задача	Path: id
+DELETE	/api/v1/tasks/:id/chats/:chat_id	Открепить задачу от чата	Path: id, chat_id
+GET	/api/v1/tasks/:id/history	Получить историю изменений задачи	Path: id
+

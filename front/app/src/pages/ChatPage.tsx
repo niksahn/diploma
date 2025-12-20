@@ -223,12 +223,6 @@ const ChatPage = () => {
         <div>
           <h2 className="text-xl font-semibold text-slate-900">Чат</h2>
           <p className="text-sm text-slate-600">ID: {chatId}</p>
-          <div className="flex items-center gap-2 mt-1">
-            <div className={`w-2 h-2 rounded-full ${isWsConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-            <span className="text-xs text-slate-500">
-              {isWsConnected ? 'Подключен' : 'Отключен'}
-            </span>
-          </div>
         </div>
         <div className="flex items-center gap-2">
           <button

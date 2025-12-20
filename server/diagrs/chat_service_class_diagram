@@ -1,0 +1,213 @@
+@startuml
+skinparam componentStyle uml2
+skinparam backgroundColor white
+title Диаграмма типов Go - Сервис Чатов (Архитектурные слои)
+
+' Определение архитектурных слоев
+skinparam package {
+  backgroundColor<<Presentation>> #LightGreen
+  backgroundColor<<Data>> #LightYellow
+}
+
+' ===== PRESENTATION LAYER =====
+package "Presentation Layer <<Presentation>>" as Presentation {
+  package "handlers" {
+    struct ChatHandler {
+        -repo: *Repository
+        -cfg: *Config
+        -wsManager: *WebSocketManager
+        +NewChatHandler(repo, cfg, wsManager): *ChatHandler
+        +CreateChat(c *gin.Context)
+        +GetChats(c *gin.Context)
+        +GetChat(c *gin.Context)
+        +UpdateChat(c *gin.Context)
+        +DeleteChat(c *gin.Context)
+        +AddMembers(c *gin.Context)
+        +GetMembers(c *gin.Context)
+        +UpdateMemberRole(c *gin.Context)
+        +RemoveMember(c *gin.Context)
+        +GetMessages(c *gin.Context)
+        +SendMessage(c *gin.Context)
+        +UpdateMessage(c *gin.Context)
+        +DeleteMessage(c *gin.Context)
+        +GetAttachedTasks(c *gin.Context)
+        +MarkMessagesAsRead(c *gin.Context)
+        +HandleWebSocket(c *gin.Context)
+    }
+  }
+
+  package "websocket" {
+      struct WebSocketManager {
+          -clients: map[*Client]bool
+          -broadcast: chan []byte
+          -register: chan *Client
+          -unregister: chan *Client
+          -repo: *Repository
+          +NewWebSocketManager(repo): *WebSocketManager
+          +Run()
+      }
+
+      struct Client {
+          -manager: *WebSocketManager
+          -conn: *websocket.Conn
+          -send: chan []byte
+          -userID: int
+          -chats: []int
+          +ReadPump()
+          +WritePump()
+      }
+  }
+}
+
+' ===== DATA LAYER ===== '
+package "Data Layer <<Data>>" as Data {
+   package "models" {
+    struct Chat {
+        +ID: int
+        +Name: string
+        +Type: int
+        +WorkspaceID: int
+        +CreatedAt: time.Time
+        +MembersCount: int
+        +LastMessage: *MessageInfo
+        +UnreadCount: int
+    }
+
+    struct ChatMember {
+        +ID: int
+        +ChatID: int
+        +UserID: int
+        +Role: int
+        +JoinedAt: time.Time
+    }
+
+    struct Message {
+        +ID: int
+        +ChatID: int
+        +UserID: int
+        +Text: string
+        +Date: int
+        +Status: string
+        +Edited: bool
+        +EditedAt: *time.Time
+    }
+
+    struct CreateChatRequest {
+        +Name: string
+        +Type: int
+        +WorkspaceID: int
+        +Members: []int
+    }
+
+    struct UpdateChatRequest {
+        +Name: string
+    }
+
+    struct AddMembersRequest {
+        +UserIDs: []int
+        +Role: int
+    }
+
+    struct UpdateMemberRoleRequest {
+        +Role: int
+    }
+
+    struct SendMessageRequest {
+        +Text: string
+    }
+
+    struct UpdateMessageRequest {
+        +Text: string
+    }
+
+    struct MarkReadRequest {
+        +LastMessageID: int
+    }
+
+    struct WSEvent {
+        +Type: string
+        +ChatID: int
+        +UserID: int
+        +UserName: string
+        +Message: *Message
+        +Text: string
+        +Code: string
+    }
+  }
+
+  package "repository" {
+    struct Repository {
+        -db: *DB
+        +NewRepository(db): *Repository
+        +CreateChat(ctx, chat, members): (*Chat, error)
+        +GetChatsByUserID(ctx, userID, filters): ([]*Chat, error)
+        +GetChatByID(ctx, chatID): (*Chat, error)
+        +UpdateChat(ctx, chatID, updates): error
+        +DeleteChat(ctx, chatID): error
+        +AddChatMembers(ctx, chatID, members): error
+        +GetChatMembers(ctx, chatID): ([]*ChatMember, error)
+        +UpdateChatMemberRole(ctx, chatID, userID, role): error
+        +RemoveChatMember(ctx, chatID, userID): error
+        +CreateMessage(ctx, message): (*Message, error)
+        +GetMessages(ctx, chatID, limit, offset, before): ([]*Message, error)
+        +UpdateMessage(ctx, messageID, text): error
+        +DeleteMessage(ctx, messageID): error
+        +GetMessageByID(ctx, messageID): (*Message, error)
+        +MarkMessagesAsRead(ctx, chatID, userID, lastMsgID): error
+        +GetAttachedTasks(ctx, chatID): ([]*TaskInfo, error)
+        +IsUserInChat(ctx, userID, chatID): (bool, int, error)
+        +IsUserInWorkspace(ctx, userID, workspaceID): (bool, error)
+    }
+  }
+
+  package "database" {
+    struct DB {
+        +Pool: *pgxpool.Pool
+        +NewDB(cfg): (*DB, error)
+        +Close()
+    }
+  }
+
+  package "config" {
+    struct Config {
+        +Port: string
+        +DBHost: string
+        +DBPort: string
+        +DBName: string
+        +DBUser: string
+        +DBPassword: string
+        +AuthServiceURL: string
+        +UserServiceURL: string
+        +WorkspaceServiceURL: string
+        +WebSocketEnabled: bool
+        +WebSocketPingInterval: int
+        +Load(): (*Config, error)
+    }
+  }
+}
+
+' ===== RELATIONSHIPS BETWEEN LAYERS =====
+' Dependencies between layers (top to bottom)
+Presentation ..> Data : uses models and repository
+
+' Composition within layers
+Presentation.handlers.ChatHandler *-- Data.repository.Repository : composition
+Presentation.handlers.ChatHandler *-- Data.config.Config : composition
+Presentation.handlers.ChatHandler *-- Presentation.websocket.WebSocketManager : composition
+Presentation.websocket.WebSocketManager *-- Data.repository.Repository : composition
+Presentation.websocket.Client *-- Presentation.websocket.WebSocketManager : composition
+
+Data.repository.Repository *-- Data.database.DB : composition
+
+' Working with domain objects
+Presentation.handlers.ChatHandler ..> Data.models.Chat : works with struct
+Presentation.handlers.ChatHandler ..> Data.models.Message : works with struct
+Presentation.handlers.ChatHandler ..> Data.models.CreateChatRequest : receives data
+Presentation.websocket.WebSocketManager ..> Data.models.WSEvent : sends/receives data
+
+Data.repository.Repository ..> Data.models.Chat : works with struct
+Data.repository.Repository ..> Data.models.Message : works with struct
+Data.repository.Repository ..> Data.models.ChatMember : works with struct
+
+@enduml
+

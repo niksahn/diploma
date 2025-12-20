@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/diploma/user-service/docs"
 	"github.com/diploma/user-service/presentation/handlers"
 	"github.com/diploma/user-service/data/repository"
+	"github.com/diploma/shared/kafka"
 	metrics "github.com/diploma/shared/metrics"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -55,6 +57,55 @@ func main() {
 
 	// Создаем репозиторий
 	repo := repository.NewRepository(db)
+
+	// Создаем email сервис
+	emailService := NewEmailService(
+		cfg.SMTPHost,
+		cfg.SMTPPort,
+		cfg.SMTPUser,
+		cfg.SMTPPassword,
+		cfg.FromEmail,
+	)
+
+	// Инициализируем Kafka консьюмер для уведомлений
+	if len(cfg.KafkaBrokers) > 0 {
+		kafkaConsumer, err := kafka.NewConsumer(cfg.KafkaBrokers)
+		if err != nil {
+			log.Printf("Failed to create Kafka consumer: %v", err)
+			log.Println("Email notifications will not work")
+		} else {
+			// Обработчик событий изменения статуса жалоб
+			messageHandler := func(topic string, message []byte) error {
+				var event kafka.ComplaintStatusChangedEvent
+				if err := json.Unmarshal(message, &event); err != nil {
+					log.Printf("Failed to unmarshal complaint status changed event: %v", err)
+					return err
+				}
+
+				log.Printf("Processing complaint status change event for complaint %d", event.ComplaintID)
+
+				// Отправляем email уведомление
+				if err := emailService.SendComplaintStatusNotification(event); err != nil {
+					log.Printf("Failed to send email notification: %v", err)
+					return err
+				}
+
+				return nil
+			}
+
+			// Подписываемся на топик
+			go func() {
+				if err := kafkaConsumer.Subscribe(kafka.TopicComplaintStatusChanged, messageHandler); err != nil {
+					log.Printf("Failed to subscribe to Kafka topic: %v", err)
+				}
+			}()
+
+			defer kafkaConsumer.Close()
+			log.Println("Kafka consumer initialized for email notifications")
+		}
+	} else {
+		log.Println("Kafka brokers not configured, email notifications disabled")
+	}
 
 	// Создаем обработчики
 	userHandler := handlers.NewUserHandler(repo)
