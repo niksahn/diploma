@@ -1,17 +1,11 @@
--- Creates complaints and complaint_status_history tables
+-- Add status, timestamps to complaints and create complaint_status_history
+-- (complaints table already exists from 000000_initial_schema)
 
-CREATE TABLE IF NOT EXISTS complaints (
-  id SERIAL PRIMARY KEY,
-  text VARCHAR(255) NOT NULL,
-  date DATE NOT NULL DEFAULT CURRENT_DATE,
-  devicedescription VARCHAR(255) NOT NULL,
-  author INT4 NOT NULL,
-  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'resolved', 'rejected')),
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
+ALTER TABLE complaints
+  ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'resolved', 'rejected')),
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
 
-CREATE INDEX IF NOT EXISTS complaints_author_idx ON complaints(author);
 CREATE INDEX IF NOT EXISTS complaints_status_idx ON complaints(status);
 
 CREATE TABLE IF NOT EXISTS complaint_status_history (
