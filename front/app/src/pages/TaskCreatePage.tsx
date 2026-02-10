@@ -103,149 +103,146 @@ const TaskCreatePage = () => {
     )
   }
 
+  const inputBase = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 bg-white focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none'
+  const labelBase = 'block text-sm font-medium text-slate-700 mb-1.5'
+
   return (
     <div className="max-w-2xl space-y-6">
       <header>
         <h2 className="text-xl font-semibold text-slate-900">Создание задачи</h2>
-        <p className="text-sm text-slate-600">Заполните информацию о новой задаче</p>
+        <p className="text-sm text-slate-600 mt-1">Заполните основные поля — название и срок обязательны. Исполнители и чат можно выбрать по желанию.</p>
       </header>
 
-      <form onSubmit={handleSubmit} className="card space-y-4">
-        {/* Название задачи */}
-        <div>
-          <label htmlFor="title" className="block text-sm font-medium text-slate-700 mb-1">
-            Название задачи *
-          </label>
-          <input
-            id="title"
-            type="text"
-            required
-            minLength={3}
-            maxLength={100}
-            value={formData.title}
-            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-            placeholder="Введите название задачи"
-          />
-        </div>
-
-        {/* Дата выполнения */}
-        <div>
-          <label htmlFor="date" className="block text-sm font-medium text-slate-700 mb-1">
-            Дата выполнения *
-          </label>
-          <input
-            id="date"
-            type="date"
-            required
-            value={formData.date}
-            onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-        </div>
-
-        {/* Описание */}
-        <div>
-          <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-1">
-            Описание
-          </label>
-          <textarea
-            id="description"
-            rows={3}
-            value={formData.description}
-            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-            placeholder="Опишите задачу подробно"
-          />
-        </div>
-
-        {/* Статус */}
-        <div>
-          <label htmlFor="status" className="block text-sm font-medium text-slate-700 mb-1">
-            Начальный статус
-          </label>
-          <select
-            id="status"
-            value={formData.status}
-            onChange={(e) => setFormData(prev => ({ ...prev, status: Number(e.target.value) as TaskStatus }))}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          >
-            {statusOptions.map((status) => (
-              <option key={status.value} value={status.value}>
-                {status.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Исполнители */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Исполнители
-          </label>
-          <div className="max-h-32 overflow-y-auto border border-slate-300 rounded-md p-2">
-            {members.length === 0 ? (
-              <div className="text-sm text-slate-500">Загрузка пользователей...</div>
-            ) : (
-              members.map((member: WorkspaceMember) => (
-                <label key={member.user_id} className="flex items-center gap-2 py-1">
-                  <input
-                    type="checkbox"
-                    checked={selectedAssignees.includes(member.user_id)}
-                    onChange={() => handleAssigneeToggle(member.user_id)}
-                    className="rounded border-slate-300"
-                  />
-                  <span className="text-sm text-slate-700">
-                    {member.name} {member.surname} ({member.login})
-                  </span>
-                </label>
-              ))
-            )}
+      <form onSubmit={handleSubmit} className="card space-y-6">
+        {/* Блок: основная информация */}
+        <section className="space-y-4">
+          <h3 className="text-sm font-semibold text-slate-800 border-b border-slate-200 pb-2">Основная информация</h3>
+          <div>
+            <label htmlFor="title" className={labelBase}>Название задачи *</label>
+            <input
+              id="title"
+              type="text"
+              required
+              minLength={3}
+              maxLength={100}
+              value={formData.title}
+              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+              className={inputBase}
+              placeholder="Кратко сформулируйте задачу"
+            />
           </div>
-        </div>
+          <div>
+            <label htmlFor="description" className={labelBase}>Описание</label>
+            <textarea
+              id="description"
+              rows={3}
+              value={formData.description}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              className={`${inputBase} resize-y min-h-[80px]`}
+              placeholder="Опишите задачу подробно (необязательно)"
+            />
+          </div>
+        </section>
 
-        {/* Привязка к чату */}
-        <div>
-          <label htmlFor="chat" className="block text-sm font-medium text-slate-700 mb-1">
-            Привязать к чату
-          </label>
-          <select
-            id="chat"
-            value={formData.chat_id || ''}
-            onChange={(e) => setFormData(prev => ({
-              ...prev,
-              chat_id: e.target.value ? Number(e.target.value) : undefined
-            }))}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          >
-            <option value="">Не привязывать</option>
-            {chats.map((chat: Chat) => (
-              <option key={chat.id} value={chat.id}>
-                {chat.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Блок: срок и статус */}
+        <section className="space-y-4">
+          <h3 className="text-sm font-semibold text-slate-800 border-b border-slate-200 pb-2">Срок и статус</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="date" className={labelBase}>Дата выполнения *</label>
+              <input
+                id="date"
+                type="date"
+                required
+                value={formData.date}
+                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                className={`${inputBase} [color-scheme:light]`}
+              />
+            </div>
+            <div>
+              <label htmlFor="status" className={labelBase}>Начальный статус</label>
+              <select
+                id="status"
+                value={formData.status}
+                onChange={(e) => setFormData(prev => ({ ...prev, status: Number(e.target.value) as TaskStatus }))}
+                className={`${inputBase} cursor-pointer`}
+              >
+                {statusOptions.map((status) => (
+                  <option key={status.value} value={status.value}>
+                    {status.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </section>
+
+        {/* Блок: исполнители и чат */}
+        <section className="space-y-4">
+          <h3 className="text-sm font-semibold text-slate-800 border-b border-slate-200 pb-2">Исполнители и чат (необязательно)</h3>
+          <div>
+            <label className={labelBase}>Исполнители</label>
+            <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg p-3 bg-slate-50/50">
+              {members.length === 0 ? (
+                <div className="text-sm text-slate-500">Загрузка участников пространства…</div>
+              ) : (
+                <ul className="space-y-2">
+                  {members.map((member: WorkspaceMember) => (
+                    <label key={member.user_id} className="flex items-center gap-3 py-1.5 px-2 rounded-md hover:bg-white cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedAssignees.includes(member.user_id)}
+                        onChange={() => handleAssigneeToggle(member.user_id)}
+                        className="rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+                      />
+                      <span className="text-sm text-slate-700">
+                        {member.surname} {member.name} ({member.login})
+                      </span>
+                    </label>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+          <div>
+            <label htmlFor="chat" className={labelBase}>Привязать к чату</label>
+            <select
+              id="chat"
+              value={formData.chat_id || ''}
+              onChange={(e) => setFormData(prev => ({
+                ...prev,
+                chat_id: e.target.value ? Number(e.target.value) : undefined
+              }))}
+              className={`${inputBase} cursor-pointer`}
+            >
+              <option value="">Не привязывать</option>
+              {chats.map((chat: Chat) => (
+                <option key={chat.id} value={chat.id}>
+                  {chat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </section>
 
         {error && (
-          <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
-            Произошла ошибка при создании задачи
+          <div className="text-sm text-red-700 bg-red-50 border border-red-200 p-3 rounded-lg">
+            Произошла ошибка при создании задачи. Проверьте данные и попробуйте снова.
           </div>
         )}
 
-        {/* Кнопки действий */}
-        <div className="flex items-center gap-3 pt-4">
+        <div className="flex items-center gap-3 pt-2 border-t border-slate-200">
           <button
             type="submit"
             disabled={isPending || !formData.title.trim() || !formData.date}
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+            className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60 transition-colors"
           >
             {isPending ? 'Создаём…' : 'Создать задачу'}
           </button>
           <button
             type="button"
             onClick={() => navigate('/tasks')}
-            className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors"
           >
             Отмена
           </button>

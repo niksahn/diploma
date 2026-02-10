@@ -220,9 +220,11 @@ const ChatPage = () => {
   return (
     <div className="space-y-4">
       <header className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">Чат</h2>
-          <p className="text-sm text-slate-600">ID: {chatId}</p>
+        <div className="min-w-0">
+          <h2 className="text-xl font-semibold text-slate-900 truncate">
+            {chatDetails?.name ?? 'Чат'}
+          </h2>
+          <p className="text-sm text-slate-600">Чат • {chatMembers?.total ?? 0} участников</p>
         </div>
         <div className="flex items-center gap-2">
           <button

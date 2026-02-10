@@ -1,17 +1,28 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { workspaceApi } from '../shared/api/workspaces'
+import { userApi, type UserSearchItem } from '../shared/api/users'
 import { useWorkspaceStore } from '../shared/state/workspace'
 import { useAuthStore } from '../shared/state/auth'
 
+const DEBOUNCE_MS = 300
+
 const MembersPage = () => {
-  const { selectedWorkspaceId, selectedWorkspaceRole } = useWorkspaceStore()
+  const { selectedWorkspaceId, selectedWorkspaceName, selectedWorkspaceRole } = useWorkspaceStore()
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
 
-  const [newMemberId, setNewMemberId] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+  const [selectedUser, setSelectedUser] = useState<UserSearchItem | null>(null)
   const [newMemberRole, setNewMemberRole] = useState(1)
+  const [showDropdown, setShowDropdown] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), DEBOUNCE_MS)
+    return () => clearTimeout(t)
+  }, [searchQuery])
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['members', selectedWorkspaceId],
@@ -19,14 +30,29 @@ const MembersPage = () => {
     enabled: Boolean(selectedWorkspaceId),
   })
 
+  const memberIds = useMemo(() => new Set((data?.members ?? []).map((m) => m.user_id)), [data?.members])
+
+  const { data: searchResult, isLoading: searchLoading } = useQuery({
+    queryKey: ['user-search', debouncedQuery],
+    queryFn: () => userApi.search({ search: debouncedQuery || undefined, limit: 20 }),
+    enabled: debouncedQuery.length >= 2,
+  })
+
+  const searchUsers = useMemo(() => {
+    const list = searchResult?.users ?? []
+    return list.filter((u) => !memberIds.has(u.id))
+  }, [searchResult?.users, memberIds])
+
   const isLeader = selectedWorkspaceRole === 2
   const currentUserId = useMemo(() => (user ? parseInt(user.id, 10) || 0 : 0), [user])
 
   const { mutateAsync: addMember, isPending: adding } = useMutation({
-    mutationFn: () => workspaceApi.addMember(selectedWorkspaceId!, parseInt(newMemberId, 10), newMemberRole),
+    mutationFn: (userId: number) => workspaceApi.addMember(selectedWorkspaceId!, userId, newMemberRole),
     onSuccess: () => {
-      setNewMemberId('')
+      setSearchQuery('')
+      setSelectedUser(null)
       setNewMemberRole(1)
+      setShowDropdown(false)
       queryClient.invalidateQueries({ queryKey: ['members', selectedWorkspaceId] })
     },
   })
@@ -72,7 +98,9 @@ const MembersPage = () => {
     <div className="space-y-4">
       <header>
         <h2 className="text-xl font-semibold text-slate-900">Участники рабочего пространства</h2>
-        <p className="text-sm text-slate-600">Workspace ID: {selectedWorkspaceId}</p>
+        <p className="text-sm text-slate-600">
+          {selectedWorkspaceName ?? `Пространство #${selectedWorkspaceId}`}
+        </p>
         <p className="text-xs text-slate-500">
           Ваша роль: {isLeader ? 'руководитель (можете управлять участниками)' : 'участник (только просмотр)'}
         </p>
@@ -89,79 +117,120 @@ const MembersPage = () => {
         </div>
       ) : !Array.isArray(members) || members.length === 0 ? (
         <div className="text-center py-8">
-          <div className="text-sm text-slate-600">Упс, тут пусто</div>
-          <div className="text-xs text-slate-500 mt-1">{!Array.isArray(members) ? 'Не удалось загрузить участников' : 'В этом пространстве пока нет участников'}</div>
+          <div className="text-sm text-slate-600">
+            {isLeader ? 'Добавьте первого участника через форму ниже.' : 'В этом пространстве пока нет участников'}
+          </div>
         </div>
-      ) : (
+      ) : null}
+      {(isLeader || (Array.isArray(members) && members.length > 0)) && (
         <div className="space-y-4">
           {isLeader && (
             <div className="card space-y-3">
               <div className="text-sm font-medium text-slate-900">Добавить участника</div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-                <label className="flex-1 text-sm text-slate-700">
-                  ID пользователя
+              <p className="text-xs text-slate-600">Найдите пользователя по имени, фамилии или логину</p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end flex-wrap">
+                <div className="flex-1 min-w-[200px] relative">
                   <input
-                    type="number"
-                    min={1}
-                    value={newMemberId}
-                    onChange={(e) => setNewMemberId(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-                    placeholder="Например, 42"
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value)
+                      setSelectedUser(null)
+                      setShowDropdown(true)
+                    }}
+                    onFocus={() => setShowDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                    placeholder="Поиск: имя, фамилия, логин…"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 bg-white focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none"
                   />
-                </label>
-                <label className="sm:w-48 text-sm text-slate-700">
+                  {selectedUser && (
+                    <div className="mt-1 text-sm text-slate-700">
+                      Выбран: {selectedUser.surname} {selectedUser.name} ({selectedUser.login})
+                    </div>
+                  )}
+                  {showDropdown && (searchQuery.trim().length >= 2 || searchUsers.length > 0) && (
+                    <ul className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg py-1">
+                      {searchLoading ? (
+                        <li className="px-3 py-2 text-sm text-slate-500">Поиск…</li>
+                      ) : searchUsers.length === 0 ? (
+                        <li className="px-3 py-2 text-sm text-slate-500">
+                          {debouncedQuery.length < 2 ? 'Введите минимум 2 символа' : 'Никого не найдено'}
+                        </li>
+                      ) : (
+                        searchUsers.map((u) => (
+                          <li
+                            key={u.id}
+                            className="px-3 py-2 text-sm text-slate-900 hover:bg-slate-100 cursor-pointer"
+                            onMouseDown={(e) => {
+                              e.preventDefault()
+                              setSelectedUser(u)
+                              setSearchQuery('')
+                              setShowDropdown(false)
+                            }}
+                          >
+                            {u.surname} {u.name} ({u.login})
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  )}
+                </div>
+                <label className="sm:w-40 text-sm text-slate-700">
                   Роль
                   <select
                     value={newMemberRole}
                     onChange={(e) => setNewMemberRole(parseInt(e.target.value, 10))}
-                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
                   >
                     <option value={1}>Участник</option>
                     <option value={2}>Руководитель</option>
                   </select>
                 </label>
                 <button
-                  disabled={!newMemberId.trim() || adding || changingLeader}
+                  disabled={!selectedUser || adding || changingLeader}
                   onClick={() => {
-                    if (!newMemberId.trim()) return
+                    if (!selectedUser) return
                     if (newMemberRole === 2) {
-                      changeLeader(parseInt(newMemberId, 10))
+                      changeLeader(selectedUser.id)
                     } else {
-                      addMember()
+                      addMember(selectedUser.id)
                     }
                   }}
-                  className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
                 >
                   {adding || changingLeader ? 'Сохраняем…' : 'Добавить'}
                 </button>
               </div>
               <p className="text-xs text-slate-500">
-                Примечание: назначение руководителя переводит текущего руководителя в роль участника.
+                Назначение руководителя переводит текущего руководителя в роль участника.
               </p>
             </div>
           )}
 
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-600">
-                <tr>
-                  <th className="px-4 py-2">ID</th>
-                  <th className="px-4 py-2">Логин</th>
-                  <th className="px-4 py-2">Роль</th>
-                  {isLeader && <th className="px-4 py-2 text-right">Действия</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {members.map((user) => (
-                  <tr key={user.user_id} className="border-t border-slate-100">
-                    <td className="px-4 py-2 text-slate-700">{user.user_id}</td>
-                    <td className="px-4 py-2 text-slate-900">{user.login}</td>
+          {Array.isArray(members) && members.length > 0 && (
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-slate-50 text-xs uppercase text-slate-600">
+                  <tr>
+                    <th className="px-4 py-2">Участник</th>
+                    <th className="px-4 py-2">Логин</th>
+                    <th className="px-4 py-2">Роль</th>
+                    {isLeader && <th className="px-4 py-2 text-right">Действия</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {members.map((member) => (
+                  <tr key={member.user_id} className="border-t border-slate-100">
+                    <td className="px-4 py-2 text-slate-900">
+                      {member.surname} {member.name}
+                    </td>
+                    <td className="px-4 py-2 text-slate-700">{member.login}</td>
                     <td className="px-4 py-2">
                       {isLeader ? (
                         <select
-                          value={user.role}
-                          onChange={(e) => handleRoleChange(user.user_id, parseInt(e.target.value, 10), user.role)}
-                          disabled={user.user_id === currentUserId && user.role === 2}
+                          value={member.role}
+                          onChange={(e) => handleRoleChange(member.user_id, parseInt(e.target.value, 10), member.role)}
+                          disabled={member.user_id === currentUserId && member.role === 2}
                           className="rounded-md border border-slate-300 px-3 py-1 text-xs text-slate-700 focus:border-slate-500 focus:outline-none"
                         >
                           <option value={1}>Участник</option>
@@ -169,15 +238,15 @@ const MembersPage = () => {
                         </select>
                       ) : (
                         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
-                          {user.role === 1 ? 'Участник' : user.role === 2 ? 'Руководитель' : 'Неизвестно'}
+                          {member.role === 1 ? 'Участник' : member.role === 2 ? 'Руководитель' : 'Неизвестно'}
                         </span>
                       )}
                     </td>
                     {isLeader && (
                       <td className="px-4 py-2 text-right">
                         <button
-                          onClick={() => removeMember(user.user_id)}
-                          disabled={removing || (user.user_id === currentUserId && user.role === 2)}
+                          onClick={() => removeMember(member.user_id)}
+                          disabled={removing || (member.user_id === currentUserId && member.role === 2)}
                           className="text-xs text-red-600 hover:text-red-700 disabled:opacity-60"
                         >
                           Удалить
@@ -185,10 +254,11 @@ const MembersPage = () => {
                       </td>
                     )}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>
