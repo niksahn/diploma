@@ -50,7 +50,13 @@ const WorkspacesPage = () => {
           workspaces.map((ws) => (
             <button
               key={ws.id}
-              onClick={() => setSelectedWorkspace(ws.id, typeof ws.role === 'number' ? ws.role : parseInt(String(ws.role || '0'), 10) || null)}
+              onClick={() =>
+                setSelectedWorkspace(
+                  ws.id,
+                  typeof ws.role === 'number' ? ws.role : parseInt(String(ws.role || '0'), 10) || null,
+                  ws.name,
+                )
+              }
               className={`card text-left transition hover:shadow-md ${
                 selectedWorkspaceId === ws.id ? 'border-slate-900 ring-1 ring-slate-900' : ''
               }`}
@@ -66,8 +72,7 @@ const WorkspacesPage = () => {
                   })()}
                 </span>
               </div>
-              <div className="mt-2 text-sm text-slate-600">ID: {ws.id}</div>
-              {ws.tariff && <div className="text-xs text-slate-500 mt-1">Тариф: {ws.tariff}</div>}
+              {ws.tariff && <div className="mt-2 text-xs text-slate-500">Тариф: {ws.tariff}</div>}
             </button>
           ))
         )}

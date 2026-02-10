@@ -13,7 +13,7 @@ const navItems = [
 
 const AppLayout = () => {
   const { user, logout } = useAuthStore()
-  const { selectedWorkspaceId, reset } = useWorkspaceStore()
+  const { selectedWorkspaceId, selectedWorkspaceName, reset } = useWorkspaceStore()
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -56,8 +56,8 @@ const AppLayout = () => {
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
           <div className="flex flex-col gap-1">
             <span className="text-xs text-slate-500">Текущее рабочее пространство</span>
-            <span className="text-sm font-semibold text-slate-800">
-              {selectedWorkspaceId ? `ID: ${selectedWorkspaceId}` : 'Не выбрано'}
+            <span className="text-sm font-semibold text-slate-800 truncate" title={selectedWorkspaceName ?? undefined}>
+              {selectedWorkspaceName ?? (selectedWorkspaceId ? `Пространство #${selectedWorkspaceId}` : 'Не выбрано')}
             </span>
           </div>
           <div className="text-right">

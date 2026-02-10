@@ -147,12 +147,13 @@ const SidebarChats = () => {
       {/* Модальное окно создания чата */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 text-slate-900 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-900">Создать новый чат</h3>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-slate-600 p-1"
+                aria-label="Закрыть"
               >
                 ✕
               </button>
@@ -168,7 +169,7 @@ const SidebarChats = () => {
                   value={chatName}
                   onChange={(e) => setChatName(e.target.value)}
                   placeholder="Введите название чата"
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && chatName.trim() && user) {
                       createChat()

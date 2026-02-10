@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { taskApi, type TaskStatus } from '../shared/api/tasks'
+import { workspaceApi } from '../shared/api/workspaces'
+import { chatApi } from '../shared/api/chats'
 
 const statusOptions: { value: TaskStatus; label: string }[] = [
   { value: 1, label: 'К выполнению' },
@@ -28,13 +30,13 @@ const TaskDetailPage = () => {
     date: '',
   })
 
-  // States for assignees management
   const [showAddAssigneeModal, setShowAddAssigneeModal] = useState(false)
-  const [newAssigneeLogin, setNewAssigneeLogin] = useState('')
+  const [selectedUserId, setSelectedUserId] = useState<number | ''>('')
 
-  // States for chats management
   const [showAddChatModal, setShowAddChatModal] = useState(false)
-  const [newChatId, setNewChatId] = useState('')
+  const [selectedChatId, setSelectedChatId] = useState<number | ''>('')
+  const [assigneeSearch, setAssigneeSearch] = useState('')
+  const [chatSearch, setChatSearch] = useState('')
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['task', taskId],
@@ -53,6 +55,52 @@ const TaskDetailPage = () => {
     queryFn: () => taskApi.getChats(Number(taskId) || 0),
     enabled: Boolean(taskId),
   })
+
+  const workspaceId = data?.workspace_id ?? 0
+
+  const { data: workspaceMembersData } = useQuery({
+    queryKey: ['workspace-members', workspaceId],
+    queryFn: () => workspaceApi.users(workspaceId),
+    enabled: workspaceId > 0 && showAddAssigneeModal,
+  })
+
+  const { data: workspaceChatsData } = useQuery({
+    queryKey: ['workspace-chats', workspaceId],
+    queryFn: () => chatApi.list(workspaceId),
+    enabled: workspaceId > 0 && showAddChatModal,
+  })
+
+  const workspaceMembers = workspaceMembersData?.members ?? []
+  type WorkspaceChatItem = { id: number; name: string }
+  const workspaceChats: WorkspaceChatItem[] = (() => {
+    const raw = Array.isArray((workspaceChatsData as any)?.chats)
+      ? (workspaceChatsData as any).chats
+      : Array.isArray(workspaceChatsData)
+        ? workspaceChatsData
+        : []
+    return raw.map((c: { id?: number; name?: string }) => ({
+      id: typeof c.id === 'number' ? c.id : parseInt(String(c.id ?? '0'), 10) || 0,
+      name: String(c.name ?? 'Без названия'),
+    }))
+  })()
+  const assignedUserIds = new Set((assigneesData?.assignees ?? []).map((a) => a.user_id))
+  const attachedChatIds = new Set((chatsData?.chats ?? []).map((c) => c.chat_id))
+  const membersToAdd = workspaceMembers.filter((m) => !assignedUserIds.has(m.user_id))
+  const chatsToAdd = workspaceChats.filter((c) => !attachedChatIds.has(c.id))
+  const assigneeSearchLower = assigneeSearch.trim().toLowerCase()
+  const chatSearchLower = chatSearch.trim().toLowerCase()
+  const membersToAddFiltered =
+    assigneeSearchLower === ''
+      ? membersToAdd
+      : membersToAdd.filter(
+          (m) =>
+            `${m.surname} ${m.name} ${m.login}`.toLowerCase().includes(assigneeSearchLower) ||
+            m.login.toLowerCase().includes(assigneeSearchLower),
+        )
+  const chatsToAddFiltered: WorkspaceChatItem[] =
+    chatSearchLower === ''
+      ? chatsToAdd
+      : chatsToAdd.filter((c: WorkspaceChatItem) => c.name.toLowerCase().includes(chatSearchLower))
 
   const task = data ?? {
     id: Number(taskId) || 0,
@@ -92,7 +140,8 @@ const TaskDetailPage = () => {
       queryClient.invalidateQueries({ queryKey: ['task-assignees', taskId] })
       queryClient.invalidateQueries({ queryKey: ['task', taskId] })
       setShowAddAssigneeModal(false)
-      setNewAssigneeLogin('')
+      setSelectedUserId('')
+      setAssigneeSearch('')
     },
   })
 
@@ -110,7 +159,8 @@ const TaskDetailPage = () => {
       queryClient.invalidateQueries({ queryKey: ['task-chats', taskId] })
       queryClient.invalidateQueries({ queryKey: ['task', taskId] })
       setShowAddChatModal(false)
-      setNewChatId('')
+      setSelectedChatId('')
+      setChatSearch('')
     },
   })
 
@@ -151,8 +201,8 @@ const TaskDetailPage = () => {
   }
 
   const handleAddAssignee = async () => {
-    if (!newAssigneeLogin.trim()) return
-    await addAssigneesMutation([parseInt(newAssigneeLogin) || 1])
+    if (selectedUserId === '') return
+    await addAssigneesMutation([selectedUserId])
   }
 
   const handleRemoveAssignee = async (userId: number) => {
@@ -160,30 +210,34 @@ const TaskDetailPage = () => {
   }
 
   const handleAttachToChat = async () => {
-    if (!newChatId.trim()) return
-    await attachToChatMutation(parseInt(newChatId))
+    if (selectedChatId === '') return
+    await attachToChatMutation(selectedChatId)
   }
 
   const handleDetachFromChat = async (chatId: number) => {
     await detachFromChatMutation(chatId)
   }
 
+  const inputBase = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 bg-white focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none'
+
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between">
-        <div>
+        <div className="min-w-0 flex-1">
           {isEditing ? (
             <input
               type="text"
               value={formData.title}
               onChange={(e) => handleInputChange('title', e.target.value)}
-              className="text-xl font-semibold text-slate-900 border-b border-slate-300 focus:border-slate-500 outline-none bg-transparent"
+              className={`${inputBase} text-lg font-semibold`}
               placeholder="Название задачи"
             />
           ) : (
             <h2 className="text-xl font-semibold text-slate-900">{task.title}</h2>
           )}
-          <p className="text-sm text-slate-600">ID: {task.id}</p>
+          {!isEditing && (
+            <p className="text-sm text-slate-600 mt-1">Задача #{task.id}</p>
+          )}
         </div>
         {!isEditing && (
           <button
@@ -206,7 +260,7 @@ const TaskDetailPage = () => {
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
               rows={4}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none resize-vertical"
+              className={`${inputBase} resize-y`}
               placeholder="Опишите задачу подробно..."
             />
           ) : (
@@ -224,7 +278,7 @@ const TaskDetailPage = () => {
                 type="date"
                 value={formData.date}
                 onChange={(e) => handleInputChange('date', e.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                className={`${inputBase} [color-scheme:light]`}
               />
             ) : (
               <div className="text-sm text-slate-600 bg-slate-50 rounded-md px-3 py-2">
@@ -242,7 +296,7 @@ const TaskDetailPage = () => {
               <select
                 value={status}
                 onChange={(e) => setStatus(Number(e.target.value) as TaskStatus)}
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                className={`${inputBase} w-auto min-w-[180px]`}
               >
                 <option value="">Изменить статус</option>
                 {statusOptions.map((st) => (
@@ -397,35 +451,54 @@ const TaskDetailPage = () => {
       {/* Add Assignee Modal */}
       {showAddAssigneeModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Добавить исполнителя</h3>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 text-slate-900 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900 mb-1">Добавить исполнителя</h3>
+            <p className="text-sm text-slate-600 mb-4">Найдите по имени или логину и выберите участника</p>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  ID пользователя или логин
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Поиск</label>
                 <input
                   type="text"
-                  value={newAssigneeLogin}
-                  onChange={(e) => setNewAssigneeLogin(e.target.value)}
-                  placeholder="Введите ID пользователя или логин"
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                  value={assigneeSearch}
+                  onChange={(e) => setAssigneeSearch(e.target.value)}
+                  placeholder="Имя, фамилия или логин…"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 bg-white focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none mb-2"
                 />
+                <label className="block text-sm font-medium text-slate-700 mb-2">Участник</label>
+                <select
+                  value={selectedUserId === '' ? '' : selectedUserId}
+                  onChange={(e) => setSelectedUserId(e.target.value === '' ? '' : Number(e.target.value))}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 bg-white focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none"
+                >
+                  <option value="">Выберите пользователя</option>
+                  {membersToAddFiltered.map((m) => (
+                    <option key={m.user_id} value={m.user_id}>
+                      {m.surname} {m.name} ({m.login})
+                    </option>
+                  ))}
+                </select>
+                {workspaceMembers.length > 0 && membersToAdd.length === 0 && (
+                  <p className="text-sm text-slate-500 mt-2">Все участники уже назначены на задачу.</p>
+                )}
+                {assigneeSearch.trim() && membersToAddFiltered.length === 0 && membersToAdd.length > 0 && (
+                  <p className="text-sm text-slate-500 mt-2">По запросу никого не найдено. Измените поиск.</p>
+                )}
               </div>
-              <div className="flex gap-3 justify-end">
+              <div className="flex gap-3 justify-end pt-2">
                 <button
                   onClick={() => {
                     setShowAddAssigneeModal(false)
-                    setNewAssigneeLogin('')
+                    setSelectedUserId('')
+                    setAssigneeSearch('')
                   }}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-md hover:bg-slate-200"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200"
                 >
                   Отмена
                 </button>
                 <button
                   onClick={handleAddAssignee}
-                  disabled={!newAssigneeLogin.trim() || isAddingAssignee}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-60"
+                  disabled={selectedUserId === '' || isAddingAssignee}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
                 >
                   {isAddingAssignee ? 'Добавляем…' : 'Добавить'}
                 </button>
@@ -438,35 +511,54 @@ const TaskDetailPage = () => {
       {/* Add Chat Modal */}
       {showAddChatModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Прикрепить к чату</h3>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 text-slate-900 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900 mb-1">Прикрепить к чату</h3>
+            <p className="text-sm text-slate-600 mb-4">Найдите по названию и выберите чат</p>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  ID чата
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Поиск по названию</label>
                 <input
-                  type="number"
-                  value={newChatId}
-                  onChange={(e) => setNewChatId(e.target.value)}
-                  placeholder="Введите ID чата"
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                  type="text"
+                  value={chatSearch}
+                  onChange={(e) => setChatSearch(e.target.value)}
+                  placeholder="Название чата…"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 bg-white focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none mb-2"
                 />
+                <label className="block text-sm font-medium text-slate-700 mb-2">Чат</label>
+                <select
+                  value={selectedChatId === '' ? '' : selectedChatId}
+                  onChange={(e) => setSelectedChatId(e.target.value === '' ? '' : Number(e.target.value))}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 bg-white focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none"
+                >
+                  <option value="">Выберите чат</option>
+                  {chatsToAddFiltered.map((c: WorkspaceChatItem) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {workspaceChats.length > 0 && chatsToAdd.length === 0 && (
+                  <p className="text-sm text-slate-500 mt-2">Задача уже прикреплена ко всем чатам.</p>
+                )}
+                {chatSearch.trim() && chatsToAddFiltered.length === 0 && chatsToAdd.length > 0 && (
+                  <p className="text-sm text-slate-500 mt-2">По запросу чатов не найдено.</p>
+                )}
               </div>
-              <div className="flex gap-3 justify-end">
+              <div className="flex gap-3 justify-end pt-2">
                 <button
                   onClick={() => {
                     setShowAddChatModal(false)
-                    setNewChatId('')
+                    setSelectedChatId('')
+                    setChatSearch('')
                   }}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-md hover:bg-slate-200"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200"
                 >
                   Отмена
                 </button>
                 <button
                   onClick={handleAttachToChat}
-                  disabled={!newChatId.trim() || isAttachingChat}
-                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-60"
+                  disabled={selectedChatId === '' || isAttachingChat}
+                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-60"
                 >
                   {isAttachingChat ? 'Прикрепляем…' : 'Прикрепить'}
                 </button>
