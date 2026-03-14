@@ -4,14 +4,13 @@ import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { chatApi, type Message, ChatWebSocket, type ChatTaskInfo } from '../shared/api/chats'
 import { workspaceApi } from '../shared/api/workspaces'
-import { taskApi } from '../shared/api/tasks'
+import { taskApi, TaskStatus } from '../shared/api/tasks'
 import { useAuthStore } from '../shared/state/auth'
 
 const ChatPage = () => {
   const { chatId: chatIdParam } = useParams()
   const chatId = chatIdParam ? parseInt(chatIdParam, 10) : null
   const [text, setText] = useState('')
-  const [isWsConnected, setIsWsConnected] = useState(false)
   const [showAddMembers, setShowAddMembers] = useState(false)
   const [selectedUsers, setSelectedUsers] = useState<number[]>([])
   const [showMembersModal, setShowMembersModal] = useState(false)
@@ -58,8 +57,6 @@ const ChatPage = () => {
 
     // Обработчик новых сообщений
     wsRef.current.onMessageReceived((newMessage) => {
-      console.log('New message received via WebSocket:', newMessage)
-
       // Обновляем кэш React Query, добавляя новое сообщение
       queryClient.setQueryData<Message[]>(['chat', chatId], (oldMessages) => {
         const safeMessages = Array.isArray(oldMessages) ? oldMessages : []
@@ -87,19 +84,19 @@ const ChatPage = () => {
     })
 
     wsRef.current.onConnectionClosed(() => {
-      setIsWsConnected(false)
+      // Connection closed
+    })
+
+    wsRef.current.onConnected(() => {
+      // Connection established
     })
 
     wsRef.current.onErrorReceived(() => {
-      setIsWsConnected(false)
+      // WebSocket error
     })
 
     // Подключаемся к чату
-    console.log('=== CHAT PAGE WEBSOCKET CONNECTION ===')
-    console.log('ChatPage: Connecting to chat', chatId)
     wsRef.current.connect(chatId)
-    console.log('ChatPage: WebSocket connect called, assuming connected for now')
-    setIsWsConnected(true)
 
     // Очистка при размонтировании
     return () => {
@@ -107,7 +104,6 @@ const ChatPage = () => {
         wsRef.current.disconnect()
         wsRef.current = null
       }
-      setIsWsConnected(false)
     }
   }, [chatId, queryClient])
 
@@ -155,17 +151,12 @@ const ChatPage = () => {
 
   const handleSend = async (e: FormEvent) => {
     e.preventDefault()
-    console.log('=== CHAT PAGE SEND MESSAGE ===')
-    console.log('ChatPage: handleSend called, chatId:', chatId, 'text:', text.trim())
-    console.log('ChatPage: wsRef.current?.isConnected:', wsRef.current?.isConnected)
 
     if (!chatId || !text.trim() || !wsRef.current?.isConnected) {
-      console.log('ChatPage: Early return - conditions not met')
       return
     }
 
     const messageText = text.trim()
-    console.log('ChatPage: Sending message:', messageText)
 
     // Оптимистическое обновление - добавляем сообщение сразу
     const optimisticMessage: Message = {
@@ -257,10 +248,10 @@ const ChatPage = () => {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-slate-900 truncate">{task.title}</span>
                     <span className={`rounded-full px-2 py-0.5 text-xs ${
-                      task.status === 1 ? 'bg-gray-100 text-gray-700' :
-                      task.status === 2 ? 'bg-blue-100 text-blue-700' :
-                      task.status === 3 ? 'bg-yellow-100 text-yellow-700' :
-                      task.status === 4 ? 'bg-green-100 text-green-700' :
+                      task.status === TaskStatus.TODO ? 'bg-gray-100 text-gray-700' :
+                      task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-100 text-blue-700' :
+                      task.status === TaskStatus.REVIEW ? 'bg-yellow-100 text-yellow-700' :
+                      task.status === TaskStatus.DONE ? 'bg-green-100 text-green-700' :
                       'bg-red-100 text-red-700'
                     }`}>
                       {task.status_name}
@@ -291,12 +282,12 @@ const ChatPage = () => {
           </div>
         ) : error ? (
           <div className="text-center py-8">
-            <div className="text-sm text-amber-700">Упс, тут пусто</div>
+            <div className="text-sm text-amber-700">Данные не загружены</div>
             <div className="text-xs text-slate-500 mt-1">Не удалось загрузить сообщения</div>
           </div>
         ) : messages.length === 0 ? (
           <div className="text-center py-8">
-            <div className="text-sm text-slate-600">Упс, тут пусто</div>
+            <div className="text-sm text-slate-600">Сообщений пока нет</div>
             <div className="text-xs text-slate-500 mt-1">В этом чате пока нет сообщений</div>
           </div>
         ) : (
@@ -334,7 +325,7 @@ const ChatPage = () => {
 
       {/* Модальное окно для добавления участников */}
       {showAddMembers && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-900">Добавить участников</h3>
@@ -392,7 +383,7 @@ const ChatPage = () => {
 
       {/* Модальное окно со списком участников */}
       {showMembersModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-hidden">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-900">Участники чата ({chatMembers?.total || 0})</h3>

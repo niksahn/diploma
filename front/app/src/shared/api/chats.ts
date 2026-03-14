@@ -1,6 +1,13 @@
 import { request } from './client'
 import { useAuthStore } from '../state/auth'
 
+const DEBUG = import.meta.env.DEV
+
+const log = {
+  debug: (...args: unknown[]) => DEBUG && console.log('[ChatWS]', ...args),
+  error: (...args: unknown[]) => console.error('[ChatWS]', ...args),
+}
+
 export type Chat = {
   id: number
   name: string
@@ -91,34 +98,40 @@ export class ChatWebSocket {
   private onMessage: ((message: Message) => void) | null = null
   private onError: ((error: Event) => void) | null = null
   private onClose: (() => void) | null = null
+  private connectedCallback: (() => void) | null = null
 
   connect(chatId: number) {
-    console.log(`WebSocket: Starting connection to chat ${chatId}`)
+    log.debug(`Starting connection to chat ${chatId}`)
     if (this.ws?.readyState === WebSocket.OPEN) {
-      console.log('WebSocket: Already connected, skipping')
-      return // Уже подключен
+      log.debug('Already connected, skipping')
+      return // Already connected
     }
 
     this.chatId = chatId
     const token = useAuthStore.getState().token
 
     if (!token) {
-      console.error('WebSocket: No auth token for WebSocket connection')
+      log.error('No auth token for WebSocket connection')
       return
     }
 
-    // Прямое подключение к чат-сервису
+    // Direct connection to chat service
     const wsUrl = `ws://localhost:8084/ws/chats/ws?token=${token}`
-    console.log(`WebSocket: Connecting via Vite proxy to ${wsUrl}`)
-    console.log(`WebSocket: Token preview: ${token.substring(0, 20)}...`)
+    log.debug(`Connecting via Vite proxy to ${wsUrl}`)
+    log.debug(`Token preview: ${token.substring(0, 20)}...`)
     this.ws = new WebSocket(wsUrl)
 
     this.ws.onopen = () => {
-      console.log(`WebSocket connected to chat ${chatId}`)
+      log.debug(`Connected to chat ${chatId}`)
       this.reconnectAttempts = 0
 
       // Отправляем команду на подписку к чату
       this.send({ type: 'join_chat', chat_id: chatId })
+
+      // Notify that the connection is established
+      if (this.connectedCallback) {
+        this.connectedCallback()
+      }
     }
 
     // WebSocket открыт и готов к работе
@@ -131,52 +144,47 @@ export class ChatWebSocket {
         for (const messageStr of messages) {
           try {
             const data = JSON.parse(messageStr)
-            console.log('WebSocket message received:', data)
+            log.debug('Message received:', data)
 
             switch (data.type) {
               case 'error':
-                console.log('=== WEBSOCKET SERVER ERROR ===')
-                console.error('WebSocket error from server:', data.error)
-                console.log('WebSocket full error data:', data)
-                // Не разрываем соединение при ошибке
+                log.error('Error from server:', data.error)
                 break
               case 'new_message':
-                console.log('=== WEBSOCKET NEW MESSAGE ===')
-                console.log('Received new message:', data.message)
-                console.log('Full message data:', data)
+                log.debug('New message:', data.message)
                 if (data.message && this.onMessage) {
                   this.onMessage(data.message)
                 }
                 break
               case 'joined_chat':
-                console.log('Successfully joined chat:', data.chat_id)
+                log.debug('Successfully joined chat:', data.chat_id)
                 break
               case 'user_joined':
-                console.log('User joined chat:', data.user_id, data.user_name)
+                log.debug('User joined chat:', data.user_id, data.user_name)
                 break
               case 'user_left':
-                console.log('User left chat:', data.user_id)
+                log.debug('User left chat:', data.user_id)
                 break
               case 'user_typing':
-                console.log('User typing:', data.user_id, data.user_name)
+                log.debug('User typing:', data.user_id, data.user_name)
                 break
               case 'user_stopped_typing':
-                console.log('User stopped typing:', data.user_id)
+                log.debug('User stopped typing:', data.user_id)
                 break
               default:
-                console.log('Unknown WebSocket message type:', data.type, data)
+                log.debug('Unknown message type:', data.type, data)
             }
           } catch (parseError) {
-            console.error('Failed to parse individual WebSocket message:', parseError, 'Message:', messageStr)
+            log.error('Failed to parse message:', parseError, 'Message:', messageStr)
           }
         }
       } catch (error) {
-        console.error('Failed to process WebSocket message batch:', error, 'Raw data:', event.data)
+        log.error('Failed to process message batch:', error, 'Raw data:', event.data)
       }
     }
 
     this.ws.onclose = (event) => {
-      console.log('WebSocket disconnected:', {
+      log.debug('Disconnected:', {
         code: event.code,
         reason: event.reason,
         wasClean: event.wasClean
@@ -188,7 +196,7 @@ export class ChatWebSocket {
     }
 
     this.ws.onerror = (error) => {
-      console.error('WebSocket error event:', error)
+      log.error('Error event:', error)
       if (this.onError) {
         this.onError(error)
       }
@@ -204,24 +212,24 @@ export class ChatWebSocket {
   }
 
   send(data: any) {
-    console.log('=== WEBSOCKET FRONTEND SEND ===')
-    console.log('WebSocket: Sending message:', data)
-    console.log('WebSocket: Connection state:', this.ws?.readyState)
-    console.log('WebSocket: Is connected:', this.isConnected)
+    log.debug('Sending message:', data)
+    log.debug('Connection state:', this.ws?.readyState)
+    log.debug('Is connected:', this.isConnected)
 
     if (this.ws?.readyState === WebSocket.OPEN) {
       const messageString = JSON.stringify(data)
-      console.log('WebSocket: Sending JSON string:', messageString)
       this.ws.send(messageString)
-      console.log('WebSocket: Message sent successfully')
     } else {
-      console.error('WebSocket: Not connected, cannot send:', data, 'State:', this.ws?.readyState)
-      console.error('WebSocket: Available states: CONNECTING=0, OPEN=1, CLOSING=2, CLOSED=3')
+      log.error('Not connected, cannot send:', data, 'State:', this.ws?.readyState)
     }
   }
 
   onMessageReceived(callback: (message: Message) => void) {
     this.onMessage = callback
+  }
+
+  onConnected(callback: () => void) {
+    this.connectedCallback = callback
   }
 
   onErrorReceived(callback: (error: Event) => void) {
@@ -238,7 +246,7 @@ export class ChatWebSocket {
     }
 
     this.reconnectAttempts++
-    console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
+    log.debug(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
 
     setTimeout(() => {
       this.connect(this.chatId!)

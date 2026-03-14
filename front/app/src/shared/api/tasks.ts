@@ -1,6 +1,12 @@
 import { request } from './client'
 
-export type TaskStatus = 1 | 2 | 3 | 4 | 5 // Согласно swagger: статус от 1 до 5
+export enum TaskStatus {
+  TODO = 1,
+  IN_PROGRESS = 2,
+  REVIEW = 3,
+  DONE = 4,
+  CANCELLED = 5,
+}
 
 export type Task = {
   id: number

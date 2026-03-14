@@ -119,13 +119,19 @@ const ChatsPage = () => {
           </div>
         ) : error ? (
           <div className="col-span-full text-center py-8">
-            <div className="text-sm text-amber-700">Упс, тут пусто</div>
+            <div className="text-sm text-amber-700">Данные не загружены</div>
             <div className="text-xs text-slate-500 mt-1">Не удалось загрузить чаты</div>
           </div>
         ) : chats.length === 0 ? (
           <div className="col-span-full text-center py-8">
-            <div className="text-sm text-slate-600">Упс, тут пусто</div>
-            <div className="text-xs text-slate-500 mt-1">У вас пока нет чатов</div>
+            <div className="text-sm text-slate-600">Нет чатов</div>
+            <div className="text-xs text-slate-500 mt-1 mb-3">У вас пока нет чатов</div>
+            <button
+              onClick={() => document.querySelector<HTMLInputElement>('input[placeholder="Название чата"]')?.focus()}
+              className="text-sm text-slate-700 hover:text-slate-900 underline"
+            >
+              Создать первый чат
+            </button>
           </div>
         ) : (
           chats.map((chat) => (
@@ -142,14 +148,15 @@ const ChatsPage = () => {
                       e.stopPropagation()
                       openMembersModal(chat.id)
                     }}
-                    className="text-slate-500 hover:text-slate-700 hover:underline"
+                    className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded-md text-slate-700 flex items-center gap-1"
                   >
-                    👥 {chat.members_count}
+                    <span>👥</span>
+                    <span>{chat.members_count}</span>
                   </button>
                 )}
               </div>
               {chat.unread !== undefined && chat.unread > 0 && (
-                <div className="mt-1 text-xs text-emerald-700">Непрочитанные: {chat.unread}</div>
+                <div className="mt-1 text-xs text-emerald-700">{chat.unread} новых сообщений</div>
               )}
             </Link>
           ))
@@ -158,8 +165,8 @@ const ChatsPage = () => {
 
       {/* Модальное окно участников чата */}
       {showMembersModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-hidden text-slate-900 shadow-xl">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={closeMembersModal}>
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-hidden text-slate-900 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-slate-900">Участники чата</h3>
               <button

@@ -6,16 +6,12 @@ import { useWorkspaceStore } from '../state/workspace'
 import { useAuthStore } from '../state/auth'
 
 const getChatTypeIcon = (type?: number) => {
-  switch (type) {
-    case CHAT_TYPES.PERSONAL:
-      return '👤'
-    case CHAT_TYPES.GROUP:
-      return '👥'
-    case CHAT_TYPES.CHANNEL:
-      return '📢'
-    default:
-      return '💬'
+  const iconMap: Record<number, { icon: string; label: string }> = {
+    [CHAT_TYPES.PERSONAL]: { icon: '👤', label: 'Личный чат' },
+    [CHAT_TYPES.GROUP]: { icon: '👥', label: 'Групповой чат' },
+    [CHAT_TYPES.CHANNEL]: { icon: '📢', label: 'Канал' },
   }
+  return iconMap[type ?? CHAT_TYPES.GROUP] || { icon: '💬', label: 'Чат' }
 }
 
 const SidebarChats = () => {
@@ -47,7 +43,7 @@ const SidebarChats = () => {
     },
   })
 
-  const raw = Array.isArray((data as any)?.chats) // если API возвращает объект с chats
+  const raw = Array.isArray((data as any)?.chats) // if API returns object with chats property
     ? (data as any).chats
     : Array.isArray(data)
       ? data
@@ -59,7 +55,7 @@ const SidebarChats = () => {
     type: typeof c.type === 'number' ? c.type : (c.chatType === 'group' ? CHAT_TYPES.GROUP : CHAT_TYPES.GROUP),
     unread: typeof c.unread === 'number' ? c.unread : c.unreadCount ?? 0,
     members_count: typeof c.members_count === 'number' ? c.members_count : 0,
-  })).slice(0, 6) // Показываем максимум 6 чатов
+  })).slice(0, 6) // Show maximum 6 chats in sidebar
 
   if (!selectedWorkspaceId) {
     return null
@@ -83,14 +79,14 @@ const SidebarChats = () => {
             to="/chats"
             className="text-xs text-slate-400 hover:text-slate-300 transition-colors"
           >
-            Все
+            Все чаты
           </Link>
         </div>
       </div>
 
       <div className="space-y-1">
         {isLoading ? (
-          <div className="space-y-2">
+          <div className="space-y-2" aria-label="Загрузка чатов" aria-busy="true">
             {[...Array(3)].map((_, i) => (
               <div key={i} className="h-10 bg-slate-700 rounded-md animate-pulse" />
             ))}
@@ -113,7 +109,9 @@ const SidebarChats = () => {
                 }`}
               >
                 <div className="flex-shrink-0 text-sm">
-                  {getChatTypeIcon(chat.type)}
+                  <span role="img" aria-label={getChatTypeIcon(chat.type).label}>
+                    {getChatTypeIcon(chat.type).icon}
+                  </span>
                 </div>
 
                 <div className="flex-1 min-w-0">
@@ -146,10 +144,15 @@ const SidebarChats = () => {
 
       {/* Модальное окно создания чата */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-title"
+        >
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 text-slate-900 shadow-xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-slate-900">Создать новый чат</h3>
+              <h3 id="modal-title" className="text-lg font-semibold text-slate-900">Создать новый чат</h3>
               <button
                 onClick={() => setShowCreateModal(false)}
                 className="text-slate-400 hover:text-slate-600 p-1"
