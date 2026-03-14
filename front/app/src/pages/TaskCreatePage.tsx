@@ -1,17 +1,17 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { taskApi, type CreateTaskRequest, type TaskStatus } from '../shared/api/tasks'
+import { taskApi, type CreateTaskRequest, TaskStatus } from '../shared/api/tasks'
 import { workspaceApi, type WorkspaceMember } from '../shared/api/workspaces'
 import { chatApi, type Chat } from '../shared/api/chats'
 import { useWorkspaceStore } from '../shared/state/workspace'
 
 const statusOptions: { value: TaskStatus; label: string }[] = [
-  { value: 1, label: 'К выполнению' },
-  { value: 2, label: 'В работе' },
-  { value: 3, label: 'На проверке' },
-  { value: 4, label: 'Выполнена' },
-  { value: 5, label: 'Отменена' },
+  { value: TaskStatus.TODO, label: 'К выполнению' },
+  { value: TaskStatus.IN_PROGRESS, label: 'В работе' },
+  { value: TaskStatus.REVIEW, label: 'На проверке' },
+  { value: TaskStatus.DONE, label: 'Выполнена' },
+  { value: TaskStatus.CANCELLED, label: 'Отменена' },
 ]
 
 const TaskCreatePage = () => {
@@ -23,7 +23,7 @@ const TaskCreatePage = () => {
     date: new Date().toISOString().split('T')[0],
     workspace_id: selectedWorkspaceId || 0,
     description: '',
-    status: 1,
+    status: TaskStatus.TODO,
     assigned_users: [],
     chat_id: undefined,
   })
@@ -56,7 +56,7 @@ const TaskCreatePage = () => {
   const chats: Chat[] = rawChats.map((c: any) => ({
     id: typeof c.id === 'number' ? c.id : parseInt(String(c.id ?? '0'), 10) || 0,
     name: String(c.name ?? 'Без названия'),
-    type: typeof c.type === 'number' ? c.type : 2, // по умолчанию групповой
+    type: typeof c.type === 'number' ? c.type : 2, // default to group chat type
     unread: typeof c.unread === 'number' ? c.unread : 0,
     members_count: typeof c.members_count === 'number' ? c.members_count : 0,
   }))
@@ -215,7 +215,7 @@ const TaskCreatePage = () => {
               }))}
               className={`${inputBase} cursor-pointer`}
             >
-              <option value="">Не привязывать</option>
+              <option value="">Без чата</option>
               {chats.map((chat: Chat) => (
                 <option key={chat.id} value={chat.id}>
                   {chat.name}

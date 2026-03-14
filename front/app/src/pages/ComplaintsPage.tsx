@@ -14,7 +14,7 @@ const ComplaintsPage = () => {
     queryFn: complaintApi.mine,
   })
 
-  const raw = Array.isArray((data as any)?.complaints) // если API возвращает объект с complaints
+  const raw = Array.isArray((data as any)?.complaints) // if API returns object with complaints property
     ? (data as any).complaints
     : Array.isArray(data)
       ? data
@@ -57,24 +57,25 @@ const ComplaintsPage = () => {
   return (
     <div className="space-y-6">
       <header>
-        <h2 className="text-xl font-semibold text-slate-900">Жалобы / поддержка</h2>
-        <p className="text-sm text-slate-600">Пишем через API gateway</p>
+        <h2 className="text-xl font-semibold text-slate-900">Служба поддержки</h2>
+        <p className="text-sm text-slate-600">Отправьте обращение и мы свяжемся с вами</p>
       </header>
 
       <form onSubmit={handleSubmit} className="card space-y-3">
         <label className="text-sm text-slate-700">
-          Текст жалобы (минимум 10 символов)
+          Опишите вашу проблему
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
             rows={3}
+            placeholder="Минимум 10 символов"
             required
             minLength={10}
           />
         </label>
         <label className="text-sm text-slate-700">
-          Описание устройства (минимум 5 символов)
+          Информация об устройстве
           <input
             value={device}
             onChange={(e) => setDevice(e.target.value)}
@@ -100,14 +101,20 @@ const ComplaintsPage = () => {
           disabled={isPending || !text.trim() || text.length < 10 || !device.trim() || device.length < 5 || !userEmail.trim() || !userEmail.includes('@')}
           className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
         >
-          {isPending ? 'Отправляем…' : 'Отправить жалобу'}
+          {isPending ? 'Отправка…' : 'Отправить обращение'}
         </button>
       </form>
 
       {isLoading && <div className="text-sm text-slate-600">Загрузка…</div>}
-      {error && <div className="text-sm text-amber-700">API недоступно, показываем сохранённые локально.</div>}
+      {error && <div className="text-sm text-amber-700">Не удалось загрузить данные. Попробуйте обновить страницу.</div>}
 
       <div className="space-y-2">
+        {complaints.length === 0 && (
+          <div className="card text-center py-8">
+            <div className="text-slate-400 text-4xl mb-3">📬</div>
+            <div className="text-sm text-slate-600">У вас пока нет обращений</div>
+          </div>
+        )}
         {complaints.map((c) => (
           <div key={c.id} className="card">
             <div className="flex items-center justify-between">

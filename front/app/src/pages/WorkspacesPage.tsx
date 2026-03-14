@@ -11,7 +11,7 @@ const WorkspacesPage = () => {
 
   type WorkspaceView = { id: number; name: string; role?: number | string; tariff?: string }
 
-  const raw = Array.isArray((data as any)?.workspaces) // если API возвращает { workspaces: [...] }
+  const raw = Array.isArray((data as any)?.workspaces) // if API returns object with workspaces property
     ? (data as any).workspaces
     : Array.isArray(data)
       ? data
@@ -19,7 +19,7 @@ const WorkspacesPage = () => {
 
   const workspaces: WorkspaceView[] = raw.map((item: any) => ({
     id: Number(item.id ?? item.workspacesid ?? 0),
-    name: String(item.name ?? 'Без названия'),
+    name: String(item.name ?? 'Рабочее пространство'),
     role: item.role ?? item.userRole,
     tariff: item.tariff ?? item.tariffsid ?? item.tariffName,
   }))
@@ -28,7 +28,7 @@ const WorkspacesPage = () => {
     <div className="space-y-4">
       <header>
         <h2 className="text-xl font-semibold text-slate-900">Рабочие пространства</h2>
-        <p className="text-sm text-slate-600">Выберите РП для работы с чатами и задачами</p>
+        <p className="text-sm text-slate-600">Выберите пространство для работы с чатами и задачами</p>
       </header>
 
       <div className="grid gap-3 md:grid-cols-2">
@@ -38,13 +38,13 @@ const WorkspacesPage = () => {
           </div>
         ) : error ? (
           <div className="col-span-full text-center py-8">
-            <div className="text-sm text-amber-700">Упс, тут пусто</div>
+            <div className="text-sm text-amber-700">Данные не загружены</div>
             <div className="text-xs text-slate-500 mt-1">Не удалось загрузить рабочие пространства</div>
           </div>
         ) : workspaces.length === 0 ? (
           <div className="col-span-full text-center py-8">
-            <div className="text-sm text-slate-600">Упс, тут пусто</div>
-            <div className="text-xs text-slate-500 mt-1">У вас пока нет рабочих пространств</div>
+            <div className="text-sm text-slate-600">Нет рабочих пространств</div>
+            <div className="text-xs text-slate-500 mt-1">Обратитесь к администратору для создания рабочего пространства</div>
           </div>
         ) : (
           workspaces.map((ws) => (
@@ -68,7 +68,7 @@ const WorkspacesPage = () => {
                     const roleNum = typeof ws.role === 'number' ? ws.role : parseInt(String(ws.role || '0'), 10)
                     if (roleNum === 2) return 'руководитель'
                     if (roleNum === 1) return 'участник'
-                    return ws.role || 'участник'
+                    return 'участник'
                   })()}
                 </span>
               </div>

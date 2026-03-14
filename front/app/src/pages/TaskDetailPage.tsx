@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { taskApi, type TaskStatus } from '../shared/api/tasks'
+import { taskApi, TaskStatus } from '../shared/api/tasks'
 import { workspaceApi } from '../shared/api/workspaces'
 import { chatApi } from '../shared/api/chats'
 
 const statusOptions: { value: TaskStatus; label: string }[] = [
-  { value: 1, label: 'К выполнению' },
-  { value: 2, label: 'В работе' },
-  { value: 3, label: 'На проверке' },
-  { value: 4, label: 'Выполнена' },
-  { value: 5, label: 'Отменена' },
+  { value: TaskStatus.TODO, label: 'К выполнению' },
+  { value: TaskStatus.IN_PROGRESS, label: 'В работе' },
+  { value: TaskStatus.REVIEW, label: 'На проверке' },
+  { value: TaskStatus.DONE, label: 'Выполнена' },
+  { value: TaskStatus.CANCELLED, label: 'Отменена' },
 ]
 
 interface TaskFormData {
@@ -106,7 +106,7 @@ const TaskDetailPage = () => {
     id: Number(taskId) || 0,
     title: 'Демо-задача',
     description: 'Описание задачи заглушка',
-    status: 1 as TaskStatus,
+    status: TaskStatus.TODO,
     status_name: 'К выполнению',
     date: new Date().toISOString().split('T')[0],
     creator: 0,
@@ -250,7 +250,7 @@ const TaskDetailPage = () => {
       </header>
 
       {isLoading && <div className="text-sm text-slate-600">Загрузка…</div>}
-      {error && <div className="text-sm text-amber-700">API недоступно, показываем демо-данные.</div>}
+      {error && <div className="text-sm text-amber-700">Не удалось загрузить задачу. Попробуйте позже.</div>}
 
       <div className="card space-y-4">
         <div className="space-y-3">
@@ -450,7 +450,7 @@ const TaskDetailPage = () => {
 
       {/* Add Assignee Modal */}
       {showAddAssigneeModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 text-slate-900 shadow-xl">
             <h3 className="text-lg font-semibold text-slate-900 mb-1">Добавить исполнителя</h3>
             <p className="text-sm text-slate-600 mb-4">Найдите по имени или логину и выберите участника</p>
@@ -510,7 +510,7 @@ const TaskDetailPage = () => {
 
       {/* Add Chat Modal */}
       {showAddChatModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 text-slate-900 shadow-xl">
             <h3 className="text-lg font-semibold text-slate-900 mb-1">Прикрепить к чату</h3>
             <p className="text-sm text-slate-600 mb-4">Найдите по названию и выберите чат</p>

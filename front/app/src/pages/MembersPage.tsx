@@ -3,10 +3,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { workspaceApi } from '../shared/api/workspaces'
 import { userApi, type UserSearchItem } from '../shared/api/users'
+import { authApi } from '../shared/api/auth'
 import { useWorkspaceStore } from '../shared/state/workspace'
 import { useAuthStore } from '../shared/state/auth'
 
 const DEBOUNCE_MS = 300
+
+const defaultCreateUserForm = {
+  login: '',
+  password: '',
+  surname: '',
+  name: '',
+  patronymic: '',
+  role: 1,
+}
 
 const MembersPage = () => {
   const { selectedWorkspaceId, selectedWorkspaceName, selectedWorkspaceRole } = useWorkspaceStore()
@@ -18,6 +28,10 @@ const MembersPage = () => {
   const [selectedUser, setSelectedUser] = useState<UserSearchItem | null>(null)
   const [newMemberRole, setNewMemberRole] = useState(1)
   const [showDropdown, setShowDropdown] = useState(false)
+
+  const [createUserForm, setCreateUserForm] = useState(defaultCreateUserForm)
+  const [createUserError, setCreateUserError] = useState<string | null>(null)
+  const [createUserSuccess, setCreateUserSuccess] = useState(false)
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), DEBOUNCE_MS)
@@ -73,6 +87,52 @@ const MembersPage = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['members', selectedWorkspaceId] }),
   })
 
+  const { mutateAsync: createUserAndAdd, isPending: creatingUser } = useMutation({
+    mutationFn: async (payload: typeof defaultCreateUserForm) => {
+      const res = await authApi.register({
+        login: payload.login.trim(),
+        password: payload.password,
+        surname: payload.surname.trim() || undefined,
+        name: payload.name.trim() || undefined,
+        patronymic: payload.patronymic.trim() || undefined,
+      })
+      const newUserId = res?.id
+      if (newUserId == null) throw new Error('Сервер не вернул id пользователя')
+      await workspaceApi.addMember(selectedWorkspaceId!, newUserId, 1)
+      if (payload.role === 2) {
+        await workspaceApi.changeLeader(selectedWorkspaceId!, newUserId)
+      }
+    },
+    onSuccess: (_, variables) => {
+      setCreateUserForm(defaultCreateUserForm)
+      setCreateUserError(null)
+      setCreateUserSuccess(true)
+      setTimeout(() => setCreateUserSuccess(false), 3000)
+      queryClient.invalidateQueries({ queryKey: ['members', selectedWorkspaceId] })
+      if (variables.role === 2) {
+        queryClient.invalidateQueries({ queryKey: ['workspaces'] })
+      }
+    },
+    onError: (err: Error) => {
+      setCreateUserError(err.message || 'Не удалось создать пользователя')
+    },
+  })
+
+  const handleCreateUser = (e: React.FormEvent) => {
+    e.preventDefault()
+    setCreateUserError(null)
+    const { login, password, surname, name } = createUserForm
+    if (!login.trim() || !password.trim() || !surname.trim() || !name.trim()) {
+      setCreateUserError('Заполните логин, пароль, фамилию и имя')
+      return
+    }
+    if (password.length < 8) {
+      setCreateUserError('Пароль не менее 8 символов')
+      return
+    }
+    createUserAndAdd(createUserForm)
+  }
+
   if (!selectedWorkspaceId) {
     return (
       <div className="card">
@@ -102,7 +162,7 @@ const MembersPage = () => {
           {selectedWorkspaceName ?? `Пространство #${selectedWorkspaceId}`}
         </p>
         <p className="text-xs text-slate-500">
-          Ваша роль: {isLeader ? 'руководитель (можете управлять участниками)' : 'участник (только просмотр)'}
+          Вы {isLeader ? 'руководитель — можете управлять участниками' : 'участник — только просмотр'}
         </p>
       </header>
 
@@ -112,7 +172,7 @@ const MembersPage = () => {
         </div>
       ) : error ? (
         <div className="text-center py-8">
-          <div className="text-sm text-amber-700">Упс, тут пусто</div>
+          <div className="text-sm text-amber-700">Данные не загружены</div>
           <div className="text-xs text-slate-500 mt-1">Не удалось загрузить участников</div>
         </div>
       ) : !Array.isArray(members) || members.length === 0 ? (
@@ -125,9 +185,96 @@ const MembersPage = () => {
       {(isLeader || (Array.isArray(members) && members.length > 0)) && (
         <div className="space-y-4">
           {isLeader && (
-            <div className="card space-y-3">
-              <div className="text-sm font-medium text-slate-900">Добавить участника</div>
-              <p className="text-xs text-slate-600">Найдите пользователя по имени, фамилии или логину</p>
+            <>
+              <div className="card space-y-3">
+                <div className="text-sm font-medium text-slate-900">Создать пользователя</div>
+                <p className="text-xs text-slate-600">Создайте пользователя и добавьте его в это рабочее пространство</p>
+                <form onSubmit={handleCreateUser} className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Логин *</label>
+                      <input
+                        type="text"
+                        value={createUserForm.login}
+                        onChange={(e) => setCreateUserForm((f) => ({ ...f, login: e.target.value }))}
+                        placeholder="Логин для входа"
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 bg-white focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none"
+                        autoComplete="username"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Пароль *</label>
+                      <input
+                        type="password"
+                        value={createUserForm.password}
+                        onChange={(e) => setCreateUserForm((f) => ({ ...f, password: e.target.value }))}
+                        placeholder="Не менее 8 символов"
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 bg-white focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none"
+                        autoComplete="new-password"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Фамилия *</label>
+                      <input
+                        type="text"
+                        value={createUserForm.surname}
+                        onChange={(e) => setCreateUserForm((f) => ({ ...f, surname: e.target.value }))}
+                        placeholder="Фамилия"
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 bg-white focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Имя *</label>
+                      <input
+                        type="text"
+                        value={createUserForm.name}
+                        onChange={(e) => setCreateUserForm((f) => ({ ...f, name: e.target.value }))}
+                        placeholder="Имя"
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 bg-white focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="min-w-[180px]">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Отчество</label>
+                      <input
+                        type="text"
+                        value={createUserForm.patronymic}
+                        onChange={(e) => setCreateUserForm((f) => ({ ...f, patronymic: e.target.value }))}
+                        placeholder="Необязательно"
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 bg-white focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none"
+                      />
+                    </div>
+                    <div className="w-40">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Роль в пространстве</label>
+                      <select
+                        value={createUserForm.role}
+                        onChange={(e) => setCreateUserForm((f) => ({ ...f, role: parseInt(e.target.value, 10) }))}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none"
+                      >
+                        <option value={1}>Участник</option>
+                        <option value={2}>Руководитель</option>
+                      </select>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={creatingUser}
+                      className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+                    >
+                      {creatingUser ? 'Создание…' : 'Создать и добавить'}
+                    </button>
+                  </div>
+                  {createUserError && (
+                    <p className="text-sm text-red-600">{createUserError}</p>
+                  )}
+                  {createUserSuccess && (
+                    <p className="text-sm text-green-600">Пользователь создан и добавлен в пространство.</p>
+                  )}
+                </form>
+              </div>
+              <div className="card space-y-3">
+                <div className="text-sm font-medium text-slate-900">Добавить участника</div>
+                <p className="text-xs text-slate-600">Поиск по имени, фамилии или логину</p>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end flex-wrap">
                 <div className="flex-1 min-w-[200px] relative">
                   <input
@@ -198,13 +345,14 @@ const MembersPage = () => {
                   }}
                   className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
                 >
-                  {adding || changingLeader ? 'Сохраняем…' : 'Добавить'}
+                  {adding || changingLeader ? 'Добавление…' : 'Добавить'}
                 </button>
               </div>
               <p className="text-xs text-slate-500">
-                Назначение руководителя переводит текущего руководителя в роль участника.
+                При назначении нового руководителя текущий руководитель станет участником.
               </p>
             </div>
+            </>
           )}
 
           {Array.isArray(members) && members.length > 0 && (
@@ -238,7 +386,7 @@ const MembersPage = () => {
                         </select>
                       ) : (
                         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
-                          {member.role === 1 ? 'Участник' : member.role === 2 ? 'Руководитель' : 'Неизвестно'}
+                          {member.role === 1 ? 'Участник' : member.role === 2 ? 'Руководитель' : 'Не указано'}
                         </span>
                       )}
                     </td>

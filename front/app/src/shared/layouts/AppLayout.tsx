@@ -24,9 +24,9 @@ const AppLayout = () => {
 
   return (
     <div className="app-shell">
-      <aside className="bg-slate-900 text-white flex flex-col w-72 p-4 gap-4">
-        <div className="text-lg font-semibold">Корп. мессенджер</div>
-        <nav className="flex flex-col gap-1 text-sm">
+      <aside className="bg-slate-900 text-white flex flex-col w-72 p-4 gap-4" role="navigation" aria-label="Главное меню">
+        <div className="text-lg font-semibold">Корпоративный мессенджер</div>
+        <nav className="flex flex-col gap-1 text-sm" aria-label="Навигация по приложению">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -34,6 +34,7 @@ const AppLayout = () => {
               className={({ isActive }) =>
                 `rounded-md px-3 py-2 ${isActive ? 'bg-slate-700 text-white' : 'text-slate-200 hover:bg-slate-800'}`
               }
+              aria-label={item.label}
             >
               {item.label}
             </NavLink>
@@ -57,7 +58,7 @@ const AppLayout = () => {
           <div className="flex flex-col gap-1">
             <span className="text-xs text-slate-500">Текущее рабочее пространство</span>
             <span className="text-sm font-semibold text-slate-800 truncate" title={selectedWorkspaceName ?? undefined}>
-              {selectedWorkspaceName ?? (selectedWorkspaceId ? `Пространство #${selectedWorkspaceId}` : 'Не выбрано')}
+              {selectedWorkspaceName ?? (selectedWorkspaceId ? `Пространство #${selectedWorkspaceId}` : 'Рабочее пространство не выбрано')}
             </span>
           </div>
           <div className="text-right">

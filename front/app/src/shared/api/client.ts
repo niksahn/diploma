@@ -6,7 +6,7 @@ const API_PREFIX = '/api/v1'
 
 type RequestOptions = RequestInit & { skipAuthHeader?: boolean }
 
-// Флаг для предотвращения множественных одновременных рефрешей
+// Flag to prevent multiple simultaneous refresh attempts
 let isRefreshing = false
 let refreshPromise: Promise<string> | null = null
 
@@ -22,9 +22,9 @@ async function refreshToken(): Promise<string> {
     useAuthStore.getState().setToken(newToken)
     return newToken
   } catch (error) {
-    // Если рефреш не удался, очищаем состояние и редиректим на авторизацию
+    // If refresh failed, clear state and redirect to auth
     useAuthStore.getState().logout()
-    // Редирект на страницу авторизации
+    // Redirect to auth page
     if (typeof window !== 'undefined') {
       window.location.href = '/auth'
     }

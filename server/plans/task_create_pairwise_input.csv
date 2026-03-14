@@ -1,0 +1,8 @@
+title,description,date,status
+valid_title__Sprint_planning,valid_description__Task_details,future_date__2026-03-16,status_1__created
+short_title__AB,empty_description__EMPTY,past_date__2026-03-14,status_2__in_progress
+long_title__101_chars,long_description__501_chars,today_date__2026-03-15,status_3__review
+empty_title__EMPTY,special_description__SCRIPT_TAG,invalid_format__15.03.2026,status_4__done
+special_title__SCRIPT_TAG,,,status_5__cancelled
+spaces_only_title__SPACES,,empty_date__EMPTY,invalid_status__0
+,,,invalid_date__2026-02-31
