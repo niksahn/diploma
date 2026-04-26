@@ -5,8 +5,8 @@ go 1.23
 toolchain go1.23.4
 
 replace (
-	github.com/diploma/shared/kafka => ./shared/kafka
-	github.com/diploma/shared/metrics => ./shared/metrics
+	github.com/diploma/shared/kafka => ../../shared/kafka
+	github.com/diploma/shared/metrics => ../../shared/metrics
 )
 
 require (

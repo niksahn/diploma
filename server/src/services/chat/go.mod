@@ -4,7 +4,7 @@ go 1.23
 
 toolchain go1.23.4
 
-replace github.com/diploma/shared/metrics => ./shared/metrics
+replace github.com/diploma/shared/metrics => ../../shared/metrics
 
 require (
 	github.com/diploma/shared/metrics v0.0.0
