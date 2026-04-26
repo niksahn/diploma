@@ -6,7 +6,7 @@ import (
 	"net/smtp"
 	"strings"
 
-	"github.com/diploma/shared/kafka"
+	"github.com/niksahn/diploma-go-kafka"
 )
 
 // EmailService отправляет email уведомления

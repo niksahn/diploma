@@ -5,10 +5,10 @@ go 1.23
 toolchain go1.23.4
 
 require (
-	github.com/diploma/shared/metrics v0.0.0
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/go-chi/cors v1.2.1
 	github.com/joho/godotenv v1.5.1
+	github.com/niksahn/diploma-go-metrics v0.1.0
 )
 
 require (
@@ -46,5 +46,3 @@ require (
 	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/diploma/shared/metrics => ../../shared/metrics

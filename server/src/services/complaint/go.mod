@@ -4,17 +4,12 @@ go 1.23
 
 toolchain go1.23.4
 
-replace (
-	github.com/diploma/shared/kafka => ../../shared/kafka
-	github.com/diploma/shared/metrics => ../../shared/metrics
-)
-
 require (
-	github.com/diploma/shared/kafka v0.0.0
-	github.com/diploma/shared/metrics v0.0.0
 	github.com/gin-gonic/gin v1.10.0
 	github.com/jackc/pgx/v5 v5.5.1
 	github.com/joho/godotenv v1.5.1
+	github.com/niksahn/diploma-go-kafka v0.1.0
+	github.com/niksahn/diploma-go-metrics v0.1.0
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
 	github.com/swaggo/swag v1.8.12
