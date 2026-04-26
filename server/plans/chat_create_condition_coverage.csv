@@ -1,0 +1,204 @@
+"№";"Покрываемые условия";"Входные данные";"Ожидаемый результат"
+"1";"u1 = нет
+Не удалось извлечь userID";"header:
+Authorization отсутствует
+X-User-ID отсутствует
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}";"HTTP Status:
+401 Unauthorized
+
+Ответ:
+error = user ID not found"
+"2";"u1 = да
+j1 = нет
+JSON не прошел валидацию";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{}";"HTTP Status:
+400 Bad Request
+
+Ответ:
+ошибка валидации входного JSON"
+"3";"j1 = да
+w1 = да
+WorkspaceExists вернул ошибку";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> error";"HTTP Status:
+500 Internal Server Error
+
+Ответ:
+error = failed to check workspace"
+"4";"w1 = нет
+w2 = нет
+Рабочее пространство не существует";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (false, nil)";"HTTP Status:
+404 Not Found
+
+Ответ:
+error = workspace not found"
+"5";"w2 = да
+n1 = да
+n2 = да
+m2 = нет
+c1 = нет
+s1 = да
+s2 = да";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": """",
+  ""type"": 1,
+  ""workspace_id"": 7,
+  ""members"": [20, 21]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(20, 7) -> (true, nil)
+IsUserInWorkspace(21, 7) -> (true, nil)
+CreateChat(""Personal chat"", 1, 7) -> chat{id: 55}
+AddUserToChat(55, 20, 1) -> nil
+AddUserToChat(55, 21, 1) -> nil
+AddUserToChat(55, 10, 2) -> nil";"HTTP Status:
+201 Created
+
+Ответ:
+чат создан успешно
+имя автоматически установлено в Personal chat
+создатель автоматически добавлен в список участников
+members_count = 3"
+"6";"n1 = да
+n2 = нет
+m2 = да";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Private"",
+  ""type"": 1,
+  ""workspace_id"": 7,
+  ""members"": [10]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)";"HTTP Status:
+400 Bad Request
+
+Ответ:
+error = personal chat must have exactly 2 members"
+"7";"n1 = нет
+n3 = да
+n2 = да";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": """",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)";"HTTP Status:
+400 Bad Request
+
+Ответ:
+error = name is required for non-personal chats"
+"8";"c1 = да
+s1 = да
+s2 = да";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil) при обходе участников
+IsUserInWorkspace(20, 7) -> (true, nil)
+CreateChat(""Team chat"", 2, 7) -> chat{id: 56}
+AddUserToChat(56, 10, 2) -> nil
+AddUserToChat(56, 20, 1) -> nil";"HTTP Status:
+201 Created
+
+Ответ:
+чат создан успешно
+создатель уже был в members
+members_count = 2"
+"9";"s1 = нет
+Создатель не состоит в workspace";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (false, nil)";"HTTP Status:
+403 Forbidden
+
+Ответ:
+error = user is not a member of this workspace"
+"10";"s2 = нет
+Хотя бы один участник не состоит в workspace";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil) при обходе участников
+IsUserInWorkspace(20, 7) -> (false, nil)";"HTTP Status:
+403 Forbidden
+
+Ответ:
+error = some users are not members of this workspace"

@@ -1,0 +1,452 @@
+"№";"Покрываемые условия";"Входные данные";"Ожидаемый результат"
+"1";"Решение D5: req.Type == 1 && req.Name == """"
+Комбинация 1:
+n1 = да
+n2 = да
+
+Решение D7: req.Type == 1 && len(req.Members) != 2
+Комбинация 1:
+m1 = да
+m2 = нет
+
+Решение D8: !creatorInMembers
+Комбинация:
+c1 = нет
+
+Решения D10 и D12:
+s1 = да
+s2 = да";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": """",
+  ""type"": 1,
+  ""workspace_id"": 7,
+  ""members"": [20, 21]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(20, 7) -> (true, nil)
+IsUserInWorkspace(21, 7) -> (true, nil)
+CreateChat(""Personal chat"", 1, 7) -> chat{id: 55}
+AddUserToChat(55, 20, 1) -> nil
+AddUserToChat(55, 21, 1) -> nil
+AddUserToChat(55, 10, 2) -> nil";"HTTP Status:
+201 Created
+
+Ответ:
+чат создан успешно
+для personal-чата имя автоматически установлено в Personal chat
+создатель автоматически добавлен в список участников
+members_count = 3"
+"2";"Решение D5: req.Type == 1 && req.Name == """"
+Комбинация 2:
+n1 = да
+n2 = нет
+
+Решение D7: req.Type == 1 && len(req.Members) != 2
+Комбинация 2:
+m1 = да
+m2 = нет
+
+Решение D8: !creatorInMembers
+Комбинация:
+c1 = да
+
+Решения D10 и D12:
+s1 = да
+s2 = да";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Private chat"",
+  ""type"": 1,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil) при обходе участников
+IsUserInWorkspace(20, 7) -> (true, nil)
+CreateChat(""Private chat"", 1, 7) -> chat{id: 56}
+AddUserToChat(56, 10, 2) -> nil
+AddUserToChat(56, 20, 1) -> nil";"HTTP Status:
+201 Created
+
+Ответ:
+чат создан успешно
+создатель уже был в списке участников
+members_count = 2"
+"3";"Решение D5: req.Type == 1 && req.Name == """"
+Комбинация 3:
+n1 = нет
+n2 = да
+
+Решение D6: req.Type != 1
+Подусловия:
+n3 = да
+n2 = да
+n4 = недостижимо для отдельной проверки через валидный bind";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": """",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)";"HTTP Status:
+400 Bad Request
+
+Ответ:
+error = name is required for non-personal chats
+
+Примечание:
+это покрывает ветку non-personal с пустым именем"
+"4";"Решение D5: req.Type == 1 && req.Name == """"
+Комбинация 4:
+n1 = нет
+n2 = нет
+
+Решение D6: req.Type != 1
+Подусловия:
+n3 = да
+n2 = нет
+n4 = нет
+
+Решение D8: !creatorInMembers
+Комбинация:
+c1 = да
+
+Решения D10 и D12:
+s1 = да
+s2 = да";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil) при обходе участников
+IsUserInWorkspace(20, 7) -> (true, nil)
+CreateChat(""Team chat"", 2, 7) -> chat{id: 57}
+AddUserToChat(57, 10, 2) -> nil
+AddUserToChat(57, 20, 1) -> nil";"HTTP Status:
+201 Created
+
+Ответ:
+чат создан успешно
+name = Team chat
+members_count = 2"
+"5";"Решение D7: req.Type == 1 && len(req.Members) != 2
+Комбинация 3:
+m1 = да
+m2 = да";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Private chat"",
+  ""type"": 1,
+  ""workspace_id"": 7,
+  ""members"": [10]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)";"HTTP Status:
+400 Bad Request
+
+Ответ:
+error = personal chat must have exactly 2 members"
+"6";"Решение D7: req.Type == 1 && len(req.Members) != 2
+Комбинация 4:
+m1 = нет
+m2 = да";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil) при обходе участников
+CreateChat(""Team chat"", 2, 7) -> chat{id: 58}
+AddUserToChat(58, 10, 2) -> nil";"HTTP Status:
+201 Created
+
+Ответ:
+чат создан успешно
+
+Примечание:
+для non-personal-чата ограничение на ровно двух участников не действует,
+поэтому выражение D7 ложно из-за m1 = нет"
+"7";"Решение D7: req.Type == 1 && len(req.Members) != 2
+Комбинация 5:
+m1 = нет
+m2 = нет";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil) при обходе участников
+IsUserInWorkspace(20, 7) -> (true, nil)
+CreateChat(""Team chat"", 2, 7) -> chat{id: 59}
+AddUserToChat(59, 10, 2) -> nil
+AddUserToChat(59, 20, 1) -> nil";"HTTP Status:
+201 Created
+
+Ответ:
+чат создан успешно
+
+Примечание:
+это вторая ложная комбинация для D7"
+"8";"Решение D10: проверка membership создателя
+Комбинация 2:
+s1 = нет";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (false, nil)";"HTTP Status:
+403 Forbidden
+
+Ответ:
+error = user is not a member of this workspace"
+"9";"Решение D10: проверка membership создателя
+Комбинация ошибки:
+ошибка при получении s1";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> error";"HTTP Status:
+500 Internal Server Error
+
+Ответ:
+error = failed to check workspace membership"
+"10";"Решение D12: проверка membership участников
+Комбинация 2:
+s1 = да
+s2 = нет";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil) при обходе участников
+IsUserInWorkspace(20, 7) -> (false, nil)";"HTTP Status:
+403 Forbidden
+
+Ответ:
+error = some users are not members of this workspace"
+"11";"Решение D12: проверка membership участников
+Комбинация ошибки:
+ошибка при получении s2";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil) при обходе участников
+IsUserInWorkspace(20, 7) -> error";"HTTP Status:
+500 Internal Server Error
+
+Ответ:
+error = failed to check workspace membership"
+"12";"Добор операторов:
+w1 = да
+Ошибка WorkspaceExists";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> error";"HTTP Status:
+500 Internal Server Error
+
+Ответ:
+error = failed to check workspace"
+"13";"Добор операторов:
+w1 = нет
+w2 = нет
+Workspace не найден";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (false, nil)";"HTTP Status:
+404 Not Found
+
+Ответ:
+error = workspace not found"
+"14";"Добор операторов:
+ошибка CreateChat";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil) при обходе участников
+IsUserInWorkspace(20, 7) -> (true, nil)
+CreateChat(""Team chat"", 2, 7) -> error";"HTTP Status:
+500 Internal Server Error
+
+Ответ:
+текст ошибки из CreateChat"
+"15";"Добор операторов:
+ошибка AddUserToChat";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil) при обходе участников
+IsUserInWorkspace(20, 7) -> (true, nil)
+CreateChat(""Team chat"", 2, 7) -> chat{id: 60}
+AddUserToChat(60, 10, 2) -> nil
+AddUserToChat(60, 20, 1) -> error";"HTTP Status:
+500 Internal Server Error
+
+Ответ:
+error = failed to add member to chat"
+"16";"Недостижимая комбинация для D6:
+n3 = да
+n2 = нет
+n4 = да
+
+То есть:
+req.Type != 1
+req.Name != """"
+len(req.Name) < 3";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""ab"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}";"HTTP Status:
+Недостижимо
+
+Ответ:
+комбинация не доходит до логики CreateChat,
+так как ShouldBindJSON отклоняет name короче 3 символов"
+"17";"Недостижимая комбинация для D6:
+n3 = да
+n2 = да
+n4 = да
+
+То есть:
+req.Type != 1
+req.Name == """"
+len(req.Name) < 3";"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": """",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": []
+}";"HTTP Status:
+Частично достижимо только как n2 = да
+
+Ответ:
+в языке Go второе подусловие len(req.Name) < 3 не влияет на исход,
+поскольку при req.Name == "" выражение req.Name == "" || len(req.Name) < 3
+уже истинно по первому операнду
+
+Для целей диплома эту комбинацию следует пометить как логически избыточную"
