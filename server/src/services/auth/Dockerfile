@@ -3,7 +3,6 @@ FROM golang:1.23-alpine AS builder
 WORKDIR /app/services/auth
 
 COPY services/auth/go.mod services/auth/go.sum ./
-COPY shared/metrics /app/shared/metrics
 RUN go mod download
 
 COPY services/auth/. ./

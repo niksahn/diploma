@@ -3,8 +3,6 @@ FROM golang:1.23-alpine AS builder
 WORKDIR /app/services/user
 
 COPY services/user/go.mod services/user/go.sum ./
-COPY shared/metrics /app/shared/metrics
-COPY shared/kafka /app/shared/kafka
 RUN go mod download
 
 COPY services/user/. ./

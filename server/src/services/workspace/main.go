@@ -14,7 +14,7 @@ import (
 	"github.com/diploma/workspace-service/data/repository"
 	"github.com/diploma/workspace-service/docs"
 	"github.com/diploma/workspace-service/presentation/handlers"
-	metrics "github.com/diploma/shared/metrics"
+	metrics "github.com/niksahn/diploma-go-metrics"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"

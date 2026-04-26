@@ -14,7 +14,7 @@ import (
 	"github.com/diploma/chat-service/data/repository"
 	"github.com/diploma/chat-service/docs"
 	"github.com/diploma/chat-service/presentation/handlers"
-	metrics "github.com/diploma/shared/metrics"
+	metrics "github.com/niksahn/diploma-go-metrics"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"

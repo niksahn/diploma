@@ -14,7 +14,7 @@ import (
 	"github.com/diploma/auth-service/docs"
 	"github.com/diploma/auth-service/handlers"
 	"github.com/diploma/auth-service/repository"
-	metrics "github.com/diploma/shared/metrics"
+	metrics "github.com/niksahn/diploma-go-metrics"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
