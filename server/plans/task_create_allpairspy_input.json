@@ -1,0 +1,32 @@
+{
+  "title": [
+    { "id": "valid", "value": "Valid task title" },
+    { "id": "short", "value": "AB" },
+    { "id": "long_101", "value": "__REPEAT_T_101__" },
+    { "id": "empty", "value": "" },
+    { "id": "special", "value": "<script>alert(1)</script>" },
+    { "id": "spaces_only", "value": "   " }
+  ],
+  "description": [
+    { "id": "valid", "value": "Valid description text" },
+    { "id": "empty", "value": "" },
+    { "id": "long_501", "value": "__REPEAT_D_501__" },
+    { "id": "special", "value": "<img src=x onerror=alert(1)>" }
+  ],
+  "date": [
+    { "id": "future", "value": "2026-03-16" },
+    { "id": "past", "value": "2026-03-14" },
+    { "id": "today", "value": "2026-03-15" },
+    { "id": "invalid_format", "value": "15.03.2026" },
+    { "id": "empty", "value": "" },
+    { "id": "invalid_date", "value": "2026-02-31" }
+  ],
+  "status": [
+    { "id": "created", "value": "1" },
+    { "id": "in_progress", "value": "2" },
+    { "id": "review", "value": "3" },
+    { "id": "done", "value": "4" },
+    { "id": "cancelled", "value": "5" },
+    { "id": "invalid", "value": "0" }
+  ]
+}

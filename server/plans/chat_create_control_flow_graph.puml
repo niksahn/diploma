@@ -1,0 +1,190 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam defaultFontName Arial
+skinparam ArrowColor black
+skinparam linetype ortho
+
+circle "0" as N0
+circle "1" as N1
+circle "2" as N2
+circle "3" as N3
+circle "4" as N4
+circle "5" as N5
+circle "6" as N6
+circle "7" as N7
+circle "8" as N8
+circle "9" as N9
+circle "10" as N10
+circle "11" as N11
+circle "12" as N12
+circle "13" as N13
+circle "14" as N14
+circle "15" as N15
+circle "16" as N16
+circle "17" as N17
+circle "18" as N18
+circle "19" as N19
+circle "20" as N20
+circle "21" as N21
+circle "22" as N22
+circle "23" as N23
+circle "24" as N24
+circle "25" as N25
+circle "26" as N26
+circle "27" as N27
+
+note right of N0
+0 - начало выполнения метода
+end note
+
+note right of N1
+1 - проверка userID
+end note
+
+note right of N2
+2 - проверка ShouldBindJSON
+end note
+
+note right of N3
+3 - возврат 401
+end note
+
+note right of N4
+4 - TrimSpace(req.Name)
+end note
+
+note right of N5
+5 - возврат 400 после bind
+end note
+
+note right of N6
+6 - проверка WorkspaceExists на ошибку
+end note
+
+note right of N7
+7 - возврат 500 при ошибке WorkspaceExists
+end note
+
+note right of N8
+8 - проверка существования workspace
+end note
+
+note right of N9
+9 - проверка req.Type == 1 && req.Name == ""
+end note
+
+note right of N10
+10 - req.Name = "Personal chat"
+end note
+
+note right of N11
+11 - возврат 404
+end note
+
+note right of N12
+12 - проверка req.Type != 1 && req.Name == ""
+end note
+
+note right of N13
+13 - проверка req.Type == 1 && len(Members) != 2
+end note
+
+note right of N14
+14 - возврат 400 для non-personal без имени
+end note
+
+note right of N15
+15 - возврат 400 для personal с неверным числом участников
+end note
+
+note right of N16
+16 - проверка creatorInMembers
+end note
+
+note right of N17
+17 - добавление создателя в members
+end note
+
+note right of N18
+18 - проверка membership создателя на ошибку
+end note
+
+note right of N19
+19 - возврат 500 при ошибке проверки создателя
+end note
+
+note right of N20
+20 - проверка, что создатель состоит в workspace
+end note
+
+note right of N21
+21 - возврат 403, если создатель не состоит в workspace
+end note
+
+note right of N22
+22 - проверка участника workspace на ошибку
+end note
+
+note right of N23
+23 - возврат 500 при ошибке проверки участника
+end note
+
+note right of N24
+24 - проверка, что участник состоит в workspace
+end note
+
+note right of N25
+25 - возврат 403, если участник не состоит в workspace
+end note
+
+note right of N26
+26 - создание чата и добавление участников
+end note
+
+note right of N27
+27 - конец выполнения метода
+end note
+
+N0 --> N1
+N1 --> N2 : yes
+N1 --> N3 : no
+N2 --> N4 : yes
+N2 --> N5 : no
+N4 --> N6
+N6 --> N7 : yes
+N6 --> N8 : no
+N8 --> N9 : yes
+N8 --> N11 : no
+N9 --> N10 : yes
+N9 --> N12 : no
+N10 --> N13
+N12 --> N14 : yes
+N12 --> N13 : no
+N13 --> N15 : yes
+N13 --> N16 : no
+N16 --> N18 : yes
+N16 --> N17 : no
+N17 --> N18
+N18 --> N19 : yes
+N18 --> N20 : no
+N20 --> N22 : yes
+N20 --> N21 : no
+N22 --> N23 : yes
+N22 --> N24 : no
+N24 --> N26 : yes
+N24 --> N25 : no
+N3 --> N27
+N5 --> N27
+N7 --> N27
+N11 --> N27
+N14 --> N27
+N15 --> N27
+N19 --> N27
+N21 --> N27
+N23 --> N27
+N25 --> N27
+N26 --> N27
+
+@enduml

@@ -1,0 +1,301 @@
+№	Покрываемые операторы	Входные данные	Ожидаемый результат
+1	"D1 = да
+Не удалось извлечь userID"	"header:
+Authorization отсутствует
+X-User-ID отсутствует
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}"	"HTTP Status:
+401 Unauthorized
+
+Ответ:
+error = user ID not found"
+2	"D1 = нет
+D2 = да
+JSON не прошел валидацию"	"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{}"	"HTTP Status:
+400 Bad Request
+
+Ответ:
+ошибка валидации входного JSON"
+3	"D1 = нет
+D2 = нет
+D3 = да
+WorkspaceExists вернул ошибку"	"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> error"	"HTTP Status:
+500 Internal Server Error
+
+Ответ:
+error = failed to check workspace"
+4	"D3 = нет
+D4 = да
+Рабочее пространство не существует"	"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (false, nil)"	"HTTP Status:
+404 Not Found
+
+Ответ:
+error = workspace not found"
+5	"D4 = нет
+D5 = да
+Для personal-чата пустое имя
+D7 = нет
+D8 = да
+Создателя нет в списке"	"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": """",
+  ""type"": 1,
+  ""workspace_id"": 7,
+  ""members"": [20, 21]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(20, 7) -> (true, nil)
+IsUserInWorkspace(21, 7) -> (true, nil)
+CreateChat(""Personal chat"", 1, 7) -> chat{id: 55}
+AddUserToChat(55, 20, 1) -> nil
+AddUserToChat(55, 21, 1) -> nil
+AddUserToChat(55, 10, 2) -> nil"	"HTTP Status:
+201 Created
+
+Ответ:
+чат создан успешно
+имя автоматически установлено в Personal chat
+создатель автоматически добавлен в список участников
+members_count = 3"
+6	"D5 = нет
+D6 = да
+Для non-personal-чата имя пустое"	"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": """",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)"	"HTTP Status:
+400 Bad Request
+
+Ответ:
+error = name is required for non-personal chats"
+7	"D5 = нет
+D6 = нет
+D7 = да
+Для personal-чата количество участников не равно 2"	"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Private"",
+  ""type"": 1,
+  ""workspace_id"": 7,
+  ""members"": [10]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)"	"HTTP Status:
+400 Bad Request
+
+Ответ:
+error = personal chat must have exactly 2 members"
+8	"D8 = да
+D9 = нет
+D10 = да
+Ошибка при проверке membership создателя"	"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> error"	"HTTP Status:
+500 Internal Server Error
+
+Ответ:
+error = failed to check workspace membership"
+9	"D9 = нет
+D10 = да
+Создатель не состоит в workspace"	"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (false, nil)"	"HTTP Status:
+403 Forbidden
+
+Ответ:
+error = user is not a member of this workspace"
+10	"D8 = нет
+D9 = нет
+D10 = нет
+D11 = да
+Ошибка при проверке одного из участников"	"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil) при обходе участников
+IsUserInWorkspace(20, 7) -> error"	"HTTP Status:
+500 Internal Server Error
+
+Ответ:
+error = failed to check workspace membership"
+11	"D11 = нет
+D12 = да
+Хотя бы один участник не состоит в workspace"	"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil) при обходе участников
+IsUserInWorkspace(20, 7) -> (false, nil)"	"HTTP Status:
+403 Forbidden
+
+Ответ:
+error = some users are not members of this workspace"
+12	"D12 = нет
+D13 = да
+Ошибка при создании чата"	"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil) при обходе участников
+IsUserInWorkspace(20, 7) -> (true, nil)
+CreateChat(""Team chat"", 2, 7) -> error"	"HTTP Status:
+500 Internal Server Error
+
+Ответ:
+текст ошибки из CreateChat"
+13	"D13 = нет
+D14 = да
+Ошибка при добавлении участника в чат"	"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil) при обходе участников
+IsUserInWorkspace(20, 7) -> (true, nil)
+CreateChat(""Team chat"", 2, 7) -> chat{id: 57}
+AddUserToChat(57, 10, 2) -> nil
+AddUserToChat(57, 20, 1) -> error"	"HTTP Status:
+500 Internal Server Error
+
+Ответ:
+error = failed to add member to chat"
+14	"D13 = нет
+D14 = нет
+Все ключевые решения прошли по успешной ветке
+Создатель уже есть в members"	"header:
+Authorization: Bearer <jwt с user_id=10>
+
+json:
+{
+  ""name"": ""Team chat"",
+  ""type"": 2,
+  ""workspace_id"": 7,
+  ""members"": [10, 20]
+}
+
+mocks:
+WorkspaceExists(7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil)
+IsUserInWorkspace(10, 7) -> (true, nil) при обходе участников
+IsUserInWorkspace(20, 7) -> (true, nil)
+CreateChat(""Team chat"", 2, 7) -> chat{id: 58}
+AddUserToChat(58, 10, 2) -> nil
+AddUserToChat(58, 20, 1) -> nil"	"HTTP Status:
+201 Created
+
+Ответ:
+чат создан успешно
+name = Team chat
+members_count = 2"
