@@ -12,7 +12,7 @@ import (
 	"github.com/diploma/gateway-service/internal/auth"
 	"github.com/diploma/gateway-service/internal/handlers"
 	"github.com/diploma/gateway-service/internal/proxy"
-	metrics "github.com/diploma/shared/metrics"
+	metrics "github.com/niksahn/diploma-go-metrics"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"

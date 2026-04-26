@@ -14,7 +14,7 @@ import (
 	"github.com/diploma/task-service/data/repository"
 	"github.com/diploma/task-service/docs"
 	"github.com/diploma/task-service/presentation/handlers"
-	metrics "github.com/diploma/shared/metrics"
+	metrics "github.com/niksahn/diploma-go-metrics"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"

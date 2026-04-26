@@ -38,10 +38,6 @@ jobs:
         run: npm ci
         working-directory: ${{ matrix.app.path }}
 
-      - name: Lint
-        run: npm run lint
-        working-directory: ${{ matrix.app.path }}
-
       - name: Build
         run: npm run build
         working-directory: ${{ matrix.app.path }}

@@ -10,7 +10,7 @@ import (
 	dmodels "github.com/diploma/complaint-service/data/models"
 	"github.com/diploma/complaint-service/data/repository"
 	apiModels "github.com/diploma/complaint-service/presentation/models"
-	"github.com/diploma/shared/kafka"
+	"github.com/niksahn/diploma-go-kafka"
 	"github.com/gin-gonic/gin"
 )
 
