@@ -8,6 +8,20 @@ const log = {
   error: (...args: unknown[]) => console.error('[ChatWS]', ...args),
 }
 
+function getWebSocketBaseUrl(): string {
+  const wsBaseUrl = import.meta.env.VITE_WS_BASE_URL as string | undefined
+  if (wsBaseUrl && wsBaseUrl.trim().length > 0) {
+    return wsBaseUrl.replace(/\/+$/, '')
+  }
+
+  if (typeof window !== 'undefined') {
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    return `${wsProtocol}//${window.location.host}`
+  }
+
+  return 'ws://localhost:8080'
+}
+
 export type Chat = {
   id: number
   name: string
@@ -115,9 +129,8 @@ export class ChatWebSocket {
       return
     }
 
-    // Direct connection to chat service
-    const wsUrl = `ws://localhost:8084/ws/chats/ws?token=${token}`
-    log.debug(`Connecting via Vite proxy to ${wsUrl}`)
+    const wsUrl = `${getWebSocketBaseUrl()}/ws/chats/ws?token=${token}`
+    log.debug(`Connecting to ${wsUrl}`)
     log.debug(`Token preview: ${token.substring(0, 20)}...`)
     this.ws = new WebSocket(wsUrl)
 

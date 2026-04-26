@@ -1,0 +1,46 @@
+services:
+  postgres:
+    ports: []
+
+  migrate:
+    image: ${DOCKERHUB_NAMESPACE}/diploma-migrate:${IMAGE_TAG}
+    build: null
+
+  auth-service:
+    image: ${DOCKERHUB_NAMESPACE}/diploma-auth:${IMAGE_TAG}
+    build: null
+    ports: []
+
+  user-service:
+    image: ${DOCKERHUB_NAMESPACE}/diploma-user:${IMAGE_TAG}
+    build: null
+    ports: []
+
+  workspace-service:
+    image: ${DOCKERHUB_NAMESPACE}/diploma-workspace:${IMAGE_TAG}
+    build: null
+    ports: []
+
+  chat-service:
+    image: ${DOCKERHUB_NAMESPACE}/diploma-chat:${IMAGE_TAG}
+    build: null
+    ports: []
+
+  task-service:
+    image: ${DOCKERHUB_NAMESPACE}/diploma-task:${IMAGE_TAG}
+    build: null
+    ports: []
+
+  complaint-service:
+    image: ${DOCKERHUB_NAMESPACE}/diploma-complaint:${IMAGE_TAG}
+    build: null
+    ports: []
+
+  gateway:
+    image: ${DOCKERHUB_NAMESPACE}/diploma-gateway:${IMAGE_TAG}
+    build: null
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  swagger-ui:
+    ports: []
