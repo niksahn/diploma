@@ -45,7 +45,7 @@ export const useAuthStore = create<AuthState>()(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
-        if (!res.ok) throw new Error("Login failed");
+        if (!res.ok) throw new Error("Не удалось войти");
         const data = (await res.json()) as LoginResponse;
         const expiresAt = Date.now() + data.expires_in * 1000;
         set({

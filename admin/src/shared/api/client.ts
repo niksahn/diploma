@@ -7,7 +7,7 @@ type ApiOptions = Omit<RequestInit, "body"> & { body?: unknown; skipAuth?: boole
 async function handleResponse<T>(response: Response, logout: () => void): Promise<T> {
   if (response.status === 401) {
     logout();
-    throw new Error("Unauthorized");
+    throw new Error("Требуется авторизация");
   }
 
   if (response.status === 204) {
@@ -17,7 +17,7 @@ async function handleResponse<T>(response: Response, logout: () => void): Promis
   const contentType = response.headers.get("content-type");
   if (!response.ok) {
     const message = contentType?.includes("application/json")
-      ? (await response.json())?.message ?? "Request failed"
+      ? (await response.json())?.message ?? "Ошибка запроса"
       : await response.text();
     throw new Error(message);
   }

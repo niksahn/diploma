@@ -11,7 +11,7 @@
       "type": "stat",
       "targets": [
         {
-          "expr": "up{job=~\"gateway|auth-service|user-service|workspace-service|chat-service|task-service|complaint-service\"}",
+          "expr": "up{job=~\"auth-service|user-service|workspace-service|chat-service|task-service|complaint-service\"}",
           "legendFormat": "{{job}}"
         }
       ],

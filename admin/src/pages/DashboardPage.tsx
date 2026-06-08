@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../shared/api/client";
+import { complaintStatusLabel, healthStatusLabel, LOCALE, ru } from "../shared/i18n/ru";
 
 type HealthResponse = {
-  status: string;
-  service: string;
+  status?: string;
+  service?: string;
 };
 
 type Complaint = {
@@ -27,12 +28,12 @@ function formatDate(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? "—"
-    : date.toLocaleString(undefined, {
+    : date.toLocaleString(LOCALE, {
         year: "numeric",
         month: "short",
         day: "numeric",
         hour: "2-digit",
-        minute: "2-digit",
+        minute: "2-digit"
       });
 }
 
@@ -54,12 +55,12 @@ function DashboardPage() {
     isLoading: isHealthLoading,
     isFetching: isHealthFetching,
     error: healthError,
-    refetch: refetchHealth,
+    refetch: refetchHealth
   } = useQuery<HealthResponse>({
     queryKey: ["health"],
     queryFn: () => apiFetch<HealthResponse>("/health", { skipAuth: true }),
     retry: 1,
-    staleTime: 15_000,
+    staleTime: 15_000
   });
 
   const {
@@ -67,11 +68,11 @@ function DashboardPage() {
     isLoading: isComplaintsLoading,
     isFetching: isComplaintsFetching,
     error: complaintsError,
-    refetch: refetchComplaints,
+    refetch: refetchComplaints
   } = useQuery<ComplaintsResponse>({
     queryKey: ["dashboard", "complaints"],
     queryFn: () => apiFetch<ComplaintsResponse>("/api/v1/complaints?limit=5"),
-    staleTime: 30_000,
+    staleTime: 30_000
   });
 
   const {
@@ -79,11 +80,11 @@ function DashboardPage() {
     isLoading: isWorkspacesLoading,
     isFetching: isWorkspacesFetching,
     error: workspacesError,
-    refetch: refetchWorkspaces,
+    refetch: refetchWorkspaces
   } = useQuery<UserWorkspacesResponse>({
     queryKey: ["dashboard", "workspaces"],
     queryFn: () => apiFetch<UserWorkspacesResponse>("/api/v1/workspaces"),
-    staleTime: 30_000,
+    staleTime: 30_000
   });
 
   const handleRetryStats = () => {
@@ -99,10 +100,8 @@ function DashboardPage() {
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-gray-600">
-            Quick overview of platform health and activity.
-          </p>
+          <h1 className="text-2xl font-semibold">{ru.dashboard.title}</h1>
+          <p className="text-gray-600">{ru.dashboard.subtitle}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -110,7 +109,7 @@ function DashboardPage() {
             disabled={isHealthFetching}
             className="px-3 py-2 rounded-md border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-50"
           >
-            {isHealthFetching ? "Checking..." : "Retry Health"}
+            {isHealthFetching ? ru.dashboard.checking : ru.dashboard.retryHealth}
           </button>
           <button
             onClick={handleRetryStats}
@@ -118,8 +117,8 @@ function DashboardPage() {
             className="px-3 py-2 rounded-md border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-50"
           >
             {isComplaintsFetching || isWorkspacesFetching
-              ? "Refreshing..."
-              : "Refresh Stats"}
+              ? ru.actions.refreshing
+              : ru.dashboard.refreshStats}
           </button>
         </div>
       </div>
@@ -128,34 +127,32 @@ function DashboardPage() {
         <div className="lg:col-span-1 bg-white border border-gray-200 rounded-lg shadow-sm p-5 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold">Health</h2>
+              <h2 className="text-lg font-semibold">{ru.dashboard.health}</h2>
               {isHealthFetching && !isHealthLoading && (
-                <p className="text-sm text-indigo-600">Rechecking...</p>
+                <p className="text-sm text-indigo-600">{ru.dashboard.rechecking}</p>
               )}
             </div>
           </div>
-          {isHealthLoading && (
-            <p className="text-gray-600">Checking service health...</p>
-          )}
+          {isHealthLoading && <p className="text-gray-600">{ru.dashboard.checkingHealth}</p>}
           {healthError && !isHealthLoading && (
             <div className="bg-red-50 border border-red-200 rounded-md p-3 text-red-700">
               <p className="text-sm">
-                {(healthError as Error).message || "Health check failed."}
+                {(healthError as Error).message || ru.errors.healthCheckFailed}
               </p>
               <button
                 onClick={handleRetryHealth}
                 className="mt-2 px-3 py-1.5 rounded-md bg-red-600 text-white text-sm hover:bg-red-700"
               >
-                Retry
+                {ru.actions.retry}
               </button>
             </div>
           )}
           {!isHealthLoading && !healthError && healthData && (
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Service</p>
+                <p className="text-sm text-gray-500">{ru.dashboard.service}</p>
                 <p className="text-base font-medium text-gray-900">
-                  {healthData.service || "Unknown"}
+                  {healthData.service || ru.dashboard.unknown}
                 </p>
               </div>
               <span
@@ -163,7 +160,7 @@ function DashboardPage() {
                   healthData.status
                 )}`}
               >
-                {healthData.status}
+                {healthStatusLabel(healthData.status)}
               </span>
             </div>
           )}
@@ -171,20 +168,19 @@ function DashboardPage() {
 
         <div className="lg:col-span-2 bg-white border border-gray-200 rounded-lg shadow-sm p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Quick stats</h2>
+            <h2 className="text-lg font-semibold">{ru.dashboard.quickStats}</h2>
             {(isComplaintsFetching || isWorkspacesFetching) && (
-              <p className="text-sm text-indigo-600">Refreshing...</p>
+              <p className="text-sm text-indigo-600">{ru.actions.refreshing}</p>
             )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="border border-gray-200 rounded-md p-4">
-              <p className="text-sm text-gray-500">Complaints</p>
+              <p className="text-sm text-gray-500">{ru.dashboard.complaints}</p>
               {isComplaintsLoading ? (
-                <p className="mt-1 text-gray-600">Loading...</p>
+                <p className="mt-1 text-gray-600">{ru.dashboard.loading}</p>
               ) : complaintsError ? (
                 <p className="mt-1 text-sm text-red-600">
-                  {(complaintsError as Error).message ||
-                    "Failed to load complaints."}
+                  {(complaintsError as Error).message || ru.errors.loadComplaints}
                 </p>
               ) : (
                 <p className="mt-1 text-3xl font-semibold text-gray-900">
@@ -193,13 +189,12 @@ function DashboardPage() {
               )}
             </div>
             <div className="border border-gray-200 rounded-md p-4">
-              <p className="text-sm text-gray-500">Workspaces</p>
+              <p className="text-sm text-gray-500">{ru.dashboard.workspaces}</p>
               {isWorkspacesLoading ? (
-                <p className="mt-1 text-gray-600">Loading...</p>
+                <p className="mt-1 text-gray-600">{ru.dashboard.loading}</p>
               ) : workspacesError ? (
                 <p className="mt-1 text-sm text-red-600">
-                  {(workspacesError as Error).message ||
-                    "Failed to load workspaces."}
+                  {(workspacesError as Error).message || ru.errors.loadWorkspaces}
                 </p>
               ) : (
                 <p className="mt-1 text-3xl font-semibold text-gray-900">
@@ -214,9 +209,9 @@ function DashboardPage() {
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div>
-            <h2 className="text-lg font-semibold">Latest complaints</h2>
+            <h2 className="text-lg font-semibold">{ru.dashboard.latestComplaints}</h2>
             {isComplaintsFetching && !isComplaintsLoading && (
-              <p className="text-sm text-indigo-600">Refreshing...</p>
+              <p className="text-sm text-indigo-600">{ru.actions.refreshing}</p>
             )}
           </div>
           <button
@@ -224,12 +219,12 @@ function DashboardPage() {
             disabled={isComplaintsFetching}
             className="px-3 py-1.5 rounded-md border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-50"
           >
-            {isComplaintsFetching ? "Refreshing..." : "Refresh"}
+            {isComplaintsFetching ? ru.actions.refreshing : ru.actions.refresh}
           </button>
         </div>
 
         {isComplaintsLoading && (
-          <div className="p-6 text-gray-600">Loading complaints...</div>
+          <div className="p-6 text-gray-600">{ru.dashboard.loadingComplaints}</div>
         )}
 
         {complaintsError && !isComplaintsLoading && (
@@ -237,14 +232,13 @@ function DashboardPage() {
             <div className="bg-red-50 border border-red-200 rounded-md p-4 text-red-700">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm">
-                  {(complaintsError as Error).message ||
-                    "Failed to load complaints."}
+                  {(complaintsError as Error).message || ru.errors.loadComplaints}
                 </p>
                 <button
                   onClick={() => refetchComplaints()}
                   className="px-3 py-1.5 rounded-md bg-red-600 text-white text-sm hover:bg-red-700"
                 >
-                  Retry
+                  {ru.actions.retry}
                 </button>
               </div>
             </div>
@@ -258,16 +252,16 @@ function DashboardPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      ID
+                      {ru.table.id}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Status
+                      {ru.table.status}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Author
+                      {ru.table.author}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Created
+                      {ru.table.created}
                     </th>
                   </tr>
                 </thead>
@@ -283,11 +277,11 @@ function DashboardPage() {
                             complaint.status
                           )}`}
                         >
-                          {complaint.status}
+                          {complaintStatusLabel(complaint.status)}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-700">
-                        {complaint.author_login || "Unknown"}
+                        {complaint.author_login || "—"}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-700">
                         {formatDate(complaint.created_at)}
@@ -297,9 +291,7 @@ function DashboardPage() {
                 </tbody>
               </table>
             ) : (
-              <div className="p-6 text-center text-gray-600">
-                No complaints found.
-              </div>
+              <div className="p-6 text-center text-gray-600">{ru.dashboard.noComplaints}</div>
             )}
           </div>
         )}
@@ -309,4 +301,3 @@ function DashboardPage() {
 }
 
 export default DashboardPage;
-

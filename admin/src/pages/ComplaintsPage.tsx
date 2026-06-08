@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../shared/api/client";
+import { complaintStatusLabel, LOCALE, ru } from "../shared/i18n/ru";
 
 type Complaint = {
   id: number;
@@ -37,24 +34,26 @@ type ComplaintDetail = {
   status_history?: StatusHistory[];
 };
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "All" },
-  { value: "pending", label: "Pending" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "resolved", label: "Resolved" },
-  { value: "rejected", label: "Rejected" },
+const STATUS_FILTER_OPTIONS = [
+  { value: "all", label: ru.complaints.filterAll },
+  { value: "pending", label: ru.complaints.statusPending },
+  { value: "in_progress", label: ru.complaints.statusInProgress },
+  { value: "resolved", label: ru.complaints.statusResolved },
+  { value: "rejected", label: ru.complaints.statusRejected }
 ];
+
+const STATUS_UPDATE_OPTIONS = STATUS_FILTER_OPTIONS.filter((opt) => opt.value !== "all");
 
 function formatDate(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? "—"
-    : date.toLocaleString(undefined, {
+    : date.toLocaleString(LOCALE, {
         year: "numeric",
         month: "short",
         day: "numeric",
         hour: "2-digit",
-        minute: "2-digit",
+        minute: "2-digit"
       });
 }
 
@@ -71,23 +70,21 @@ function ComplaintsPage() {
     isLoading: isComplaintsLoading,
     isFetching: isComplaintsFetching,
     error: complaintsError,
-    refetch: refetchComplaints,
+    refetch: refetchComplaints
   } = useQuery<ComplaintsResponse>({
     queryKey: ["complaints", statusFilter],
     queryFn: () => {
       const params = new URLSearchParams({
         limit: "20",
-        offset: "0",
+        offset: "0"
       });
       if (statusFilter !== "all") {
         params.set("status", statusFilter);
       }
-      return apiFetch<ComplaintsResponse>(
-        `/api/v1/complaints?${params.toString()}`
-      );
+      return apiFetch<ComplaintsResponse>(`/api/v1/complaints?${params.toString()}`);
     },
     placeholderData: (previousData) => previousData,
-    staleTime: 30_000,
+    staleTime: 30_000
   });
 
   const {
@@ -95,13 +92,12 @@ function ComplaintsPage() {
     isLoading: isDetailLoading,
     isFetching: isDetailFetching,
     error: detailError,
-    refetch: refetchDetail,
+    refetch: refetchDetail
   } = useQuery<ComplaintDetail>({
     queryKey: ["complaint", selectedId],
-    queryFn: () =>
-      apiFetch<ComplaintDetail>(`/api/v1/complaints/${selectedId!}`),
+    queryFn: () => apiFetch<ComplaintDetail>(`/api/v1/complaints/${selectedId!}`),
     enabled: selectedId !== null,
-    staleTime: 30_000,
+    staleTime: 30_000
   });
 
   useEffect(() => {
@@ -117,15 +113,15 @@ function ComplaintsPage() {
         method: "PUT",
         body: {
           status: payload.status,
-          comment: payload.comment?.trim() || undefined,
-        },
+          comment: payload.comment?.trim() || undefined
+        }
       }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["complaints"] });
       queryClient.invalidateQueries({
-        queryKey: ["complaint", variables.id],
+        queryKey: ["complaint", variables.id]
       });
-    },
+    }
   });
 
   useEffect(() => {
@@ -133,8 +129,7 @@ function ComplaintsPage() {
   }, [selectedId, updateMutation]);
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) =>
-      apiFetch<void>(`/api/v1/complaints/${id}`, { method: "DELETE" }),
+    mutationFn: (id: number) => apiFetch<void>(`/api/v1/complaints/${id}`, { method: "DELETE" }),
     onMutate: (id) => {
       setPendingDeleteId(id);
     },
@@ -148,7 +143,7 @@ function ComplaintsPage() {
       } else {
         queryClient.invalidateQueries({ queryKey: ["complaint", id] });
       }
-    },
+    }
   });
 
   const handleUpdate = () => {
@@ -156,7 +151,7 @@ function ComplaintsPage() {
     updateMutation.mutate({
       id: selectedId,
       status: updateStatus,
-      comment: updateComment || undefined,
+      comment: updateComment || undefined
     });
   };
 
@@ -173,12 +168,10 @@ function ComplaintsPage() {
     <div className="p-6 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Complaints</h1>
-          <p className="text-gray-600">
-            View complaints, inspect details, and update statuses.
-          </p>
+          <h1 className="text-2xl font-semibold">{ru.complaints.title}</h1>
+          <p className="text-gray-600">{ru.complaints.subtitle}</p>
           {isComplaintsFetching && !isComplaintsLoading && (
-            <p className="mt-1 text-sm text-indigo-600">⏳ Refreshing...</p>
+            <p className="mt-1 text-sm text-indigo-600">⏳ {ru.actions.refreshing}</p>
           )}
         </div>
         <div className="flex items-center gap-3">
@@ -187,7 +180,7 @@ function ComplaintsPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-3 py-2 rounded-md border border-gray-300 text-sm bg-white"
           >
-            {STATUS_OPTIONS.map((option) => (
+            {STATUS_FILTER_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -198,14 +191,14 @@ function ComplaintsPage() {
             disabled={isComplaintsFetching}
             className="px-3 py-2 rounded-md border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-50"
           >
-            {isComplaintsFetching ? "Refreshing..." : "Refresh"}
+            {isComplaintsFetching ? ru.actions.refreshing : ru.actions.refresh}
           </button>
         </div>
       </div>
 
       {isComplaintsLoading && (
         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-          <p className="text-gray-600">Loading complaints...</p>
+          <p className="text-gray-600">{ru.complaints.loading}</p>
         </div>
       )}
 
@@ -213,14 +206,13 @@ function ComplaintsPage() {
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm">
-              {(complaintsError as Error).message ||
-                "Failed to load complaints."}
+              {(complaintsError as Error).message || ru.errors.loadComplaints}
             </p>
             <button
               onClick={() => refetchComplaints()}
               className="px-3 py-1.5 rounded-md bg-red-600 text-white text-sm hover:bg-red-700"
             >
-              Retry
+              {ru.actions.retry}
             </button>
           </div>
         </div>
@@ -235,19 +227,19 @@ function ComplaintsPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        ID
+                        {ru.table.id}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Author
+                        {ru.table.author}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Status
+                        {ru.table.status}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Created
+                        {ru.table.created}
                       </th>
                       <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Actions
+                        {ru.complaints.actions}
                       </th>
                     </tr>
                   </thead>
@@ -262,7 +254,7 @@ function ComplaintsPage() {
                         </td>
                         <td className="px-6 py-4 text-sm">
                           <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
-                            {complaint.status}
+                            {complaintStatusLabel(complaint.status)}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700">
@@ -273,20 +265,18 @@ function ComplaintsPage() {
                             onClick={() => setSelectedId(complaint.id)}
                             className="px-3 py-1.5 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50"
                           >
-                            View
+                            {ru.actions.view}
                           </button>
                           <button
                             onClick={() => handleDelete(complaint.id)}
                             disabled={
-                              deleteMutation.isPending &&
-                              pendingDeleteId === complaint.id
+                              deleteMutation.isPending && pendingDeleteId === complaint.id
                             }
                             className="px-3 py-1.5 rounded-md border border-red-200 bg-red-50 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
                           >
-                            {deleteMutation.isPending &&
-                            pendingDeleteId === complaint.id
-                              ? "Deleting..."
-                              : "Delete"}
+                            {deleteMutation.isPending && pendingDeleteId === complaint.id
+                              ? ru.actions.deleting
+                              : ru.actions.delete}
                           </button>
                         </td>
                       </tr>
@@ -295,28 +285,20 @@ function ComplaintsPage() {
                 </table>
               </div>
             ) : (
-              <div className="p-6 text-center text-gray-600">
-                No complaints found.
-              </div>
+              <div className="p-6 text-center text-gray-600">{ru.complaints.none}</div>
             )}
           </div>
 
           <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
-            {!selectedId && (
-              <p className="text-gray-600">
-                Select a complaint to view details.
-              </p>
-            )}
+            {!selectedId && <p className="text-gray-600">{ru.complaints.selectHint}</p>}
 
             {selectedId && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold">
-                      Complaint #{selectedId}
-                    </h2>
+                    <h2 className="text-lg font-semibold">{ru.complaints.complaint(selectedId)}</h2>
                     {isDetailFetching && !isDetailLoading && (
-                      <p className="text-sm text-indigo-600">Refreshing…</p>
+                      <p className="text-sm text-indigo-600">{ru.actions.refreshing}</p>
                     )}
                   </div>
                   <button
@@ -324,26 +306,23 @@ function ComplaintsPage() {
                     disabled={isDetailFetching}
                     className="px-3 py-1.5 rounded-md border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-50"
                   >
-                    {isDetailFetching ? "Refreshing..." : "Refresh"}
+                    {isDetailFetching ? ru.actions.refreshing : ru.actions.refresh}
                   </button>
                 </div>
 
-                {isDetailLoading && (
-                  <p className="text-gray-600">Loading details...</p>
-                )}
+                {isDetailLoading && <p className="text-gray-600">{ru.complaints.loadingDetails}</p>}
 
                 {detailError && !isDetailLoading && (
                   <div className="bg-red-50 border border-red-200 rounded-md p-3 text-red-700">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm">
-                        {(detailError as Error).message ||
-                          "Failed to load complaint."}
+                        {(detailError as Error).message || ru.errors.loadComplaint}
                       </span>
                       <button
                         onClick={() => refetchDetail()}
                         className="px-2.5 py-1 rounded-md bg-red-600 text-white text-xs hover:bg-red-700"
                       >
-                        Retry
+                        {ru.actions.retry}
                       </button>
                     </div>
                   </div>
@@ -353,24 +332,22 @@ function ComplaintsPage() {
                   <div className="space-y-4">
                     <div className="grid gap-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Author</span>
+                        <span className="text-gray-500">{ru.complaints.author}</span>
                         <span className="text-gray-900">{authorLabel}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Status</span>
+                        <span className="text-gray-500">{ru.complaints.status}</span>
                         <span className="text-gray-900">
-                          {detailData.status}
+                          {complaintStatusLabel(detailData.status)}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Created</span>
-                        <span className="text-gray-900">
-                          {formatDate(detailData.created_at)}
-                        </span>
+                        <span className="text-gray-500">{ru.complaints.created}</span>
+                        <span className="text-gray-900">{formatDate(detailData.created_at)}</span>
                       </div>
                       {detailData.device_description && (
                         <div className="flex justify-between">
-                          <span className="text-gray-500">Device</span>
+                          <span className="text-gray-500">{ru.complaints.device}</span>
                           <span className="text-gray-900 text-right">
                             {detailData.device_description}
                           </span>
@@ -379,9 +356,7 @@ function ComplaintsPage() {
                     </div>
 
                     <div>
-                      <p className="text-sm font-semibold text-gray-800 mb-1">
-                        Text
-                      </p>
+                      <p className="text-sm font-semibold text-gray-800 mb-1">{ru.complaints.text}</p>
                       <p className="text-sm text-gray-700 whitespace-pre-line bg-gray-50 border border-gray-200 rounded-md p-3">
                         {detailData.text}
                       </p>
@@ -390,7 +365,7 @@ function ComplaintsPage() {
                     {detailData.status_history?.length ? (
                       <div>
                         <p className="text-sm font-semibold text-gray-800 mb-2">
-                          Status history
+                          {ru.complaints.statusHistory}
                         </p>
                         <div className="space-y-2">
                           {detailData.status_history.map((entry, idx) => (
@@ -400,12 +375,10 @@ function ComplaintsPage() {
                             >
                               <div className="flex items-center justify-between">
                                 <span className="font-medium text-gray-900">
-                                  {entry.status}
+                                  {complaintStatusLabel(entry.status)}
                                 </span>
                                 <span className="text-gray-600">
-                                  {entry.changed_at
-                                    ? formatDate(entry.changed_at)
-                                    : "—"}
+                                  {entry.changed_at ? formatDate(entry.changed_at) : "—"}
                                 </span>
                               </div>
                               {entry.comment && (
@@ -420,20 +393,16 @@ function ComplaintsPage() {
                     ) : null}
 
                     <div className="border-t border-gray-200 pt-4 space-y-3">
-                      <p className="text-sm font-semibold text-gray-800">
-                        Update status
-                      </p>
+                      <p className="text-sm font-semibold text-gray-800">{ru.complaints.updateStatus}</p>
                       <div className="grid gap-3">
                         <label className="text-sm text-gray-700">
-                          Status
+                          {ru.complaints.status}
                           <select
                             value={updateStatus}
                             onChange={(e) => setUpdateStatus(e.target.value)}
                             className="mt-1 w-full px-3 py-2 rounded-md border border-gray-300 text-sm bg-white"
                           >
-                            {STATUS_OPTIONS.filter(
-                              (opt) => opt.value !== "all"
-                            ).map((option) => (
+                            {STATUS_UPDATE_OPTIONS.map((option) => (
                               <option key={option.value} value={option.value}>
                                 {option.label}
                               </option>
@@ -441,13 +410,13 @@ function ComplaintsPage() {
                           </select>
                         </label>
                         <label className="text-sm text-gray-700">
-                          Comment (optional)
+                          {ru.complaints.commentOptional}
                           <textarea
                             value={updateComment}
                             onChange={(e) => setUpdateComment(e.target.value)}
                             rows={3}
                             className="mt-1 w-full px-3 py-2 rounded-md border border-gray-300 text-sm bg-white"
-                            placeholder="Add a note about the status change"
+                            placeholder={ru.complaints.commentPlaceholder}
                           />
                         </label>
                         <button
@@ -455,18 +424,15 @@ function ComplaintsPage() {
                           disabled={updateMutation.isPending}
                           className="w-fit px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
                         >
-                          {updateMutation.isPending ? "Updating..." : "Update"}
+                          {updateMutation.isPending ? ru.actions.updating : ru.actions.update}
                         </button>
                         {updateMutation.error && (
                           <p className="text-sm text-red-600">
-                            {(updateMutation.error as Error).message ||
-                              "Failed to update status."}
+                            {(updateMutation.error as Error).message || ru.errors.updateStatusFailed}
                           </p>
                         )}
                         {updateMutation.isSuccess && (
-                          <p className="text-sm text-green-700">
-                            Status updated successfully.
-                          </p>
+                          <p className="text-sm text-green-700">{ru.complaints.statusUpdated}</p>
                         )}
                       </div>
                     </div>
@@ -482,12 +448,3 @@ function ComplaintsPage() {
 }
 
 export default ComplaintsPage;
-
-
-
-
-
-
-
-
-

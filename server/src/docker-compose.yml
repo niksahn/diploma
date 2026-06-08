@@ -259,7 +259,8 @@ services:
       - messenger_network
 
   grafana:
-    image: grafana/grafana:10.2.3
+    # 10.2.3 периодически падал с "concurrent map writes" при anonymous/embed режиме.
+    image: grafana/grafana:10.4.3
     container_name: messenger_grafana
     ports:
       - "3000:3000"
@@ -267,6 +268,14 @@ services:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin123
       GF_USERS_ALLOW_SIGN_UP: false
+      # Работа Grafana через dev-прокси Vite: /grafana-proxy/*
+      GF_SERVER_ROOT_URL: http://localhost:3000/grafana-proxy/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      # Встраивание дашбордов в панель администратора (iframe)
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_SERVER_CORS_ALLOW_ORIGIN_ALL: "true"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro

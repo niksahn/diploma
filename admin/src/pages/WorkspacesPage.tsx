@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { apiFetch } from "../shared/api/client";
+import { LOCALE, ru } from "../shared/i18n/ru";
 
 type AdminWorkspace = {
   id: number;
@@ -48,7 +49,7 @@ function WorkspacesPage() {
     const date = new Date(value);
     return Number.isNaN(date.getTime())
       ? "—"
-      : date.toLocaleDateString(undefined, {
+      : date.toLocaleDateString(LOCALE, {
           year: "numeric",
           month: "short",
           day: "numeric"
@@ -59,9 +60,11 @@ function WorkspacesPage() {
     <div className="p-6 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Workspaces</h1>
-          <p className="text-gray-600">Admin view of all workspaces.</p>
-          {isFetching && !isLoading && <p className="mt-1 text-sm text-indigo-600">⏳ Refreshing...</p>}
+          <h1 className="text-2xl font-semibold">{ru.workspaces.title}</h1>
+          <p className="text-gray-600">{ru.workspaces.subtitle}</p>
+          {isFetching && !isLoading && (
+            <p className="mt-1 text-sm text-indigo-600">⏳ {ru.actions.refreshing}</p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -69,32 +72,32 @@ function WorkspacesPage() {
             disabled={isFetching}
             className="px-3 py-2 rounded-md border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-50"
           >
-            {isFetching ? "Refreshing..." : "Refresh"}
+            {isFetching ? ru.actions.refreshing : ru.actions.refresh}
           </button>
           <button
             onClick={() => navigate("/workspaces/new")}
             className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
           >
-            Create
+            {ru.workspaces.create}
           </button>
         </div>
       </div>
 
       {isLoading && (
         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-          <p className="text-gray-600">Loading workspaces...</p>
+          <p className="text-gray-600">{ru.workspaces.loading}</p>
         </div>
       )}
 
       {error && !isLoading && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm">{(error as Error).message || "Failed to load workspaces."}</p>
+            <p className="text-sm">{(error as Error).message || ru.errors.loadWorkspaces}</p>
             <button
               onClick={() => refetch()}
               className="px-3 py-1.5 rounded-md bg-red-600 text-white text-sm hover:bg-red-700"
             >
-              Retry
+              {ru.actions.retry}
             </button>
           </div>
         </div>
@@ -104,7 +107,7 @@ function WorkspacesPage() {
         <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm space-y-3">
           <div className="grid gap-3 md:grid-cols-3">
             <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-700">Tariff ID (optional)</label>
+              <label className="text-sm text-gray-700">{ru.workspaces.tariffIdOptional}</label>
               <input
                 value={tariffId}
                 onChange={(e) => {
@@ -116,7 +119,7 @@ function WorkspacesPage() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-700">Limit</label>
+              <label className="text-sm text-gray-700">{ru.workspaces.limit}</label>
               <input
                 type="number"
                 min={1}
@@ -130,7 +133,7 @@ function WorkspacesPage() {
               />
             </div>
             <div className="flex items-end">
-              <div className="text-sm text-gray-600">Total: {total} | Offset: {offset}</div>
+              <div className="text-sm text-gray-600">{ru.workspaces.totalOffset(total, offset)}</div>
             </div>
           </div>
         </div>
@@ -144,19 +147,19 @@ function WorkspacesPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Name
+                      {ru.workspaces.name}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Tariff
+                      {ru.workspaces.tariff}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Members
+                      {ru.workspaces.members}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Created at
+                      {ru.workspaces.createdAt}
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Actions
+                      {ru.workspaces.actions}
                     </th>
                   </tr>
                 </thead>
@@ -172,7 +175,7 @@ function WorkspacesPage() {
                           onClick={() => navigate(`/workspaces/${workspace.id}`)}
                           className="px-3 py-1.5 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50"
                         >
-                          Open
+                          {ru.actions.open}
                         </button>
                       </td>
                     </tr>
@@ -181,12 +184,12 @@ function WorkspacesPage() {
               </table>
             </div>
           ) : (
-            <div className="p-6 text-center text-gray-600">No workspaces yet.</div>
+            <div className="p-6 text-center text-gray-600">{ru.workspaces.none}</div>
           )}
 
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
             <div className="text-sm text-gray-600">
-              Showing {workspaces.length} of {total} (offset {offset})
+              {ru.workspaces.showing(workspaces.length, total, offset)}
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -194,14 +197,14 @@ function WorkspacesPage() {
                 disabled={!canPrev}
                 className="px-3 py-1.5 rounded-md border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-50"
               >
-                Prev
+                {ru.actions.prev}
               </button>
               <button
                 onClick={() => setOffset((prev) => prev + limit)}
                 disabled={!canNext}
                 className="px-3 py-1.5 rounded-md border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-50"
               >
-                Next
+                {ru.actions.next}
               </button>
             </div>
           </div>

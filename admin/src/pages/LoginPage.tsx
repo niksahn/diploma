@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { ru } from "../shared/i18n/ru";
 import { useAuthStore } from "../shared/state/auth";
 
 function LoginPage() {
@@ -20,7 +21,7 @@ function LoginPage() {
       const redirect = (location.state as { from?: { pathname: string } })?.from?.pathname || "/";
       navigate(redirect);
     } catch (err) {
-      setError((err as Error).message || "Login failed");
+      setError((err as Error).message || ru.errors.loginFailed);
     } finally {
       setLoading(false);
     }
@@ -29,10 +30,10 @@ function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white shadow-md rounded-lg p-8 w-full max-w-md">
-        <h1 className="text-2xl font-semibold mb-6 text-center">Admin Login</h1>
+        <h1 className="text-2xl font-semibold mb-6 text-center">{ru.login.title}</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Login</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{ru.login.login}</label>
             <input
               type="text"
               value={form.login}
@@ -42,7 +43,7 @@ function LoginPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{ru.login.password}</label>
             <input
               type="password"
               value={form.password}
@@ -57,7 +58,7 @@ function LoginPage() {
             disabled={loading}
             className="w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? ru.actions.signingIn : ru.actions.signIn}
           </button>
         </form>
       </div>
@@ -66,4 +67,3 @@ function LoginPage() {
 }
 
 export default LoginPage;
-

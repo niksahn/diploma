@@ -29,6 +29,17 @@ npm run build
 
 ## Переменные окружения
 - `VITE_API_BASE_URL` — база для API Gateway (по умолчанию `http://localhost:8080`).
+- `VITE_GRAFANA_URL` — URL Grafana для встраивания графиков (по умолчанию `http://localhost:3000`).
+- `VITE_GRAFANA_DASHBOARD_UID` — UID дашборда (по умолчанию `microservices-overview`).
+
+Пример: скопировать `.env.example` в `.env` и при необходимости изменить адреса.
+
+### Grafana в разделе «Настройки и состояние»
+1. Запустить стек мониторинга: из `server/src` выполнить `docker compose up -d prometheus grafana`.
+2. После первого старта Grafana: http://localhost:3000 (логин `admin` / `admin123`).
+3. Логин Grafana: **admin** / **admin123** (см. `server/src/docker-compose.yml`).
+4. В `.env` укажите `VITE_GRAFANA_URL=http://127.0.0.1:3000` (на Windows `localhost` иногда даёт «отказано в подключении» из‑за IPv6).
+5. После изменения `docker-compose` пересоздайте Grafana: `docker compose up -d grafana --force-recreate`.
 
 ## Основные страницы и маршруты
 - `/login` — вход администратора (`/api/v1/auth/admin/login`).
@@ -37,7 +48,7 @@ npm run build
 - `/workspaces/new` — создание РП (name, leader_id, tariff_id).
 - `/workspaces/:id` — детали РП: изменение названия/тарифа, смена лидера, управление участниками.
 - `/complaints` — жалобы: фильтр по статусу, детали, смена статуса, удаление.
-- `/settings` — заглушка health/настроек.
+- `/settings` — встроенные графики Grafana (дашборд Microservices Overview).
 
 ## Быстрый чек лист для проверки
 1) `npm run dev` → зайти на `http://localhost:5173`.
