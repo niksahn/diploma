@@ -130,6 +130,8 @@ export const ru = {
     loadTariffsFailed: "Не удалось получить тарифы",
     loadingMembers: "Загрузка участников…",
     loading: "Загрузка…",
+    deleteConfirm: (name: string) =>
+      `Удалить рабочее пространство «${name}»? Это действие нельзя отменить.`,
   },
   users: {
     title: "Пользователи",
@@ -143,7 +145,10 @@ export const ru = {
     id: "ID",
     login: "Логин",
     name: "ФИО",
+    actions: "Действия",
     none: "Пользователи не найдены",
+    deleteConfirm: (login: string) =>
+      `Удалить пользователя «${login}»? Это действие нельзя отменить.`,
     showing: (count: number, total: number, offset: number) =>
       `Показано ${count} из ${total} (смещение ${offset})`,
   },

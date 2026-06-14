@@ -1,6 +1,12 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { fetchUsers, type SearchUsersParams, type UserListItem, type SearchUsersResponse } from "../shared/api/users";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  deleteUser,
+  fetchUsers,
+  type SearchUsersParams,
+  type UserListItem,
+  type SearchUsersResponse
+} from "../shared/api/users";
 import { ru, userStatusLabel } from "../shared/i18n/ru";
 
 const STATUS_OPTIONS = [
@@ -12,6 +18,7 @@ const STATUS_OPTIONS = [
 ];
 
 function UsersPage() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string | "">("");
   const [workspaceId, setWorkspaceId] = useState("");
@@ -41,10 +48,22 @@ function UsersPage() {
   const canPrev = offset > 0;
   const canNext = offset + limit < total;
 
+  const removeUser = useMutation({
+    mutationFn: deleteUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    }
+  });
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setOffset(0);
     refetch();
+  };
+
+  const handleDeleteUser = (user: UserListItem) => {
+    if (!window.confirm(ru.users.deleteConfirm(user.login))) return;
+    removeUser.mutate(user.id);
   };
 
   return (
@@ -168,19 +187,36 @@ function UsersPage() {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       {ru.users.status}
                     </th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      {ru.users.actions}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {users.map((u) => (
-                    <tr key={u.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">#{u.id}</td>
-                      <td className="px-4 py-3 text-sm text-gray-800">{u.login}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {[u.surname, u.name, u.patronymic].filter(Boolean).join(" ") || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{userStatusLabel(u.status)}</td>
-                    </tr>
-                  ))}
+                  {users.map((u) => {
+                    const deleting = removeUser.isPending && removeUser.variables === u.id;
+
+                    return (
+                      <tr key={u.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">#{u.id}</td>
+                        <td className="px-4 py-3 text-sm text-gray-800">{u.login}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {[u.surname, u.name, u.patronymic].filter(Boolean).join(" ") || "—"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{userStatusLabel(u.status)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUser(u)}
+                            disabled={deleting}
+                            className="rounded-md border border-rose-200 bg-rose-50 px-3 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-60"
+                          >
+                            {deleting ? ru.actions.deleting : ru.actions.delete}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

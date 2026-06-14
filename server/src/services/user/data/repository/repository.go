@@ -14,7 +14,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-var ErrWorkspaceNotFound = errors.New("workspace not found")
+var (
+	ErrUserNotFound      = errors.New("user not found")
+	ErrWorkspaceNotFound = errors.New("workspace not found")
+)
 
 type Repository struct {
 	db *database.DB
@@ -125,6 +128,60 @@ func (r *Repository) UpdateUserProfile(ctx context.Context, userID int, surname,
 	}
 
 	return &user, nil
+}
+
+// DeleteUser удаляет пользователя и зависимые связи в рамках одной транзакции.
+func (r *Repository) DeleteUser(ctx context.Context, userID int) error {
+	tx, err := r.db.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	cleanupQueries := []struct {
+		table string
+		query string
+	}{
+		{table: "refresh_tokens", query: `DELETE FROM refresh_tokens WHERE user_id = $1 AND role = 'user'`},
+		{table: "complaint_status_history", query: `DELETE FROM complaint_status_history WHERE changed_by = $1`},
+		{table: "complaints", query: `DELETE FROM complaints WHERE author = $1`},
+		{table: "messages", query: `DELETE FROM messages WHERE usersid = $1`},
+		{table: "userinchat", query: `DELETE FROM "userinchat" WHERE usersid = $1`},
+		{table: "userinworkspace", query: `DELETE FROM "userinworkspace" WHERE usersid = $1`},
+		{table: "userintask", query: `DELETE FROM "userintask" WHERE usersid = $1`},
+		{table: "taskchanges", query: `DELETE FROM "taskchanges" WHERE tasksid IN (SELECT id FROM tasks WHERE creator = $1)`},
+		{table: "taskinchat", query: `DELETE FROM "taskinchat" WHERE tasksid IN (SELECT id FROM tasks WHERE creator = $1)`},
+		{table: "userintask", query: `DELETE FROM "userintask" WHERE tasksid IN (SELECT id FROM tasks WHERE creator = $1)`},
+		{table: "tasks", query: `DELETE FROM tasks WHERE creator = $1`},
+	}
+
+	for _, cleanup := range cleanupQueries {
+		var exists bool
+		if err := tx.QueryRow(ctx, `SELECT to_regclass($1) IS NOT NULL`, "public."+cleanup.table).Scan(&exists); err != nil {
+			return fmt.Errorf("failed to check dependency table: %w", err)
+		}
+		if !exists {
+			continue
+		}
+
+		if _, err := tx.Exec(ctx, cleanup.query, userID); err != nil {
+			return fmt.Errorf("failed to cleanup user dependencies: %w", err)
+		}
+	}
+
+	result, err := tx.Exec(ctx, `DELETE FROM users WHERE id = $1`, userID)
+	if err != nil {
+		return fmt.Errorf("failed to delete user: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }
 
 // UpdateUserStatus обновляет статус пользователя

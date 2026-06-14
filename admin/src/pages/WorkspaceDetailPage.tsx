@@ -1,7 +1,7 @@
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { apiFetch } from "../shared/api/client";
 import { LOCALE, ru } from "../shared/i18n/ru";
 import { useAuthStore } from "../shared/state/auth";
@@ -47,6 +47,7 @@ const roleOptions = [
 
 function WorkspaceDetailPage() {
   const { id: workspaceId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { admin } = useAuthStore();
 
@@ -90,6 +91,14 @@ function WorkspaceDetailPage() {
       apiFetch(`/api/v1/workspaces/${workspaceId}`, { method: "PUT", body: payload }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId] });
+    }
+  });
+
+  const deleteWorkspace = useMutation({
+    mutationFn: () => apiFetch<void>(`/api/v1/workspaces/${workspaceId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-workspaces"] });
+      navigate("/workspaces");
     }
   });
 
@@ -148,6 +157,12 @@ function WorkspaceDetailPage() {
     });
   };
 
+  const handleDeleteWorkspace = () => {
+    const workspaceName = workspaceQuery.data?.name ?? workspaceId;
+    if (!window.confirm(ru.workspaceDetail.deleteConfirm(workspaceName))) return;
+    deleteWorkspace.mutate();
+  };
+
   const handleAddMember = (event: FormEvent) => {
     event.preventDefault();
     if (!addMemberForm.userId.trim() || !admin?.id) return;
@@ -167,6 +182,14 @@ function WorkspaceDetailPage() {
           <p className="text-sm text-slate-600">ID: {workspaceId}</p>
         </div>
         <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleDeleteWorkspace}
+            disabled={deleteWorkspace.isPending}
+            className="rounded-md border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-60"
+          >
+            {deleteWorkspace.isPending ? ru.actions.deleting : ru.actions.delete}
+          </button>
           <button
             type="button"
             onClick={() => {

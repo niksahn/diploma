@@ -34,6 +34,10 @@ export async function fetchUsers(params: SearchUsersParams) {
   return apiFetch<SearchUsersResponse>(`/api/v1/users?${qs.toString()}`);
 }
 
+export async function deleteUser(userId: number) {
+  return apiFetch<void>(`/api/v1/users/${userId}`, { method: "DELETE" });
+}
+
 
 
 

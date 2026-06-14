@@ -127,6 +127,7 @@ func setupRouter(userHandler *handlers.UserHandler, serviceMetrics *metrics.Serv
 		// Профиль пользователя по ID (должен быть последним из-за параметра :id)
 		api.GET("/:id", userHandler.GetUserByID)
 		api.PUT("/:id", userHandler.UpdateUserByID)
+		api.DELETE("/:id", userHandler.DeleteUserByID)
 	}
 
 	// Health check

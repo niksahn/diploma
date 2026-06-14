@@ -68,10 +68,6 @@ function SettingsPage() {
         <div>
           <h1 className="text-2xl font-semibold">{ru.settings.title}</h1>
           <p className="text-gray-600 mt-1">{ru.settings.subtitle}</p>
-          <p className="text-sm text-gray-500 mt-2 max-w-3xl">{ru.settings.embedHint}</p>
-          <p className="text-sm text-gray-600 mt-2">
-            {ru.settings.grafanaCredentials(grafanaCredentials.login, grafanaCredentials.password)}
-          </p>
         </div>
         <a
           href={grafanaExternal}

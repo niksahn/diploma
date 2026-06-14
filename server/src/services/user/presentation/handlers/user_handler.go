@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/diploma/user-service/data/repository"
@@ -33,6 +34,11 @@ func getUserIDFromHeader(c *gin.Context) (int, error) {
 	}
 
 	return userID, nil
+}
+
+func isAdmin(c *gin.Context) bool {
+	return strings.EqualFold(c.GetHeader("X-User-Role"), "admin") ||
+		strings.EqualFold(c.GetHeader("X-User-Roles"), "admin")
 }
 
 // GetMe получает профиль текущего пользователя
@@ -222,6 +228,46 @@ func (h *UserHandler) UpdateUserByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// DeleteUserByID удаляет пользователя (только администратор)
+// @Summary Удалить пользователя
+// @Description Удаляет пользователя и связанные записи. Доступно только администратору
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "ID пользователя"
+// @Success 204 "No Content"
+// @Failure 400 {object} map[string]string "Невалидный ID"
+// @Failure 401 {object} map[string]string "Не авторизован"
+// @Failure 403 {object} map[string]string "Недостаточно прав"
+// @Failure 404 {object} map[string]string "Пользователь не найден"
+// @Router /users/{id} [delete]
+func (h *UserHandler) DeleteUserByID(c *gin.Context) {
+	if !isAdmin(c) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
+		return
+	}
+
+	userIDStr := c.Param("id")
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
+		return
+	}
+
+	if err := h.repo.DeleteUser(c.Request.Context(), userID); err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete user"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }
 
 // UpdateStatus обновляет статус текущего пользователя
