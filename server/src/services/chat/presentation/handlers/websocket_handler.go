@@ -105,6 +105,37 @@ func (h *WSHub) Run() {
 	}
 }
 
+// SendToUser отправляет сообщение конкретному пользователю по всем его активным соединениям,
+// независимо от того, подписан ли клиент на данный чат (например, при добавлении в новый чат).
+// Если у сообщения указан ChatID, клиент дополнительно подписывается на этот чат,
+// чтобы сразу начать получать события из него (новые сообщения и т.д.).
+func (h *WSHub) SendToUser(userID int, message models.WSServerMessage) {
+	log.Printf("WebSocket sending direct message to user %d: type=%s, chatID=%d", userID, message.Type, message.ChatID)
+	sentCount := 0
+	h.mu.RLock()
+	for client := range h.clients {
+		if client.UserID != userID {
+			continue
+		}
+
+		if message.ChatID != 0 {
+			client.mu.Lock()
+			client.Chats[message.ChatID] = true
+			client.mu.Unlock()
+		}
+
+		select {
+		case client.Send <- message:
+			sentCount++
+		default:
+			close(client.Send)
+			delete(h.clients, client)
+		}
+	}
+	h.mu.RUnlock()
+	log.Printf("WebSocket direct message sent to %d connections of user %d", sentCount, userID)
+}
+
 // broadcastToOthers отправляет сообщение всем клиентам в чате, кроме указанного пользователя
 func (h *WSHub) broadcastToOthers(chatID int, message models.WSServerMessage, excludeUserID int) {
 	log.Printf("WebSocket broadcasting to others: type=%s, chatID=%d, excludeUserID=%d", message.Type, chatID, excludeUserID)
@@ -385,7 +416,7 @@ func (c *WSClient) handleSendMessage(chatID int, text string) {
 
 func (c *WSClient) handleTyping(chatID int) {
 	// Проверяем, является ли пользователь участником чата
-	isMember, err := c.Hub.repo.IsUserInChat(c.Request.Context(), c.UserID, chatID)
+	isMember, err := c.Hub.repo.IsUserInChat(context.Background(), c.UserID, chatID)
 	if err != nil || !isMember {
 		return
 	}

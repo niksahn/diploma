@@ -7,9 +7,5 @@ if [ $# -gt 0 ]; then
   exec /app/migrate -path /app/migrations "$@"
 fi
 
-# Default: run "up"; on failure (e.g. dirty state) reset to "no version" and retry
-/app/migrate -path /app/migrations up || {
-  echo "migrate up failed, resetting to clean state (force -1) and retrying..."
-  /app/migrate -path /app/migrations force -1
-  exec /app/migrate -path /app/migrations up
-}
+# Default: apply pending migrations (no auto force; see golang-migrate docs for dirty DB)
+exec /app/migrate -path /app/migrations up

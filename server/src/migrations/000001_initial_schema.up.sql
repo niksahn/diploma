@@ -1,9 +1,8 @@
 -- Complete initial schema based on original Laba5.ddl + backend code requirements
 -- Combines: base schema + refresh_tokens + tariffs as VARCHAR + complaint status fields
-
--- Drop existing schema if re-running (for fresh start)
-DROP SCHEMA IF EXISTS public CASCADE;
-CREATE SCHEMA public;
+--
+-- Do not DROP SCHEMA public here: golang-migrate stores version state in
+-- public.schema_migrations; dropping public would remove that table mid-run.
 
 -- Core tables
 CREATE TABLE users (

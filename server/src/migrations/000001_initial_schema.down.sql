@@ -1,3 +1,16 @@
--- Rollback: drop entire schema
-DROP SCHEMA IF EXISTS public CASCADE;
-CREATE SCHEMA public;
+-- Rollback: drop application tables only (keep public schema for golang-migrate).
+DROP TABLE IF EXISTS complaint_status_history CASCADE;
+DROP TABLE IF EXISTS complaints CASCADE;
+DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS userinchat CASCADE;
+DROP TABLE IF EXISTS taskinchat CASCADE;
+DROP TABLE IF EXISTS taskchanges CASCADE;
+DROP TABLE IF EXISTS userintask CASCADE;
+DROP TABLE IF EXISTS tasks CASCADE;
+DROP TABLE IF EXISTS chats CASCADE;
+DROP TABLE IF EXISTS userinworkspace CASCADE;
+DROP TABLE IF EXISTS workspaces CASCADE;
+DROP TABLE IF EXISTS refresh_tokens CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS administrators CASCADE;
+DROP TABLE IF EXISTS tariffs CASCADE;

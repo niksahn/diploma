@@ -9,7 +9,6 @@ type CreateTaskRequest struct {
 	WorkspaceID   int     `json:"workspace_id" binding:"required"`
 	Title         string  `json:"title" binding:"required,min=3,max=100"`
 	Description   *string `json:"description,omitempty"`
-	Date          string  `json:"date" binding:"required"` // ожидаем YYYY-MM-DD
 	Status        int     `json:"status,omitempty"`
 	AssignedUsers []int   `json:"assigned_users,omitempty"`
 	ChatID        *int    `json:"chat_id,omitempty"`
@@ -19,7 +18,6 @@ type CreateTaskRequest struct {
 type UpdateTaskRequest struct {
 	Title       *string `json:"title,omitempty"`
 	Description *string `json:"description,omitempty"`
-	Date        *string `json:"date,omitempty"` // YYYY-MM-DD
 }
 
 // UpdateTaskStatusRequest запрос на изменение статуса задачи
@@ -46,12 +44,13 @@ type TaskResponse struct {
 	WorkspaceName string    `json:"workspace_name"`
 	Title         string    `json:"title"`
 	Description   *string   `json:"description,omitempty"`
-	Date          time.Time `json:"date"`
-	Status        int       `json:"status"`
-	StatusName    string    `json:"status_name"`
-	AssigneeCount int       `json:"assignee_count"`
-	ChatCount     int       `json:"chat_count"`
-	CreatedAt     time.Time `json:"created_at"`
+	Date          *time.Time `json:"date,omitempty"` // календарная дата завершения (при статусе «Завершена»)
+	Status        int        `json:"status"`
+	StatusName    string     `json:"status_name"`
+	AssigneeCount int        `json:"assignee_count"`
+	ChatCount     int        `json:"chat_count"`
+	CreatedAt     time.Time  `json:"created_at"`
+	CompletedAt   *time.Time `json:"completed_at,omitempty"`
 }
 
 // TaskListResponse ответ со списком задач

@@ -285,7 +285,6 @@ def test_task_assignment_history_and_chat_links(
             "title": f"Task {unique_suffix}",
             "description": "Full flow",
             "workspace_id": workspace_id,
-            "date": "2024-01-02",
             "status": 1,
         },
         headers=auth_header(leader["access_token"]),

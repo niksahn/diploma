@@ -23,6 +23,28 @@ export type WorkspaceMembersResponse = {
   total: number
 }
 
+export type WorkspaceInvite = {
+  token: string
+  workspace_id: number
+  role: number
+  expires_at?: string | null
+}
+
+export type InviteInfo = {
+  valid: boolean
+  reason?: string
+  workspace_id?: number
+  workspace_name?: string
+  role?: number
+}
+
+export type AcceptInviteResponse = {
+  workspace_id: number
+  workspace_name: string
+  role: number
+  already_member: boolean
+}
+
 export const workspaceApi = {
   list: () => request<Workspace[]>('/workspaces'),
   users: (workspaceId: number) =>
@@ -45,6 +67,18 @@ export const workspaceApi = {
     request(`/workspaces/${workspaceId}/leader`, {
       method: 'PUT',
       body: JSON.stringify({ new_leader_id }),
+    }),
+  createInvite: (workspaceId: number, payload: { role: number; expires_in_hours?: number }) =>
+    request<WorkspaceInvite>(`/workspaces/${workspaceId}/invites`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getInviteInfo: (token: string) =>
+    request<InviteInfo>(`/workspaces/invites/${token}`, { skipAuthHeader: true }),
+  acceptInvite: (token: string) =>
+    request<AcceptInviteResponse>('/workspaces/accept-invite', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
     }),
 }
 

@@ -12,6 +12,12 @@
 
 Task Service управляет задачами, их статусами, исполнителями и историей изменений. Поддерживает привязку задач к чатам для обсуждения.
 
+**Даты в модели задачи**
+
+- `date` — **календарная дата завершения**: выставляется автоматически при переводе в статус «Завершена» (4); в других статусах отсутствует (`null`). Не задаётся при создании и не редактируется отдельным `PUT` задачи.
+- `created_at` — **момент создания** записи в системе.
+- `completed_at` — **момент завершения** (UTC): при первом входе в статус 4; сбрасывается при смене на любой другой статус.
+
 ---
 
 ## Эндпоинты (13)
@@ -30,7 +36,6 @@ Task Service управляет задачами, их статусами, ис�
   "workspace_id": 1,
   "title": "Implement user authentication",
   "description": "Add JWT-based authentication to the API",
-  "date": "2024-02-01",
   "status": 1,
   "assigned_users": [2, 3],
   "chat_id": 5
@@ -41,8 +46,7 @@ Task Service управляет задачами, их статусами, ис�
 - `workspace_id`: обязательно, существующее РП
 - `title`: обязательно, 3-100 символов
 - `description`: опционально, до 500 символов
-- `date`: обязательно, deadline задачи в формате `YYYY-MM-DD`
-- `status`: опционально, по умолчанию 1 (создана)
+- `status`: опционально, по умолчанию 1 (создана); **нельзя** передать `4` (завершена) — завершение только через `PUT .../status`
 - `assigned_users`: опционально, массив ID пользователей из РП
 - `chat_id`: опционально, ID чата из этого РП
 
@@ -54,9 +58,9 @@ Task Service управляет задачами, их статусами, ис�
   "workspace_id": 1,
   "title": "Implement user authentication",
   "description": "Add JWT-based authentication to the API",
-  "date": "2024-02-01",
   "status": 1,
-  "created_at": "2024-01-01T00:00:00Z"
+  "created_at": "2024-01-15T10:30:00Z",
+  "completed_at": null
 }
 ```
 
@@ -98,7 +102,8 @@ Task Service управляет задачами, их статусами, ис�
       "date": "2024-02-01",
       "status": 2,
       "assigned_users_count": 2,
-      "created_at": "2024-01-01T00:00:00Z"
+      "created_at": "2024-01-01T10:00:00Z",
+      "completed_at": null
     },
     {
       "id": 2,
@@ -110,7 +115,8 @@ Task Service управляет задачами, их статусами, ис�
       "date": "2024-02-05",
       "status": 1,
       "assigned_users_count": 1,
-      "created_at": "2024-01-02T00:00:00Z"
+      "created_at": "2024-01-02T11:00:00Z",
+      "completed_at": null
     }
   ],
   "total": 2,
@@ -172,6 +178,7 @@ Task Service управляет задачами, их статусами, ис�
     }
   ],
   "created_at": "2024-01-01T00:00:00Z",
+  "completed_at": null,
   "updated_at": "2024-01-02T00:00:00Z"
 }
 ```
@@ -196,20 +203,14 @@ Task Service управляет задачами, их статусами, ис�
 ```json
 {
   "title": "Updated title",
-  "description": "Updated description",
-  "date": "2024-02-15"
+  "description": "Updated description"
 }
 ```
 
 **Response**: `200 OK`
 ```json
 {
-  "id": 1,
-  "title": "Updated title",
-  "description": "Updated description",
-  "date": "2024-02-15",
-  "status": 3,
-  "updated_at": "2024-01-03T00:00:00Z"
+  "message": "task updated successfully"
 }
 ```
 
@@ -219,7 +220,7 @@ Task Service управляет задачами, их статусами, ис�
 - `403` - Недостаточно прав (не создатель и не назначенный исполнитель)
 - `404` - Задача не найдена
 
-**Note**: Обновляются только `title`, `description`, `date` (формат `YYYY-MM-DD`). Любое изменение записывается в историю (taskchanges).
+**Note**: Обновляются только `title` и `description`. Поле `date` (дата завершения) задаётся только при `PUT .../status` со статусом «Завершена» (4). Любое изменение записывается в историю (taskchanges).
 
 ---
 
@@ -284,7 +285,7 @@ Task Service управляет задачами, их статусами, ис�
 - `403` - Недостаточно прав (не создатель и не исполнитель)
 - `404` - Задача не найдена
 
-**Note**: Изменение статуса добавляется в историю с комментарием.
+**Note**: Изменение статуса добавляется в историю с комментарием. При переходе в статус **4 (Завершена)** автоматически выставляются `completed_at`, календарное поле `date` (UTC-дата момента завершения) и сбрасываются при любом другом статусе.
 
 ---
 
@@ -553,8 +554,10 @@ CREATE TABLE tasks (
   workspacesid INT4 NOT NULL REFERENCES workspaces(id),
   title VARCHAR(100) NOT NULL,
   description VARCHAR(500),
-  date DATE NOT NULL,
-  status INT4 NOT NULL DEFAULT 1
+  date DATE,
+  status INT4 NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at TIMESTAMPTZ
 );
 ```
 

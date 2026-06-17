@@ -20,7 +20,6 @@ const TaskCreatePage = () => {
 
   const [formData, setFormData] = useState<CreateTaskRequest>({
     title: '',
-    date: new Date().toISOString().split('T')[0],
     workspace_id: selectedWorkspaceId || 0,
     description: '',
     status: TaskStatus.TODO,
@@ -71,7 +70,7 @@ const TaskCreatePage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.title.trim() || !formData.date || !selectedWorkspaceId) {
+    if (!formData.title.trim() || !selectedWorkspaceId) {
       return
     }
 
@@ -144,36 +143,26 @@ const TaskCreatePage = () => {
           </div>
         </section>
 
-        {/* Блок: срок и статус */}
+        {/* Статус при создании */}
         <section className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-800 border-b border-slate-200 pb-2">Срок и статус</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="date" className={labelBase}>Дата выполнения *</label>
-              <input
-                id="date"
-                type="date"
-                required
-                value={formData.date}
-                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                className={`${inputBase} [color-scheme:light]`}
-              />
-            </div>
-            <div>
-              <label htmlFor="status" className={labelBase}>Начальный статус</label>
-              <select
-                id="status"
-                value={formData.status}
-                onChange={(e) => setFormData(prev => ({ ...prev, status: Number(e.target.value) as TaskStatus }))}
-                className={`${inputBase} cursor-pointer`}
-              >
-                {statusOptions.map((status) => (
-                  <option key={status.value} value={status.value}>
-                    {status.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <h3 className="text-sm font-semibold text-slate-800 border-b border-slate-200 pb-2">Статус</h3>
+          <div className="max-w-md">
+            <label htmlFor="status" className={labelBase}>Начальный статус</label>
+            <select
+              id="status"
+              value={formData.status}
+              onChange={(e) => setFormData(prev => ({ ...prev, status: Number(e.target.value) as TaskStatus }))}
+              className={`${inputBase} cursor-pointer`}
+            >
+              {statusOptions.filter((s) => s.value !== TaskStatus.DONE).map((status) => (
+                <option key={status.value} value={status.value}>
+                  {status.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500 mt-2">
+              Дату завершения система проставит автоматически при переводе задачи в статус «Выполнена».
+            </p>
           </div>
         </section>
 
@@ -234,7 +223,7 @@ const TaskCreatePage = () => {
         <div className="flex items-center gap-3 pt-2 border-t border-slate-200">
           <button
             type="submit"
-            disabled={isPending || !formData.title.trim() || !formData.date}
+            disabled={isPending || !formData.title.trim()}
             className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60 transition-colors"
           >
             {isPending ? 'Создаём…' : 'Создать задачу'}

@@ -7,6 +7,14 @@ import { workspaceApi } from '../shared/api/workspaces'
 import { taskApi, TaskStatus } from '../shared/api/tasks'
 import { useAuthStore } from '../shared/state/auth'
 
+const taskStatusOptions: { value: TaskStatus; label: string }[] = [
+  { value: TaskStatus.TODO, label: 'К выполнению' },
+  { value: TaskStatus.IN_PROGRESS, label: 'В работе' },
+  { value: TaskStatus.REVIEW, label: 'На проверке' },
+  { value: TaskStatus.DONE, label: 'Выполнена' },
+  { value: TaskStatus.CANCELLED, label: 'Отменена' },
+]
+
 const ChatPage = () => {
   const { chatId: chatIdParam } = useParams()
   const chatId = chatIdParam ? parseInt(chatIdParam, 10) : null
@@ -17,6 +25,9 @@ const ChatPage = () => {
   const queryClient = useQueryClient()
   const wsRef = useRef<ChatWebSocket | null>(null)
   const { user } = useAuthStore()
+  const [typingUsers, setTypingUsers] = useState<Map<number, string>>(new Map())
+  const typingTimeoutsRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map())
+  const stopTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['chat', chatId],
@@ -95,6 +106,41 @@ const ChatPage = () => {
       // WebSocket error
     })
 
+    // Индикатор "печатает"
+    wsRef.current.onUserTypingReceived((userId, userName) => {
+      setTypingUsers((prev) => {
+        const next = new Map(prev)
+        next.set(userId, userName)
+        return next
+      })
+
+      // Сбрасываем индикатор, если stop_typing не пришел в течение нескольких секунд
+      const timeouts = typingTimeoutsRef.current
+      const existing = timeouts.get(userId)
+      if (existing) clearTimeout(existing)
+      timeouts.set(userId, setTimeout(() => {
+        setTypingUsers((prev) => {
+          const next = new Map(prev)
+          next.delete(userId)
+          return next
+        })
+        timeouts.delete(userId)
+      }, 5000))
+    })
+
+    wsRef.current.onUserStoppedTypingReceived((userId) => {
+      const existing = typingTimeoutsRef.current.get(userId)
+      if (existing) {
+        clearTimeout(existing)
+        typingTimeoutsRef.current.delete(userId)
+      }
+      setTypingUsers((prev) => {
+        const next = new Map(prev)
+        next.delete(userId)
+        return next
+      })
+    })
+
     // Подключаемся к чату
     wsRef.current.connect(chatId)
 
@@ -104,6 +150,10 @@ const ChatPage = () => {
         wsRef.current.disconnect()
         wsRef.current = null
       }
+      typingTimeoutsRef.current.forEach((t) => clearTimeout(t))
+      typingTimeoutsRef.current.clear()
+      if (stopTypingTimeoutRef.current) clearTimeout(stopTypingTimeoutRef.current)
+      setTypingUsers(new Map())
     }
   }, [chatId, queryClient])
 
@@ -140,6 +190,13 @@ const ChatPage = () => {
     mutationFn: (taskId: number) => chatId ? taskApi.detachFromChat(taskId, chatId) : Promise.reject(new Error('Invalid chat ID')),
     onSuccess: () => {
       // Обновляем список задач чата
+      queryClient.invalidateQueries({ queryKey: ['chat-tasks', chatId] })
+    },
+  })
+
+  const { mutate: updateTaskStatus, isPending: isUpdatingTaskStatus, variables: updatingTaskStatusVars } = useMutation({
+    mutationFn: ({ taskId, status }: { taskId: number; status: TaskStatus }) => taskApi.updateStatus(taskId, status),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat-tasks', chatId] })
     },
   })
@@ -182,7 +239,26 @@ const ChatPage = () => {
       text: messageText
     })
 
+    if (stopTypingTimeoutRef.current) {
+      clearTimeout(stopTypingTimeoutRef.current)
+      stopTypingTimeoutRef.current = null
+    }
+    wsRef.current.send({ type: 'stop_typing', chat_id: chatId })
+
     setText('')
+  }
+
+  const handleTextChange = (value: string) => {
+    setText(value)
+
+    if (!chatId || !wsRef.current?.isConnected) return
+
+    wsRef.current.send({ type: 'typing', chat_id: chatId })
+
+    if (stopTypingTimeoutRef.current) clearTimeout(stopTypingTimeoutRef.current)
+    stopTypingTimeoutRef.current = setTimeout(() => {
+      wsRef.current?.send({ type: 'stop_typing', chat_id: chatId })
+    }, 2000)
   }
 
   const handleAddMembers = async () => {
@@ -258,9 +334,29 @@ const ChatPage = () => {
                     </span>
                   </div>
                   <div className="text-xs text-slate-500 mt-1">
-                    Создал: {task.creator_name} • Срок: {new Date(task.date).toLocaleDateString()}
+                    Создал: {task.creator_name}
+                    {task.created_at ? ` • Создана: ${new Date(task.created_at).toLocaleDateString('ru-RU')}` : ''}
+                    {task.date
+                      ? ` • Завершена (дата): ${new Date(task.date).toLocaleDateString('ru-RU')}`
+                      : ''}
+                    {task.completed_at && !task.date
+                      ? ` • Завершена: ${new Date(task.completed_at).toLocaleString('ru-RU')}`
+                      : ''}
                   </div>
                 </div>
+                <select
+                  value={task.status ?? ''}
+                  onChange={(e) => updateTaskStatus({ taskId: task.id, status: Number(e.target.value) as TaskStatus })}
+                  disabled={isUpdatingTaskStatus && updatingTaskStatusVars?.taskId === task.id}
+                  className="ml-2 rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700 bg-white disabled:opacity-50"
+                  title="Изменить статус задачи"
+                >
+                  {taskStatusOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
                 <button
                   onClick={() => handleDetachTask(task.id)}
                   disabled={isDetachingTask}
@@ -307,10 +403,17 @@ const ChatPage = () => {
         )}
       </div>
 
+      {typingUsers.size > 0 && (
+        <div className="text-xs text-slate-500 italic px-1">
+          {Array.from(typingUsers.values()).join(', ')}
+          {typingUsers.size === 1 ? ' печатает…' : ' печатают…'}
+        </div>
+      )}
+
       <form onSubmit={handleSend} className="flex gap-2">
         <input
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => handleTextChange(e.target.value)}
           placeholder="Ваше сообщение…"
           className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
         />

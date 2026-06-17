@@ -55,7 +55,10 @@ export type ChatTaskInfo = {
   attached_at: string
   creator: number
   creator_name: string
+  /** Срок выполнения (deadline) */
   date: string
+  created_at?: string
+  completed_at?: string
   description?: string
   id: number
   status: number
@@ -102,6 +105,16 @@ export type Message = {
   user_name: string
 }
 
+export type ChatListItem = {
+  id: number
+  name: string
+  type: number
+  workspace_id: number
+  last_message?: { text: string; date: number; user_name: string }
+  unread_count?: number
+  members_count?: number
+}
+
 // WebSocket класс для real-time чатов
 export class ChatWebSocket {
   private ws: WebSocket | null = null
@@ -109,19 +122,29 @@ export class ChatWebSocket {
   private maxReconnectAttempts = 5
   private reconnectDelay = 1000
   private chatId: number | null = null
+  private globalMode = false
   private onMessage: ((message: Message) => void) | null = null
+  private onChatAdded: ((chat: ChatListItem) => void) | null = null
+  private onUserTyping: ((userId: number, userName: string) => void) | null = null
+  private onUserStoppedTyping: ((userId: number) => void) | null = null
   private onError: ((error: Event) => void) | null = null
   private onClose: (() => void) | null = null
   private connectedCallback: (() => void) | null = null
 
-  connect(chatId: number) {
-    log.debug(`Starting connection to chat ${chatId}`)
+  /**
+   * Подключается к WebSocket. Если chatId не передан, соединение работает в
+   * "глобальном" режиме — без подписки на конкретный чат, только для получения
+   * пользовательских событий (например, chat_added).
+   */
+  connect(chatId?: number) {
+    log.debug(`Starting connection${chatId !== undefined ? ` to chat ${chatId}` : ' (global)'}`)
     if (this.ws?.readyState === WebSocket.OPEN) {
       log.debug('Already connected, skipping')
       return // Already connected
     }
 
-    this.chatId = chatId
+    this.chatId = chatId ?? null
+    this.globalMode = chatId === undefined
     const token = useAuthStore.getState().token
 
     if (!token) {
@@ -135,11 +158,13 @@ export class ChatWebSocket {
     this.ws = new WebSocket(wsUrl)
 
     this.ws.onopen = () => {
-      log.debug(`Connected to chat ${chatId}`)
+      log.debug(`Connected${chatId !== undefined ? ` to chat ${chatId}` : ' (global)'}`)
       this.reconnectAttempts = 0
 
-      // Отправляем команду на подписку к чату
-      this.send({ type: 'join_chat', chat_id: chatId })
+      // Отправляем команду на подписку к чату (если указан конкретный чат)
+      if (chatId !== undefined) {
+        this.send({ type: 'join_chat', chat_id: chatId })
+      }
 
       // Notify that the connection is established
       if (this.connectedCallback) {
@@ -172,6 +197,12 @@ export class ChatWebSocket {
               case 'joined_chat':
                 log.debug('Successfully joined chat:', data.chat_id)
                 break
+              case 'chat_added':
+                log.debug('Added to new chat:', data.chat)
+                if (data.chat && this.onChatAdded) {
+                  this.onChatAdded(data.chat)
+                }
+                break
               case 'user_joined':
                 log.debug('User joined chat:', data.user_id, data.user_name)
                 break
@@ -180,9 +211,15 @@ export class ChatWebSocket {
                 break
               case 'user_typing':
                 log.debug('User typing:', data.user_id, data.user_name)
+                if (this.onUserTyping) {
+                  this.onUserTyping(data.user_id, data.user_name)
+                }
                 break
               case 'user_stopped_typing':
                 log.debug('User stopped typing:', data.user_id)
+                if (this.onUserStoppedTyping) {
+                  this.onUserStoppedTyping(data.user_id)
+                }
                 break
               default:
                 log.debug('Unknown message type:', data.type, data)
@@ -241,6 +278,18 @@ export class ChatWebSocket {
     this.onMessage = callback
   }
 
+  onChatAddedReceived(callback: (chat: ChatListItem) => void) {
+    this.onChatAdded = callback
+  }
+
+  onUserTypingReceived(callback: (userId: number, userName: string) => void) {
+    this.onUserTyping = callback
+  }
+
+  onUserStoppedTypingReceived(callback: (userId: number) => void) {
+    this.onUserStoppedTyping = callback
+  }
+
   onConnected(callback: () => void) {
     this.connectedCallback = callback
   }
@@ -254,7 +303,7 @@ export class ChatWebSocket {
   }
 
   private attemptReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts || !this.chatId) {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts || (!this.chatId && !this.globalMode)) {
       return
     }
 
@@ -262,7 +311,7 @@ export class ChatWebSocket {
     log.debug(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
 
     setTimeout(() => {
-      this.connect(this.chatId!)
+      this.connect(this.chatId ?? undefined)
     }, this.reconnectDelay * this.reconnectAttempts)
   }
 

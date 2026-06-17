@@ -1,68 +1,74 @@
 @startuml
 skinparam componentStyle uml2
 skinparam backgroundColor white
-skinparam linetype ortho  
+skinparam shadowing false
+skinparam roundcorner 0
+skinparam linetype ortho
 
-title Диаграмма компонентов - Корпоративный Мессенджер
+skinparam nodesep 32
+skinparam ranksep 14
 
-actor "Пользователь" as UserActor
+skinparam componentBackgroundColor white
+skinparam componentBorderColor black
+skinparam componentFontColor black
+skinparam componentFontSize 18
 
-package "Клиентская часть (Frontend)" {
-    component "Мессенджер\n(Веб/Десктоп Клиент)" as ClientApp
+skinparam databaseBackgroundColor white
+skinparam databaseBorderColor black
+skinparam databaseFontColor black
+
+skinparam arrowColor black
+skinparam arrowThickness 1
+skinparam defaultFontColor black
+
+skinparam rectangleBorderColor white
+skinparam rectangleFontColor white
+
+left to right direction
+
+rectangle " " as Front #white;line:white;text:white {
+  component "Клиентское\nприложение" as Client <<component>>
+  component "Сервис-шлюз" as Gateway <<component>>
+  Client -[hidden]right- Gateway
 }
 
-package "Серверная часть (Backend)" {
-    component "API Gateway" as APIGateway
-    
-    package "Слой Бизнес-логики (Services)" {
-        component "Сервис Аутентификации\n(Auth Service)" as AuthService
-        component "Сервис Пользователей\n(User Service)" as UserService
-        component "Сервис Рабочих пространств\n(Workspace Service)" as WorkspaceService
-        component "Сервис Чатов и Сообщений\n(Chat & Message Service)" as ChatService
-        component "Сервис Задач\n(Task Service)" as TaskService
-        component "Сервис Жалоб\n(Complaint Service)" as ComplaintService
+rectangle " " as Services #white;line:white;text:white {
+  top to bottom direction
+  component "Сервис\nавторизации" as Auth <<component>>
+  component "Сервис\nпользователей" as User <<component>>
+  component "Сервис рабочих\nпространств" as Workspace <<component>>
+  component "Сервис чатов\nи сообщений" as Chat <<component>>
+  component "Сервис задач" as Task <<component>>
+  component "Сервис жалоб" as Complaint <<component>>
+}
 
-    }
-    }
+rectangle " " as Data #white;line:white;text:white {
+  top to bottom direction
+  database "БД\nмессенджера" as DB
+  component "Брокер сообщений" as Kafka <<component>>
+  DB -[hidden]down- Kafka
+}
 
-database "Kafka" as Kafka
-database "База Данных\n(PostgreSQL)" as DB
+Front -[hidden]right- Services
+Services -[hidden]right- Data
 
-' Связи актеров с интерфейсами
-UserActor ..> ClientApp 
-' Связи интерфейсов с API
-ClientApp --> APIGateway
-' Маршрутизация запросов от Gateway к сервисам
-APIGateway --> AuthService 
-APIGateway --> UserService 
-APIGateway --> WorkspaceService
-APIGateway --> ChatService 
-APIGateway --> TaskService 
-APIGateway --> ComplaintService
+Client -right-> Gateway
 
+Gateway --> Auth
+Gateway --> User
+Gateway --> Workspace
+Gateway --> Chat
+Gateway --> Task
+Gateway --> Complaint
 
-' Взаимосвязи между компонентами
+Auth --> DB
+User --> DB
+Workspace --> DB
+Chat --> DB
+Task --> DB
+Complaint --> DB
 
-WorkspaceService ..> UserService 
-
-ChatService ..> WorkspaceService 
-ChatService ..> UserService 
-
-TaskService ..> WorkspaceService 
-TaskService ..> UserService 
-TaskService ..> ChatService
-
-ComplaintService ..> UserService 
-
-' Доступ к данным
-AuthService ..> DB
-UserService ..> DB
-WorkspaceService ..> DB
-ChatService ..> DB
-TaskService ..> DB
-ComplaintService ..> DB
-
-ComplaintService ..> Kafka
-Kafka ..> UserService
+Complaint -right-> Kafka
+Kafka -left-> User 
 
 @enduml

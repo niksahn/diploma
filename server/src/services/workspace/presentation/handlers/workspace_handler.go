@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	dataModels "github.com/diploma/workspace-service/data/models"
 	"github.com/diploma/workspace-service/data/repository"
 	"github.com/diploma/workspace-service/presentation/models"
 	"github.com/gin-gonic/gin"
@@ -52,6 +53,17 @@ func isAdmin(c *gin.Context) bool {
 		}
 	}
 	return false
+}
+
+// inviteValidity проверяет срок действия и использование одноразового приглашения
+func inviteValidity(invite *dataModels.WorkspaceInviteDetails) (bool, string) {
+	if invite.UsedCount >= 1 {
+		return false, "invite already used"
+	}
+	if invite.ExpiresAt != nil && time.Now().After(*invite.ExpiresAt) {
+		return false, "invite has expired"
+	}
+	return true, ""
 }
 
 // CreateWorkspace godoc
@@ -868,5 +880,198 @@ func (h *WorkspaceHandler) ChangeLeader(c *gin.Context) {
 		OldLeaderID: userID,
 		NewLeaderID: req.NewLeaderID,
 		UpdatedAt:   time.Now().Format(time.RFC3339),
+	})
+}
+
+// CreateInvite godoc
+// @Summary Создать ссылку-приглашение
+// @Description Создает одноразовую ссылку-приглашение в РП (только руководитель)
+// @Tags workspace-invites
+// @Accept json
+// @Produce json
+// @Param id path int true "ID рабочего пространства"
+// @Param request body models.CreateInviteRequest true "Параметры приглашения"
+// @Success 201 {object} models.InviteResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Security BearerAuth
+// @Router /workspaces/{id}/invites [post]
+func (h *WorkspaceHandler) CreateInvite(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil || userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	workspaceID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid workspace id"})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	// Проверяем, что пользователь - руководитель РП
+	role, err := h.repo.GetUserRoleInWorkspace(ctx, userID, workspaceID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not a member") {
+			c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "user is not a member of this workspace"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to check user role"})
+		return
+	}
+	if role != 2 {
+		c.JSON(http.StatusForbidden, models.ErrorResponse{Error: "insufficient permissions"})
+		return
+	}
+
+	var req models.CreateInviteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	var expiresAt *time.Time
+	if req.ExpiresInHours != nil {
+		t := time.Now().Add(time.Duration(*req.ExpiresInHours) * time.Hour)
+		expiresAt = &t
+	}
+
+	invite, err := h.repo.CreateInvite(ctx, workspaceID, req.Role, userID, expiresAt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to create invite"})
+		return
+	}
+
+	resp := models.InviteResponse{
+		Token:       invite.Token,
+		WorkspaceID: invite.WorkspaceID,
+		Role:        invite.Role,
+	}
+	if invite.ExpiresAt != nil {
+		formatted := invite.ExpiresAt.UTC().Format(time.RFC3339)
+		resp.ExpiresAt = &formatted
+	}
+
+	c.JSON(http.StatusCreated, resp)
+}
+
+// GetInviteInfo godoc
+// @Summary Получить информацию о приглашении
+// @Description Возвращает информацию о ссылке-приглашении по токену (публичный эндпоинт)
+// @Tags workspace-invites
+// @Produce json
+// @Param token path string true "Токен приглашения"
+// @Success 200 {object} models.InviteInfoResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Router /workspaces/invites/{token} [get]
+func (h *WorkspaceHandler) GetInviteInfo(c *gin.Context) {
+	token := c.Param("token")
+
+	ctx := c.Request.Context()
+
+	invite, err := h.repo.GetInviteByToken(ctx, token)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "invite not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get invite"})
+		return
+	}
+
+	valid, reason := inviteValidity(invite)
+
+	c.JSON(http.StatusOK, models.InviteInfoResponse{
+		Valid:         valid,
+		Reason:        reason,
+		WorkspaceID:   invite.WorkspaceID,
+		WorkspaceName: invite.WorkspaceName,
+		Role:          invite.Role,
+	})
+}
+
+// AcceptInvite godoc
+// @Summary Принять приглашение
+// @Description Присоединяет текущего пользователя к РП по токену приглашения
+// @Tags workspace-invites
+// @Accept json
+// @Produce json
+// @Param request body models.AcceptInviteRequest true "Токен приглашения"
+// @Success 200 {object} models.AcceptInviteResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 410 {object} models.ErrorResponse
+// @Security BearerAuth
+// @Router /workspaces/accept-invite [post]
+func (h *WorkspaceHandler) AcceptInvite(c *gin.Context) {
+	userID, err := getUserID(c)
+	if err != nil || userID == 0 {
+		c.JSON(http.StatusUnauthorized, models.ErrorResponse{Error: "unauthorized"})
+		return
+	}
+
+	var req models.AcceptInviteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	invite, err := h.repo.GetInviteByToken(ctx, req.Token)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{Error: "invite not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to get invite"})
+		return
+	}
+
+	isMember, err := h.repo.IsMemberOfWorkspace(ctx, userID, invite.WorkspaceID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to check membership"})
+		return
+	}
+
+	if isMember {
+		role, err := h.repo.GetUserRoleInWorkspace(ctx, userID, invite.WorkspaceID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to check user role"})
+			return
+		}
+
+		c.JSON(http.StatusOK, models.AcceptInviteResponse{
+			WorkspaceID:   invite.WorkspaceID,
+			WorkspaceName: invite.WorkspaceName,
+			Role:          role,
+			AlreadyMember: true,
+		})
+		return
+	}
+
+	if valid, reason := inviteValidity(invite); !valid {
+		c.JSON(http.StatusGone, models.ErrorResponse{Error: reason})
+		return
+	}
+
+	if err := h.repo.AddMember(ctx, invite.WorkspaceID, userID, invite.Role); err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to add member"})
+		return
+	}
+
+	if err := h.repo.IncrementInviteUsage(ctx, invite.ID); err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update invite"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.AcceptInviteResponse{
+		WorkspaceID:   invite.WorkspaceID,
+		WorkspaceName: invite.WorkspaceName,
+		Role:          invite.Role,
+		AlreadyMember: false,
 	})
 }

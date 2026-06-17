@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/diploma/task-service/data/database"
 	"github.com/diploma/task-service/data/models"
@@ -75,13 +74,14 @@ func (r *Repository) GetTasksByWorkspace(ctx context.Context, workspaceID, userI
 			t.status,
 			COALESCE((SELECT COUNT(*) FROM "userintask" WHERE tasksid = t.id), 0) as assignee_count,
 			COALESCE((SELECT COUNT(*) FROM "taskinchat" WHERE tasksid = t.id), 0) as chat_count,
-			t.date as created_at
+			t.created_at,
+			t.completed_at
 		FROM tasks t
 		INNER JOIN users u ON t.creator = u.id
 		INNER JOIN workspaces w ON t.workspacesid = w.id
 		INNER JOIN "userinworkspace" uiw ON w.id = uiw.workspacesid AND uiw.usersid = $2
 		WHERE t.workspacesid = $1
-		ORDER BY t.date DESC, t.id DESC
+		ORDER BY t.created_at DESC, t.id DESC
 	`
 
 	rows, err := r.db.Pool.Query(ctx, query, workspaceID, userID)
@@ -107,6 +107,7 @@ func (r *Repository) GetTasksByWorkspace(ctx context.Context, workspaceID, userI
 			&task.AssigneeCount,
 			&task.ChatCount,
 			&task.CreatedAt,
+			&task.CompletedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan task: %w", err)
@@ -133,7 +134,8 @@ func (r *Repository) GetTaskByID(ctx context.Context, taskID, userID int) (*mode
 			t.status,
 			COALESCE((SELECT COUNT(*) FROM "userintask" WHERE tasksid = t.id), 0) as assignee_count,
 			COALESCE((SELECT COUNT(*) FROM "taskinchat" WHERE tasksid = t.id), 0) as chat_count,
-			t.date as created_at
+			t.created_at,
+			t.completed_at
 		FROM tasks t
 		INNER JOIN users u ON t.creator = u.id
 		INNER JOIN workspaces w ON t.workspacesid = w.id
@@ -156,6 +158,7 @@ func (r *Repository) GetTaskByID(ctx context.Context, taskID, userID int) (*mode
 		&task.AssigneeCount,
 		&task.ChatCount,
 		&task.CreatedAt,
+		&task.CompletedAt,
 	)
 
 	if err != nil {
@@ -168,17 +171,16 @@ func (r *Repository) GetTaskByID(ctx context.Context, taskID, userID int) (*mode
 	return &task, nil
 }
 
-// UpdateTask обновляет задачу
-func (r *Repository) UpdateTask(ctx context.Context, taskID int, title, description *string, date *time.Time) error {
+// UpdateTask обновляет заголовок и описание задачи
+func (r *Repository) UpdateTask(ctx context.Context, taskID int, title, description *string) error {
 	query := `
 		UPDATE tasks
 		SET title = COALESCE($2, title),
-		    description = COALESCE($3, description),
-		    date = COALESCE($4, date)
+		    description = COALESCE($3, description)
 		WHERE id = $1
 	`
 
-	result, err := r.db.Pool.Exec(ctx, query, taskID, title, description, date)
+	result, err := r.db.Pool.Exec(ctx, query, taskID, title, description)
 	if err != nil {
 		return fmt.Errorf("failed to update task: %w", err)
 	}
@@ -212,9 +214,20 @@ func (r *Repository) DeleteTask(ctx context.Context, taskID int) error {
 	return nil
 }
 
-// UpdateTaskStatus обновляет статус задачи
+// UpdateTaskStatus обновляет статус, дату/время завершения и календарную дату завершения (date)
 func (r *Repository) UpdateTaskStatus(ctx context.Context, taskID, status int) error {
-	query := `UPDATE tasks SET status = $2 WHERE id = $1`
+	query := fmt.Sprintf(`
+		UPDATE tasks
+		SET status = $2,
+		    completed_at = CASE
+		        WHEN $2 = %d THEN COALESCE(completed_at, NOW())
+		        ELSE NULL
+		    END,
+		    date = CASE
+		        WHEN $2 = %d THEN (NOW() AT TIME ZONE 'UTC')::date
+		        ELSE NULL
+		    END
+		WHERE id = $1`, models.TaskStatusCompleted, models.TaskStatusCompleted)
 
 	result, err := r.db.Pool.Exec(ctx, query, taskID, status)
 	if err != nil {

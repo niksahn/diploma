@@ -7,7 +7,7 @@ export type UserProfile = {
   name?: string
   surname?: string
   patronymic?: string
-  status?: string
+  status?: number
 }
 
 type AuthState = {

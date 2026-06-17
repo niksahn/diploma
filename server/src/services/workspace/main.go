@@ -137,6 +137,11 @@ func setupRouter(workspaceHandler *handlers.WorkspaceHandler, tariffHandler *han
 
 		// Смена руководителя
 		api.PUT("/:id/leader", workspaceHandler.ChangeLeader)
+
+		// Приглашения по ссылке
+		api.POST("/:id/invites", workspaceHandler.CreateInvite)
+		api.GET("/invites/:token", workspaceHandler.GetInviteInfo)
+		api.POST("/accept-invite", workspaceHandler.AcceptInvite)
 	}
 
 	// Health check

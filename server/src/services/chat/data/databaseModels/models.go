@@ -46,6 +46,8 @@ type ChatTask struct {
 	Title          string `db:"title"`
 	WorkspaceID    int    `db:"workspace_id"`
 	WorkspaceName  string `db:"workspace_name"`
+	CreatedAt      string `db:"created_at"`
+	CompletedAt    string `db:"completed_at"`
 }
 
 

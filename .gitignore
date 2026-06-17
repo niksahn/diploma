@@ -29,6 +29,7 @@ coverage/
 # Python cache
 __pycache__/
 *.pyc
+.venv/
 
 # IDE and OS files
 .DS_Store

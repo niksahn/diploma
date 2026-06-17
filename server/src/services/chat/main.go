@@ -58,14 +58,14 @@ func main() {
 	// Создаем репозиторий
 	repo := repository.NewRepository(db)
 
-	// Создаем обработчики
-	chatHandler := handlers.NewChatHandler(repo)
-	memberHandler := handlers.NewMemberHandler(repo)
-	messageHandler := handlers.NewMessageHandler(repo)
-
 	// Создаем WebSocket Hub
 	wsHub := handlers.NewWSHub(repo)
 	go wsHub.Run()
+
+	// Создаем обработчики
+	chatHandler := handlers.NewChatHandler(repo, wsHub)
+	memberHandler := handlers.NewMemberHandler(repo, wsHub)
+	messageHandler := handlers.NewMessageHandler(repo)
 
 	// Создаем метрики
 	serviceMetrics := metrics.NewServiceMetrics("chat-service")

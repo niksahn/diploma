@@ -16,10 +16,11 @@ import (
 
 type ChatHandler struct {
 	repo *repository.Repository
+	hub  *WSHub
 }
 
-func NewChatHandler(repo *repository.Repository) *ChatHandler {
-	return &ChatHandler{repo: repo}
+func NewChatHandler(repo *repository.Repository, hub *WSHub) *ChatHandler {
+	return &ChatHandler{repo: repo, hub: hub}
 }
 
 // getUserIDFromHeader извлекает userID из заголовка
@@ -174,6 +175,27 @@ func (h *ChatHandler) CreateChat(c *gin.Context) {
 		if err := h.repo.AddUserToChat(c.Request.Context(), chat.ID, memberID, role); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add member to chat"})
 			return
+		}
+	}
+
+	// Уведомляем остальных участников по WebSocket, чтобы новый чат сразу появился у них в списке
+	if h.hub != nil {
+		chatItem := models.ChatListItem{
+			ID:           chat.ID,
+			Name:         chat.Name,
+			Type:         chat.Type,
+			WorkspaceID:  chat.WorkspaceID,
+			MembersCount: len(req.Members),
+		}
+		for _, memberID := range req.Members {
+			if memberID == userID {
+				continue
+			}
+			h.hub.SendToUser(memberID, models.WSServerMessage{
+				Type:   "chat_added",
+				ChatID: chat.ID,
+				Chat:   &chatItem,
+			})
 		}
 	}
 
@@ -500,6 +522,8 @@ func (h *ChatHandler) GetChatTasks(c *gin.Context) {
 			Creator:       task.Creator,
 			CreatorName:   task.CreatorName,
 			Date:          task.Date,
+			CreatedAt:     task.CreatedAt,
+			CompletedAt:   task.CompletedAt,
 			Description:   task.Description,
 			ID:            task.ID,
 			Status:        task.Status,

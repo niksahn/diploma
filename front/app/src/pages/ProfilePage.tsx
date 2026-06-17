@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import { authApi } from '../shared/api/auth'
+import { authApi, USER_STATUS_LABELS } from '../shared/api/auth'
 import { useAuthStore } from '../shared/state/auth'
 
 const ProfilePage = () => {
@@ -9,6 +9,11 @@ const ProfilePage = () => {
   const { mutateAsync, isPending, error } = useMutation({
     mutationFn: authApi.me,
     onSuccess: (profile) => setUser(profile),
+  })
+
+  const { mutate: changeStatus, isPending: isChangingStatus } = useMutation({
+    mutationFn: (status: number) => authApi.updateStatus(status),
+    onSuccess: (res) => setUser(user ? { ...user, status: res.status } : user),
   })
 
   return (
@@ -31,7 +36,19 @@ const ProfilePage = () => {
         </div>
         <div className="space-y-1">
           <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">Статус</div>
-          <div className="text-sm font-medium text-slate-900">{user?.status || 'Не указан'}</div>
+          <select
+            value={user?.status ?? ''}
+            onChange={(e) => changeStatus(Number(e.target.value))}
+            disabled={isChangingStatus}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 bg-white disabled:opacity-50"
+          >
+            {!user?.status && <option value="" disabled>Не указан</option>}
+            {Object.entries(USER_STATUS_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="pt-2">
           <button

@@ -14,19 +14,22 @@ export type Task = {
   description?: string
   status?: TaskStatus
   status_name?: string
-  date: string
+  /** Календарная дата завершения (YYYY-MM-DD), после статуса «Выполнена» */
+  date?: string
   creator: number
   creator_name: string
   workspace_id: number
   workspace_name: string
   assignee_count?: number
   chat_count?: number
+  /** Момент создания задачи в системе */
   created_at?: string
+  /** Момент перевода в статус «Завершена» (4), если был */
+  completed_at?: string
 }
 
 export type CreateTaskRequest = {
   title: string
-  date: string
   workspace_id: number
   description?: string
   status?: TaskStatus
@@ -73,7 +76,7 @@ export const taskApi = {
   byId: (taskId: number) => request<TaskResponse>(`/tasks/${taskId}`),
   create: (data: CreateTaskRequest) =>
     request<TaskResponse>('/tasks', { method: 'POST', body: JSON.stringify(data) }),
-  update: (taskId: number, data: Partial<CreateTaskRequest>) =>
+  update: (taskId: number, data: { title?: string; description?: string }) =>
     request<TaskResponse>(`/tasks/${taskId}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (taskId: number) =>
     request<void>(`/tasks/${taskId}`, { method: 'DELETE' }),

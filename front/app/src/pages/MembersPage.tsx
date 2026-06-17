@@ -33,6 +33,10 @@ const MembersPage = () => {
   const [createUserError, setCreateUserError] = useState<string | null>(null)
   const [createUserSuccess, setCreateUserSuccess] = useState(false)
 
+  const [inviteRole, setInviteRole] = useState(1)
+  const [inviteLink, setInviteLink] = useState<string | null>(null)
+  const [inviteCopied, setInviteCopied] = useState(false)
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), DEBOUNCE_MS)
     return () => clearTimeout(t)
@@ -118,6 +122,21 @@ const MembersPage = () => {
     },
   })
 
+  const { mutate: createInvite, isPending: creatingInvite, error: inviteError } = useMutation({
+    mutationFn: () => workspaceApi.createInvite(selectedWorkspaceId!, { role: inviteRole }),
+    onSuccess: (data) => {
+      setInviteLink(`${window.location.origin}/invite/${data.token}`)
+      setInviteCopied(false)
+    },
+  })
+
+  const handleCopyInvite = async () => {
+    if (!inviteLink) return
+    await navigator.clipboard.writeText(inviteLink)
+    setInviteCopied(true)
+    setTimeout(() => setInviteCopied(false), 2000)
+  }
+
   const handleCreateUser = (e: React.FormEvent) => {
     e.preventDefault()
     setCreateUserError(null)
@@ -186,6 +205,58 @@ const MembersPage = () => {
         <div className="space-y-4">
           {isLeader && (
             <>
+              <div className="card space-y-3">
+                <div className="text-sm font-medium text-slate-900">Пригласить по ссылке</div>
+                <p className="text-xs text-slate-600">
+                  Создайте одноразовую ссылку — сотрудник перейдёт по ней, зарегистрируется (или войдёт) и
+                  автоматически окажется в этом пространстве с выбранной ролью.
+                </p>
+                <div className="flex flex-wrap items-end gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Роль</label>
+                    <select
+                      value={inviteRole}
+                      onChange={(e) => setInviteRole(Number(e.target.value))}
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 bg-white focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none"
+                    >
+                      <option value={1}>Участник</option>
+                      <option value={2}>Руководитель</option>
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => createInvite()}
+                    disabled={creatingInvite}
+                    className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {creatingInvite ? 'Создание…' : 'Создать ссылку'}
+                  </button>
+                </div>
+                {inviteError && (
+                  <div className="text-sm text-red-600">{(inviteError as Error).message}</div>
+                )}
+                {inviteLink && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={inviteLink}
+                      onFocus={(e) => e.target.select()}
+                      className="flex-1 min-w-[200px] rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 bg-slate-50 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCopyInvite}
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      {inviteCopied ? 'Скопировано!' : 'Скопировать'}
+                    </button>
+                  </div>
+                )}
+                <p className="text-xs text-slate-500">
+                  Ссылка одноразовая — действует до первого использования.
+                </p>
+              </div>
               <div className="card space-y-3">
                 <div className="text-sm font-medium text-slate-900">Создать пользователя</div>
                 <p className="text-xs text-slate-600">Создайте пользователя и добавьте его в это рабочее пространство</p>

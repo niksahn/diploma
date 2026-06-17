@@ -162,3 +162,39 @@ type TariffsResponse struct {
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
+
+// CreateInviteRequest запрос на создание ссылки-приглашения
+type CreateInviteRequest struct {
+	Role           int  `json:"role" binding:"required,min=1,max=2"`
+	ExpiresInHours *int `json:"expires_in_hours,omitempty"`
+}
+
+// AcceptInviteRequest запрос на принятие приглашения
+type AcceptInviteRequest struct {
+	Token string `json:"token" binding:"required"`
+}
+
+// InviteResponse информация о созданной ссылке-приглашении
+type InviteResponse struct {
+	Token       string  `json:"token"`
+	WorkspaceID int     `json:"workspace_id"`
+	Role        int     `json:"role"`
+	ExpiresAt   *string `json:"expires_at,omitempty"`
+}
+
+// InviteInfoResponse публичная информация о приглашении (для /invite/:token)
+type InviteInfoResponse struct {
+	Valid         bool   `json:"valid"`
+	Reason        string `json:"reason,omitempty"`
+	WorkspaceID   int    `json:"workspace_id,omitempty"`
+	WorkspaceName string `json:"workspace_name,omitempty"`
+	Role          int    `json:"role,omitempty"`
+}
+
+// AcceptInviteResponse ответ при принятии приглашения
+type AcceptInviteResponse struct {
+	WorkspaceID   int    `json:"workspace_id"`
+	WorkspaceName string `json:"workspace_name"`
+	Role          int    `json:"role"`
+	AlreadyMember bool   `json:"already_member"`
+}

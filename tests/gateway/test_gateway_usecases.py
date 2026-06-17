@@ -151,7 +151,6 @@ def test_task_and_complaint_flow(
         "title": f"Prepare report {unique_suffix}",
         "description": "Gateway end-to-end scenario",
         "workspace_id": workspace_id,
-        "date": "2024-01-01",
         "assigned_users": [assignee["id"]],
         "status": 1,
     }

@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../state/auth'
+import { USER_STATUS_LABELS } from '../api/auth'
 import { useWorkspaceStore } from '../state/workspace'
 import SidebarChats from '../components/SidebarChats'
 
@@ -7,7 +8,7 @@ const navItems = [
   { to: '/workspaces', label: 'Рабочие пространства' },
   { to: '/tasks', label: 'Задачи' },
   { to: '/members', label: 'Участники' },
-  { to: '/complaints', label: 'Жалобы' },
+  { to: '/complaints', label: 'Обращения к администратору' },
   { to: '/profile', label: 'Профиль' },
 ]
 
@@ -63,7 +64,7 @@ const AppLayout = () => {
           </div>
           <div className="text-right">
             <div className="text-sm font-medium text-slate-900">{user?.login || 'Неизвестный пользователь'}</div>
-            {user?.status && <div className="text-xs text-slate-500">{user.status}</div>}
+            {user?.status && <div className="text-xs text-slate-500">{USER_STATUS_LABELS[user.status] ?? user.status}</div>}
           </div>
         </header>
 

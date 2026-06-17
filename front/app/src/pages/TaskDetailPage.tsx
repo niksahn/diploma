@@ -16,7 +16,6 @@ const statusOptions: { value: TaskStatus; label: string }[] = [
 interface TaskFormData {
   title: string
   description: string
-  date: string
 }
 
 const TaskDetailPage = () => {
@@ -27,7 +26,6 @@ const TaskDetailPage = () => {
   const [formData, setFormData] = useState<TaskFormData>({
     title: '',
     description: '',
-    date: '',
   })
 
   const [showAddAssigneeModal, setShowAddAssigneeModal] = useState(false)
@@ -108,7 +106,6 @@ const TaskDetailPage = () => {
     description: 'Описание задачи заглушка',
     status: TaskStatus.TODO,
     status_name: 'К выполнению',
-    date: new Date().toISOString().split('T')[0],
     creator: 0,
     creator_name: 'Демо пользователь',
     workspace_id: 0,
@@ -181,14 +178,13 @@ const TaskDetailPage = () => {
     setFormData({
       title: task.title,
       description: task.description || '',
-      date: task.date,
     })
     setIsEditing(true)
   }
 
   const handleCancel = () => {
     setIsEditing(false)
-    setFormData({ title: '', description: '', date: '' })
+    setFormData({ title: '', description: '' })
   }
 
   const handleSave = async () => {
@@ -272,19 +268,12 @@ const TaskDetailPage = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-slate-700">Дата выполнения</label>
-            {isEditing ? (
-              <input
-                type="date"
-                value={formData.date}
-                onChange={(e) => handleInputChange('date', e.target.value)}
-                className={`${inputBase} [color-scheme:light]`}
-              />
-            ) : (
-              <div className="text-sm text-slate-600 bg-slate-50 rounded-md px-3 py-2">
-                📅 {new Date(task.date).toLocaleDateString('ru-RU')}
-              </div>
-            )}
+            <label className="block text-sm font-medium text-slate-700">Дата завершения</label>
+            <div className="text-sm text-slate-600 bg-slate-50 rounded-md px-3 py-2 min-h-[42px] flex items-center">
+              {task.date
+                ? `📅 ${new Date(task.date).toLocaleDateString('ru-RU')}`
+                : '— Проставляется при статусе «Выполнена»'}
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -423,6 +412,12 @@ const TaskDetailPage = () => {
               <div className="flex items-center gap-2">
                 <span>📝</span>
                 <span>Создана: {new Date(task.created_at).toLocaleString('ru-RU')}</span>
+              </div>
+            )}
+            {task.completed_at && (
+              <div className="flex items-center gap-2">
+                <span>✅</span>
+                <span>Завершена: {new Date(task.completed_at).toLocaleString('ru-RU')}</span>
               </div>
             )}
           </div>

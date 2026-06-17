@@ -2,7 +2,9 @@ package repository
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -572,4 +574,77 @@ func (r *Repository) AdminExists(ctx context.Context, adminID int) (bool, error)
 	}
 
 	return exists, nil
+}
+
+// ========== Invite Operations ==========
+
+// generateInviteToken генерирует криптографически случайный токен приглашения
+func generateInviteToken() (string, error) {
+	b := make([]byte, 24)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("failed to generate invite token: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// CreateInvite создает одноразовую ссылку-приглашение в РП
+func (r *Repository) CreateInvite(ctx context.Context, workspaceID, role, createdBy int, expiresAt *time.Time) (*models.WorkspaceInvite, error) {
+	token, err := generateInviteToken()
+	if err != nil {
+		return nil, err
+	}
+
+	query := `
+		INSERT INTO workspace_invites (workspacesid, token, role, created_by, expires_at)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, workspacesid, token, role, created_by, used_count, expires_at, created_at
+	`
+
+	var invite models.WorkspaceInvite
+	err = r.db.Pool.QueryRow(ctx, query, workspaceID, token, role, createdBy, expiresAt).Scan(
+		&invite.ID, &invite.WorkspaceID, &invite.Token, &invite.Role, &invite.CreatedBy,
+		&invite.UsedCount, &invite.ExpiresAt, &invite.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create invite: %w", err)
+	}
+
+	return &invite, nil
+}
+
+// GetInviteByToken получает приглашение по токену вместе с названием РП
+func (r *Repository) GetInviteByToken(ctx context.Context, token string) (*models.WorkspaceInviteDetails, error) {
+	query := `
+		SELECT
+			wi.id, wi.workspacesid, wi.token, wi.role, wi.created_by,
+			wi.used_count, wi.expires_at, wi.created_at,
+			w.name as workspace_name
+		FROM workspace_invites wi
+		INNER JOIN workspaces w ON wi.workspacesid = w.id
+		WHERE wi.token = $1
+	`
+
+	var invite models.WorkspaceInviteDetails
+	err := r.db.Pool.QueryRow(ctx, query, token).Scan(
+		&invite.ID, &invite.WorkspaceID, &invite.Token, &invite.Role, &invite.CreatedBy,
+		&invite.UsedCount, &invite.ExpiresAt, &invite.CreatedAt,
+		&invite.WorkspaceName,
+	)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, fmt.Errorf("invite not found")
+		}
+		return nil, fmt.Errorf("failed to get invite: %w", err)
+	}
+
+	return &invite, nil
+}
+
+// IncrementInviteUsage отмечает приглашение использованным (used_count = 1)
+func (r *Repository) IncrementInviteUsage(ctx context.Context, inviteID int) error {
+	_, err := r.db.Pool.Exec(ctx, `UPDATE workspace_invites SET used_count = used_count + 1 WHERE id = $1`, inviteID)
+	if err != nil {
+		return fmt.Errorf("failed to increment invite usage: %w", err)
+	}
+	return nil
 }

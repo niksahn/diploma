@@ -11,10 +11,11 @@ import (
 
 type MemberHandler struct {
 	repo *repository.Repository
+	hub  *WSHub
 }
 
-func NewMemberHandler(repo *repository.Repository) *MemberHandler {
-	return &MemberHandler{repo: repo}
+func NewMemberHandler(repo *repository.Repository, hub *WSHub) *MemberHandler {
+	return &MemberHandler{repo: repo, hub: hub}
 }
 
 // AddMembers добавляет участников в чат
@@ -93,6 +94,35 @@ func (h *MemberHandler) AddMembers(c *gin.Context) {
 			if err := h.repo.AddUserToChat(c.Request.Context(), chatID, memberID, req.Role); err == nil {
 				added = append(added, memberID)
 			}
+		}
+	}
+
+	// Уведомляем добавленных пользователей по WebSocket, чтобы чат сразу появился у них в списке
+	if h.hub != nil && len(added) > 0 {
+		members, _ := h.repo.GetChatMembers(c.Request.Context(), chatID)
+		chatItem := models.ChatListItem{
+			ID:           chat.ID,
+			Name:         chat.Name,
+			Type:         chat.Type,
+			WorkspaceID:  chat.WorkspaceID,
+			MembersCount: len(members),
+		}
+		if lastMsg, _ := h.repo.GetLastMessage(c.Request.Context(), chatID); lastMsg != nil {
+			chatItem.LastMessage = &models.LastMessageInfo{
+				Text:     lastMsg.Text,
+				Date:     lastMsg.Date,
+				UserName: lastMsg.UserName,
+			}
+		}
+		for _, memberID := range added {
+			unreadCount, _ := h.repo.CountUnreadMessages(c.Request.Context(), chatID, memberID)
+			item := chatItem
+			item.UnreadCount = unreadCount
+			h.hub.SendToUser(memberID, models.WSServerMessage{
+				Type:   "chat_added",
+				ChatID: chatID,
+				Chat:   &item,
+			})
 		}
 	}
 

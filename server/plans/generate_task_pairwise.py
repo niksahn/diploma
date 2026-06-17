@@ -46,8 +46,6 @@ def main() -> None:
                 "title_value",
                 "description_class",
                 "description_value",
-                "date_class",
-                "date_value",
                 "status_class",
                 "status_value",
             ]
@@ -66,8 +64,6 @@ def main() -> None:
                     row[1],
                     printable(resolved["description"]),
                     row[2],
-                    printable(resolved["date"]),
-                    row[3],
                     printable(resolved["status"]),
                 ]
             )

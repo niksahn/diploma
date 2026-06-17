@@ -18,7 +18,7 @@ const ComplaintsPage = () => {
     ? (data as any).complaints
     : Array.isArray(data)
       ? data
-      : [{ id: 'c1', text: 'Пример жалобы', date: new Date().toISOString(), status: 'created' }]
+      : []
 
   type ComplaintView = {
     id: string

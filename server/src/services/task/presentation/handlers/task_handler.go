@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 	"strconv"
@@ -57,9 +58,8 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		return
 	}
 
-	parsedDate, err := parseDate(req.Date)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid date format, expected YYYY-MM-DD"})
+	if req.Status == dm.TaskStatusCompleted {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "cannot create task in completed status; set status after creation"})
 		return
 	}
 
@@ -82,13 +82,13 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		return
 	}
 
-	// Создаем задачу
+	// Создаем задачу (date — дата завершения, выставляется при переходе в статус «Завершена»)
 	task := &dm.Task{
 		Creator:     userID,
 		WorkspaceID: req.WorkspaceID,
 		Title:       req.Title,
 		Description: req.Description,
-		Date:        parsedDate,
+		Date:        sql.NullTime{Valid: false},
 		Status:      req.Status,
 	}
 
@@ -260,16 +260,6 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		return
 	}
 
-	var parsedDate *time.Time
-	if req.Date != nil && *req.Date != "" {
-		dt, err := parseDate(*req.Date)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, models.ErrorResponse{Error: "invalid date format, expected YYYY-MM-DD"})
-			return
-		}
-		parsedDate = &dt
-	}
-
 	ctx := c.Request.Context()
 
 	// Проверяем существование задачи и права доступа
@@ -290,7 +280,7 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	}
 
 	// Обновляем задачу
-	err = h.repo.UpdateTask(ctx, taskID, req.Title, req.Description, parsedDate)
+	err = h.repo.UpdateTask(ctx, taskID, req.Title, req.Description)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: "failed to update task"})
 		return
@@ -897,12 +887,18 @@ func (h *TaskHandler) GetTaskHistory(c *gin.Context) {
 
 // ========== Helper Methods ==========
 
-func parseDate(dateStr string) (time.Time, error) {
-	return time.Parse("2006-01-02", dateStr)
-}
-
 // convertToTaskResponse преобразует модель данных в ответ API
 func (h *TaskHandler) convertToTaskResponse(task *dm.TaskWithDetails) models.TaskResponse {
+	var completed *time.Time
+	if task.CompletedAt.Valid {
+		t := task.CompletedAt.Time
+		completed = &t
+	}
+	var datePtr *time.Time
+	if task.Date.Valid {
+		t := task.Date.Time
+		datePtr = &t
+	}
 	return models.TaskResponse{
 		ID:            task.ID,
 		Creator:       task.Creator,
@@ -911,11 +907,12 @@ func (h *TaskHandler) convertToTaskResponse(task *dm.TaskWithDetails) models.Tas
 		WorkspaceName: task.WorkspaceName,
 		Title:         task.Title,
 		Description:   task.Description,
-		Date:          task.Date,
+		Date:          datePtr,
 		Status:        task.Status,
 		StatusName:    dm.GetTaskStatusName(task.Status),
 		AssigneeCount: task.AssigneeCount,
 		ChatCount:     task.ChatCount,
 		CreatedAt:     task.CreatedAt,
+		CompletedAt:   completed,
 	}
 }

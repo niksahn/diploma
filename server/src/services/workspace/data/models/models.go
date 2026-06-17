@@ -58,3 +58,21 @@ type Tariff struct {
 	Name        string `db:"name"`
 	Description string `db:"description"`
 }
+
+// WorkspaceInvite представляет одноразовую ссылку-приглашение в РП
+type WorkspaceInvite struct {
+	ID          int        `db:"id"`
+	WorkspaceID int        `db:"workspacesid"`
+	Token       string     `db:"token"`
+	Role        int        `db:"role"`
+	CreatedBy   int        `db:"created_by"`
+	UsedCount   int        `db:"used_count"`
+	ExpiresAt   *time.Time `db:"expires_at"`
+	CreatedAt   time.Time  `db:"created_at"`
+}
+
+// WorkspaceInviteDetails приглашение с названием РП
+type WorkspaceInviteDetails struct {
+	WorkspaceInvite
+	WorkspaceName string `db:"workspace_name"`
+}

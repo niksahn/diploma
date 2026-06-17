@@ -489,7 +489,7 @@ Chat Service - ключевой компонент системы. Управл�
 
 #### `GET /api/v1/chats/:id/tasks`
 
-Получить список задач, прикрепленных к чату.
+Получить список задач, прикрепленных к чату. В каждой задаче: `date` — календарная дата завершения (если задача в статусе «Завершена»), `created_at` — создание записи, `completed_at` — момент перевода в статус «Завершена» (если был).
 
 **Headers**: `Authorization: Bearer <token>`
 
@@ -505,6 +505,8 @@ Chat Service - ключевой компонент системы. Управл�
       "creator": 1,
       "creator_name": "Ivan Ivanov",
       "date": "2024-01-15",
+      "created_at": "2024-01-10T12:00:00Z",
+      "completed_at": "2024-01-20T18:30:00Z",
       "description": "Implement user authentication system",
       "id": 1,
       "status": 2,

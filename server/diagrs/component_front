@@ -1,0 +1,54 @@
+@startuml
+skinparam componentStyle uml2
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam roundcorner 0
+skinparam linetype ortho
+
+skinparam componentBackgroundColor white
+skinparam componentBorderColor black
+skinparam componentFontColor black
+skinparam componentFontSize 22
+
+skinparam arrowColor black
+skinparam arrowThickness 1
+skinparam defaultFontColor black
+
+top to bottom direction
+
+component "App" as App <<component>>
+
+component "AuthPage" as AuthPage <<component>>
+component "NotFoundPage" as NotFoundPage <<component>>
+
+component "AppLayout" as AppLayout <<component>>
+component "SidebarChats" as SidebarChats <<component>>
+
+component "WorkspacesPage" as WorkspacesPage <<component>>
+component "ChatsPage" as ChatsPage <<component>>
+component "ChatPage" as ChatPage <<component>>
+component "TasksPage" as TasksPage <<component>>
+component "TaskCreatePage" as TaskCreatePage <<component>>
+component "TaskDetailPage" as TaskDetailPage <<component>>
+component "MembersPage" as MembersPage <<component>>
+component "ComplaintsPage" as ComplaintsPage <<component>>
+component "ProfilePage" as ProfilePage <<component>>
+
+App -- AuthPage
+App -- NotFoundPage
+App -- AppLayout
+
+AppLayout -- SidebarChats
+AppLayout -- WorkspacesPage
+AppLayout -- ChatsPage
+AppLayout -- TasksPage
+AppLayout -- MembersPage
+AppLayout -- ComplaintsPage
+AppLayout -- ProfilePage
+
+ChatsPage -- ChatPage
+
+TasksPage -- TaskCreatePage
+TasksPage -- TaskDetailPage
+
+@enduml

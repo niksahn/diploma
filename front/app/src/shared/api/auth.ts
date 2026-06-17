@@ -51,6 +51,18 @@ export const authApi = {
   refresh: (payload: RefreshRequest) =>
     request<RefreshResponse>('/auth/refresh', { method: 'POST', body: JSON.stringify(payload), skipAuthHeader: true }),
   me: () => request<UserProfile>('/users/me'),
+  updateStatus: (status: number) =>
+    request<{ id: number; status: number; updated_at: string }>('/users/me/status', {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    }),
+}
+
+export const USER_STATUS_LABELS: Record<number, string> = {
+  1: 'Онлайн',
+  2: 'Не беспокоить',
+  3: 'Отошел',
+  4: 'Офлайн',
 }
 
 /**

@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
-import { chatApi, type Chat, CHAT_TYPES } from '../api/chats'
+import { useEffect, useState } from 'react'
+import { chatApi, ChatWebSocket, type Chat, CHAT_TYPES } from '../api/chats'
 import { useWorkspaceStore } from '../state/workspace'
 import { useAuthStore } from '../state/auth'
 
@@ -27,6 +27,19 @@ const SidebarChats = () => {
     queryFn: () => chatApi.list(selectedWorkspaceId || 0),
     enabled: Boolean(selectedWorkspaceId),
   })
+
+  // Глобальное WebSocket-соединение для получения событий о новых чатах
+  useEffect(() => {
+    const ws = new ChatWebSocket()
+    ws.onChatAddedReceived((chat) => {
+      queryClient.invalidateQueries({ queryKey: ['chats', chat.workspace_id] })
+    })
+    ws.connect()
+
+    return () => {
+      ws.disconnect()
+    }
+  }, [queryClient])
 
   const { mutateAsync: createChat, isPending: creating } = useMutation({
     mutationFn: () =>

@@ -12,11 +12,9 @@
 
 | Версия | Описание |
 |--------|----------|
-| **000000** | Начальная схема БД (таблицы users, administrators, tariffs, workspaces, chats, tasks, complaints, messages, userInWorkspace, userInChat, taskInChat, taskChanges, userInTask) |
-| **000001** | Изменение полей `tariffs.name` и `tariffs.description` с INT4 на VARCHAR(100) и VARCHAR(500) |
-| **000002** | Расширение `complaints`: колонки status, created_at, updated_at; таблица `complaint_status_history` |
-| **000003** | Поле `complaints.author_email` |
-| **000004** | Таблица `refresh_tokens` для JWT (Auth Service) |
+| **000001** | Начальная схема приложения (в т.ч. `tasks.date` — срок выполнения / deadline) |
+| **000002** | Задачи: колонки `created_at`, `completed_at` (отдельно от поля `date`) |
+| **000003** | Задачи: `date` nullable — дата завершения, не дедлайн при создании |
 
 ## Применение миграций
 
@@ -82,7 +80,7 @@ migrate -path ./migrations -database "postgres://user:password@localhost:5432/me
 
 ## Как добавлять новые миграции
 
-1. **Определи номер версии** — следующий по порядку: сейчас последняя `000004`, следующая будет `000005`, затем `000006` и т.д.
+1. **Определи номер версии** — следующий по порядку: сейчас последняя `000003`, следующая будет `000004` и т.д.
 
 2. **Создай пару файлов** в каталоге `migrations/`:
    - `000005_краткое_описание.up.sql` — что сделать при применении

@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"database/sql"
+	"time"
+)
 
 // Task представляет задачу
 type Task struct {
@@ -9,7 +12,7 @@ type Task struct {
 	WorkspaceID int       `db:"workspacesid"`
 	Title       string    `db:"title"`
 	Description *string   `db:"description"`
-	Date        time.Time `db:"date"`
+	Date        sql.NullTime `db:"date"` // дата завершения (календарная), только при status=4
 	Status      int       `db:"status"`
 	CreatedAt   time.Time `db:"created_at,omitempty"`
 }
@@ -24,11 +27,12 @@ type TaskWithDetails struct {
 	WorkspaceName string    `db:"workspace_name"`
 	Title         string    `db:"title"`
 	Description   *string   `db:"description"`
-	Date          time.Time `db:"date"`
+	Date          sql.NullTime `db:"date"`
 	Status        int       `db:"status"`
-	AssigneeCount int       `db:"assignee_count"`
-	ChatCount     int       `db:"chat_count"`
-	CreatedAt     time.Time `db:"created_at"`
+	AssigneeCount int          `db:"assignee_count"`
+	ChatCount     int          `db:"chat_count"`
+	CreatedAt     time.Time    `db:"created_at"`
+	CompletedAt   sql.NullTime `db:"completed_at"`
 }
 
 // UserInTask представляет связь пользователя с задачей (исполнитель)

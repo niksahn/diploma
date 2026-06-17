@@ -174,6 +174,7 @@ type WSServerMessage struct {
 	Message   *MessageResponse `json:"message,omitempty"`
 	MessageID int              `json:"message_id,omitempty"`
 	ChatID    int              `json:"chat_id,omitempty"`
+	Chat      *ChatListItem    `json:"chat,omitempty"`
 	Text      string           `json:"text,omitempty"`
 	EditedAt  int              `json:"edited_at,omitempty"`
 	UserID    int              `json:"user_id,omitempty"`
@@ -194,6 +195,8 @@ type ChatTaskInfo struct {
 	Creator       int    `json:"creator" example:"1"`
 	CreatorName   string `json:"creator_name" example:"Ivan Ivanov"`
 	Date          string `json:"date" example:"2024-01-15"`
+	CreatedAt     string `json:"created_at" example:"2024-01-10T12:00:00Z"`
+	CompletedAt   string `json:"completed_at,omitempty" example:"2024-01-20T18:30:00Z"`
 	Description   string `json:"description,omitempty" example:"Implement user authentication system"`
 	ID            int    `json:"id" example:"1"`
 	Status        int    `json:"status" example:"2"`

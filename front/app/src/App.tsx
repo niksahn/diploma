@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AuthPage from './pages/AuthPage'
+import InvitePage from './pages/InvitePage'
 import WorkspacesPage from './pages/WorkspacesPage'
 import ChatsPage from './pages/ChatsPage'
 import ChatPage from './pages/ChatPage'
@@ -17,6 +18,7 @@ function App() {
   return (
     <Routes>
       <Route path="/auth" element={<AuthPage />} />
+      <Route path="/invite/:token" element={<InvitePage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<Navigate to="/workspaces" replace />} />

@@ -637,14 +637,14 @@ func (r *Repository) CountUnreadMessages(ctx context.Context, chatID, userID int
 func (r *Repository) GetChatTasks(ctx context.Context, chatID int) ([]databaseModels.ChatTask, error) {
 	query := `
 		SELECT
-			tic.id,
+			t.id,
 			tic.chatsid,
 			tic.tasksid,
 			tic.id::text as attached_at, -- Используем ID как timestamp для простоты
 			t.creator,
 			COALESCE(u.name || ' ' || u.surname, 'Unknown User') as creator_name,
-			t.date::text,
-			t.description,
+			COALESCE(t.date::text, ''),
+			COALESCE(t.description, ''),
 			t.status,
 			CASE t.status
 				WHEN 1 THEN 'Создана'
@@ -656,7 +656,9 @@ func (r *Repository) GetChatTasks(ctx context.Context, chatID int) ([]databaseMo
 			END as status_name,
 			t.title,
 			t.workspacesid as workspace_id,
-			COALESCE(w.name, 'Unknown Workspace') as workspace_name
+			COALESCE(w.name, 'Unknown Workspace') as workspace_name,
+			to_char(t.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
+			COALESCE(to_char(t.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), '') as completed_at
 		FROM taskinchat tic
 		JOIN tasks t ON tic.tasksid = t.id
 		LEFT JOIN users u ON t.creator = u.id
@@ -688,6 +690,8 @@ func (r *Repository) GetChatTasks(ctx context.Context, chatID int) ([]databaseMo
 			&task.Title,
 			&task.WorkspaceID,
 			&task.WorkspaceName,
+			&task.CreatedAt,
+			&task.CompletedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan chat task: %w", err)
